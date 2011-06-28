@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.13/themes/flick/jquery-ui.css" rel="Stylesheet">
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.6.1.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.13/jquery-ui.min.js"></script>
+<script type="text/javascript">
+
+var verbList = [ "GET", "HEAD", "PUT", "POST", "DELETE" ];
+var localUrl = "/rest/";
+var remoteUrl = "http://lciga077.lss.emc.com/rest/"
+
+$(document).ready(function(){
+	// Check it out
+	verbTable( verbList );
+	
+	verbTest( verbList, localUrl, 'local' );
+	verbTest( verbList, remoteUrl, 'remote' );
+	
+	   // Your code here
+	   });
+
+
+function verbTable( verbs ) {
+	for( var i=0; i<verbs.length; i++ ) {
+		$("#head").append( "<td>" + verbs[i] + "</td>" );
+	}
+}
+
+function verbTest( verbs, path, ui ) {
+	// Insert a cell
+	for( var i=0; i<verbs.length; i++ ) {
+		var cellId = ui + "x" + verbs[i];
+		$("#"+ui).append( "<td id='" + cellId + "'>Testing</td>" );
+		
+		startTest( verbs[i], cellId );
+		
+	
+	
+}
+
+function startTest( verb, cellId ) {
+		var state = { cellId: ""+cellId };
+		//alert( "start: " + state.cellId );
+		
+		$.ajax({
+			url: path,
+			//data: "test=testvalue",
+			dataType: "text",
+			error: function( jqXHR, textStatus, errorThrown) {
+				handleError( textStatus + " " + errorThrown, state );
+			},
+			type: verb,
+			success: function( data, textStatus, jqXHR ) {
+				handleSuccess( state );
+			},
+		});
+	}
+}
+
+function handleSuccess( state ) {
+	//alert( "success: " + state.cellId );
+	$("#"+state.cellId).text("OK");
+}
+
+function handleError( textStatus, state ) {
+	//alert( "error: " + state.cellId );
+	$("#"+state.cellId).text(textStatus);
+}
+
+</script>
+<title>HTML Browser Method test</title>
+</head>
+<body>
+
+<div class="ui-widget">
+<h1>Browser Verb Test</h1>
+
+<table id="results" style="border: 1px solid black">
+<thead class="ui-widget-header">
+	<tr id='head'><td>mode/verb</td></tr>
+</thead>
+<tbody>
+	<tr id='local'><td>Local</td></tr>
+	<tr id='remote'><td>Remote</td></tr>
+</tbody>
+</table>
+</div>
+</body>
+</html>
