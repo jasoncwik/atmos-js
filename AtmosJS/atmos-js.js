@@ -84,7 +84,7 @@ function Acl( useracl, groupacl ) {
  * Defines an entry on an ACL.  Use of this class is optional, you
  * can simply define with JSON, e.g.
  * [ {key=AclEntry.GROUPS.OTHER,value=AclEntry.ACL_PERMISSIONS.READ} ]
- * @class Constructs a new ACL Entry
+ * @class Represents an Access Control List entry (grantee -> Permission)
  */
 function AclEntry( key, value ) {
 	this.key = key;
@@ -101,6 +101,44 @@ AclEntry.ACL_PERMISSIONS = { READ: "READ", WRITE: "WRITE", FULL_CONTROL: "FULL_C
  * @static 
  */
 AclEntry.GROUPS = { OTHER: "other" };
+
+/**
+ * Constructs a new ListOptions object.  Used for listObjects and listDirectory methods.
+ * Note that use of this class is optional; you can simply use a JSON object, e.g.
+ * { limit: 0, includeMeta: true }
+ * @param {int} limit maximum number of objects to return from server.  0=default (generally
+ * the default limit is 5000).
+ * @param {String} token server token for continuing results.  Check your results object for a 
+ * token and pass into this field on the subsequent request to continue your listing.
+ * @param {boolean} includeMeta if true, object metadata will be returned with the results
+ * @param {Array} userMetaTags if non-null, the list of user metadata tags to return in the metadata
+ * (assumes includeMeta=true).  If null, all metadata tags will be returned.
+ * @param {Array} systemMetaTags if non-null, the list of system metadata tags to return in the metadata
+ * (assumes includeMeta=true).  If null, all system metadata tags will be returned. 
+ * @class Options for listing Atmos objects
+ */
+function ListOptions( limit, token, includeMeta, userMetaTags, systemMetaTags ) {
+	this.limit = limit;
+	this.token = token;
+	this.includeMeta = includeMeta;
+	this.userMetaTags = userMetaTags;
+	this.systemMetaTags = systemMetaTags;
+}
+
+/**
+ * Creates a new ObjectResult
+ * @param {String} objectId the object's identifier
+ * @param {Object} userMeta an object containing the user metadata properties
+ * @param {Object} listableUserMeta an object containing the listable user metadata properties
+ * @param {Object} systemMeta an object containing the system metadata properties
+ * @class Encapsulates information about objects returned from ListObjects.
+ */
+function ObjectResult( objectId, userMeta, listableUserMeta, systemMeta ) {
+	this.objectId = objectId;
+	this.userMeta = userMeta;
+	this.listableUserMeta = listableUserMeta;
+	this.systemMeta = systemMeta;
+}
 
 /**
  * Constructs a new AtmosRest object.
@@ -218,6 +256,74 @@ AtmosRest.prototype.readObject = function( id, range, state, callback ) {
 	
 };
 
+/**
+ * Reads the user metadata for an object.
+ * @param {String} id the object identifier (either an Object ID or an Object Path)
+ * @param {Array} filter if not null, an array of strings defining which metadata tags should be returned.
+ * @param {Object} state the user-defined state object passed to the callback
+ * @param {function} callback the completion callback (both error and success).  Upon success,
+ * the object's metadata will be returned in the meta property of the result object and the 
+ * listable metadata will be returned in the listableMeta property.
+ */
+AtmosRest.prototype.getUserMetadata = function( id, filter, state, callback ) {
+	var headers = new Object();
+	var me = this;
+	
+	if( filter ) {
+		headers["x-emc-tags"] = filter.join(",");
+	}
+	
+	this._restGet(this._getPath(id) + "?metadata/user", headers, null, state, callback, 
+			function(jqXHR, state, callback) {
+		me._readUserMetadataHandler(jqXHR, state, callback);
+	});
+};
+
+/**
+ * Lists objects from the server using a listable tag.
+ * @param {String} tag the listable tag to search
+ * @param {ListOptions} options for listing objects.  See the ListOptions class.
+ * @param {Object} state the user-defined state object that will be passed to the callback
+ * @param {function} callback the completion callback (both error and success).  Upon success, 
+ * the result's results property will be populated with an Array of ObjectResult objects.  Also
+ * be sure to check the value of the token property.  If defined, you did not receive all results
+ * and should call this method again using the token inside a ListOptions object to continue 
+ * your listing.
+ */
+AtmosRest.prototype.listObjects = function( tag, options, state, callback ) {
+	var headers = new Object();
+	var me = this;
+	
+	if( !tag ) {
+		throw "Tag cannot be null";
+	}
+	
+	headers["X-Emc-Tags"] = tag;
+	
+	if( options ) {
+		if( options.limit ) {
+			headers["X-Emc-Limit"] = ""+options.limit;
+		}
+		if( options.token ) {
+			headers["X-Emc-Token"] = options.token;
+		}
+		if( options.includeMeta ) {
+			headers["X-Emc-Include-Meta"] = "1";
+			if( options.userMetaTags ) {
+				headers["X-Emc-User-Tags"] = options.userMetaTags.join(",");
+			}
+			if( options.systemMetaTags ) {
+				headers["X-Emc-System-Tags"] = options.systemMetaTags.join(",");
+			}
+		}
+	}
+	
+	this._restGet(this.context + "/objects", headers, null, state, callback, 
+			function(jqXHR, state, callback) {
+		me._handleListObjectsResponse(jqXHR, state, callback);
+	});
+};
+
 /////////////////////
 // Private Methods //
 /////////////////////
@@ -274,7 +380,7 @@ AtmosRest.prototype._processMeta = function( meta, headers, listable ) {
 		return;
 	}
 	if( listable ) {
-		headers["X-Emc-Meta-Listable"] = this._processMetaList( meta );
+		headers["X-Emc-Listable-Meta"] = this._processMetaList( meta );
 	} else {
 		headers["X-Emc-Meta"] = this._processMetaList( meta );
 	}
@@ -324,7 +430,7 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, s
 	var errorHandler = this._handleError;
 	var setHeaders = this._setHeaders;
 	$.ajax({
-		url: uri,
+		url: this._encodeURI(uri),
 		data: data,
 		dataType: "text",
 		processData: false,
@@ -359,7 +465,7 @@ AtmosRest.prototype._restDelete = function( uri, headers, state, callback, handl
 	var setHeaders = this._setHeaders;
 	$.ajax({
 		type: "DELETE",
-		url: uri,
+		url: this._encodeURI(uri),
 		beforeSend: function(jqXHR, settings) {
 			setHeaders(jqXHR, headers);
 		},
@@ -375,12 +481,12 @@ AtmosRest.prototype._restDelete = function( uri, headers, state, callback, handl
 
 /**
  * Performs a REST GET operation
- * @param uri
- * @param headers
- * @param range
- * @param state
- * @param callback
- * @param handler
+ * @param {String} uri
+ * @param {Object} headers
+ * @param {AtmosRange} range
+ * @param {Object} state
+ * @param {function} callback
+ * @param {function} handler
  */
 AtmosRest.prototype._restGet = function(uri, headers, range, state, callback, handler) {
 	headers["X-Emc-Date"] = new Date().toGMTString();
@@ -390,7 +496,7 @@ AtmosRest.prototype._restGet = function(uri, headers, range, state, callback, ha
 	var setHeaders = this._setHeaders;
 	$.ajax({
 		type: "GET",
-		url: uri,
+		url: this._encodeURI(uri),
 		beforeSend: function(jqXHR, settings) {
 			setHeaders(jqXHR, headers);
 		},
@@ -412,6 +518,35 @@ AtmosRest.prototype._setHeaders = function( jqXHR, headers ) {
 	for(var prop in headers){
 		jqXHR.setRequestHeader( prop, headers[prop] );
 	}
+};
+
+/**
+ * Encodes the individual path components of a URI.
+ * @param uri
+ * @returns {String} the URI with the path components encoded.
+ */
+AtmosRest.prototype._encodeURI = function( uri ) {
+	this.debug( "encodeURI: in: " + uri );
+	var queryIndex = uri.indexOf( "?" );
+	var query = "";
+	if( queryIndex != -1 ) {
+		query = uri.substring( queryIndex );
+		uri = uri.substring( 0, queryIndex );
+	}
+	var parts = uri.split( "/" );
+	var outURI = "";
+	for( var i=0; i<parts.length; i++ ) {
+		parts[i] = encodeURIComponent(parts[i]);
+	}
+	outURI = parts.join( "/" );
+	
+	if( queryIndex != -1 ) {
+		outURI += encodeURI(query);
+	}
+	
+	this.debug( "encodeURI: out: " + outURI );
+	
+	return outURI;
 };
 
 /**
@@ -454,6 +589,47 @@ AtmosRest.prototype._readObjectHandler = function( jqXHR, state, callback ) {
 };
 
 /**
+ * Handles the readUserMetadata response.  Parses the lists of metadata and listable metadata.
+ * @param {jqXHR} jqXHR the JQuery XHR object
+ * @param {Object} state the user's state object
+ * @param {function} callback the user's callback function
+ */
+AtmosRest.prototype._readUserMetadataHandler = function( jqXHR, state, callback ) {
+	var result = new AtmosResult( true, state );
+	
+	result.meta = this._parseMetadata( jqXHR.getResponseHeader( "x-emc-meta" ) );
+	result.listableMeta = this._parseMetadata( jqXHR.getResponseHeader( "x-emc-listable-meta" ) );
+	
+	callback(result);
+};
+
+/**
+ * Parses a metadata value string into a property object
+ * @param {String} value the metadata value string
+ * @returns {Object} a property object containing the values
+ */
+AtmosRest.prototype._parseMetadata = function( value ) {
+	if( typeof(value) == 'undefined' || value == null ) {
+		return null;
+	}
+	
+	var result = {};
+	
+	var values = value.split(",");
+	for( var i=0; i<values.length; i++ ) {
+		var nvpair = values[i].split("=", 2);
+		var name = nvpair[0].trim();
+		if( nvpair.length == 1 ) {
+			result[name] = "";
+		} else {
+			result[name] = nvpair[1];
+		}
+	}
+	
+	return result;
+};
+
+/**
  * Response handler for responses that no not require any specific
  * handling.
  */
@@ -475,6 +651,118 @@ AtmosRest.prototype._handleError = function( jqXHR, message, state, callback ) {
 	result.httpMessage = jqXHR.statusText;
 	
 	callback( result );
+};
+
+/**
+ * Handles the response from the ListObjects method
+ * @param {XMLHttpRequest} jqXHR the JQuery XHR object
+ * 
+ */
+AtmosRest.prototype._handleListObjectsResponse = function( jqXHR, state, callback ) {
+	var result = new AtmosResult( true, state );
+	result.httpCode = jqXHR.status;
+	result.httpMessage = jqXHR.statusText;
+	result.token = jqXHR.getResponseHeader("x-emc-token");
+	
+	var doc = jqXHR.responseXML;
+	
+	/**
+	 * @type Array
+	 */
+	var objects = Array();
+	
+	/**
+	 * @type NodeList
+	 */
+	var objlist = doc.getElementsByTagName("Object");
+	
+	for( var i=0; i<objlist.length; i++ ) {
+		var userMeta = null;
+		var systemMeta = null;
+		var userListableMeta = null;
+		
+		var node = objlist.item(i);
+		var oidNode = this._getChildByTagName(node, "ObjectID");
+		var smNode = this._getChildByTagName(node, "SystemMetadataList");
+		var umNode = this._getChildByTagName(node, "UserMetadataList");
+		
+		if( smNode ) {
+			systemMeta = new Object();
+			this._parseResponseMeta( smNode.childNodes, systemMeta, null );
+		}
+		if( umNode ) {
+			userMeta = new Object();
+			userListableMeta = new Object();
+			this._parseResponseMeta( umNode.childNodes, userMeta, userListableMeta );
+		}
+		
+		var obj = new ObjectResult( this._getText(oidNode), userMeta, userListableMeta, systemMeta );
+		objects.push(obj);
+	}
+	
+	result.results = objects;
+	callback(result);
+};
+
+/**
+ * Parses object metadata for an object listing result
+ * @param {NodeList} nodeList the node list containing Metadata
+ * @param {Object} regMeta property object to populate with regular metadata
+ * @param {Object} listableMeta property object to populate with listable metadata
+ */
+AtmosRest.prototype._parseResponseMeta = function( nodeList, regMeta, listableMeta ) {
+	for( var i=0; i<nodeList.length; i++ ) {
+		var child = nodeList.item(i);
+		if( child.nodeName != "Metadata" ) {
+			continue;
+		}
+		var metaName = this._getText( this._getChildByTagName(child, "Name") );
+		var metaValue = this._getText( this._getChildByTagName(child, "Value") );
+		var listableNode = this._getChildByTagName(child, "Listable");
+		if( listableNode) {
+			if( this._getText(listableNode) == "true" ) {
+				listableMeta[metaName] = metaValue;
+				continue;
+			}
+		}
+		regMeta[metaName] = metaValue;
+	}
+};
+
+/**
+ * Searches a node for a first-level child with the given tag name.  If
+ * not found, null will be returned.
+ * @param {Node} node the node to search
+ * @param {String} tagName the tag name to look for
+ * @return {Node} the found node or null if not found.
+ */
+AtmosRest.prototype._getChildByTagName = function( node, tagName ) {
+	var children = node.childNodes;
+	for( var i=0; i<children.length; i++ ) {
+		var child = children.item(i);
+		if( child.nodeName == tagName ) {
+			return child;
+		}
+	}
+	return null;
+};
+
+/**
+ * Gets the text from a node
+ * @param {Node} node the node to collect text from
+ * @return {String} the node's child text
+ */
+AtmosRest.prototype._getText = function( node ) {
+	var children = node.childNodes;
+	var text = "";
+	for( var i=0; i<children.length; i++ ) {
+		var child = children.item(i);
+		if( child instanceof Text ) {
+			text += child.data;
+		}
+	}
+	
+	return text;
 };
 
 /**

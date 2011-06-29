@@ -25,26 +25,37 @@ this.fileChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 this.innerChars = this.fileChars + " ";
 
 this.randomFilename = function( name, ext ) {
-	var name = "";
+	var fn = "";
 	for( var i = 0; i<name; i++ ) {
 		if( i == 0 ) {
-			name += this.fileChars.charAt( Math.floor( Math.random() * (this.fileChars.length-1)));
+			fn += this.fileChars.charAt( Math.floor( Math.random() * (this.fileChars.length-1)));
 		} else {
-			name += this.innerChars.charAt( Math.floor( Math.random() * (this.innerChars.length-1)));			
+			fn += this.innerChars.charAt( Math.floor( Math.random() * (this.innerChars.length-1)));			
 		}
 	}
 	
 	if( ext && ext>0 ) {
-		name += ".";
+		fn += ".";
 		for( var j=0; j<ext; j++ ) {
-			name += this.fileChars.charAt( Math.floor( Math.random() * (this.fileChars.length-1)));
+			fn += this.fileChars.charAt( Math.floor( Math.random() * (this.fileChars.length-1)));
 		}
 	}
 	
-	return name;
+	return fn;
 };
 
 this.atmosApi = {
+		
+		testEncodeUri: function(test) {
+			this.atmos.info( "atmosApi.testEncodeUri" );
+			test.expect(3);
+			
+			test.equal( this.atmos._encodeURI( "/foo#bar" ), "/foo%23bar", "Encode file" );
+			test.equal( this.atmos._encodeURI( "/foo#bar/" ), "/foo%23bar/", "Encode directory" );
+			test.equal( this.atmos._encodeURI( "/foo#bar?baz=bl#ah" ), "/foo%23bar?baz=bl#ah", "Encode file with query" );
+			
+			test.done();
+		},
 
 		// Basic Create object with some content.
 		testCreateObject: function(test) {
@@ -95,13 +106,13 @@ this.atmosApi = {
 			
 			test.expect(6);
 			
-			var filename = this.randomFilename(8,0) + "/" + this.randomFilename(8,3);
+			var filename = "/" + this.randomFilename(8,0) + "/" + this.randomFilename(8,3);
 			this.atmos.debug( "Filename: " + filename );
 			
 			this.atmos.createObjectOnPath(filename, null, null, null, "Hello World!", "text/plain", null,
 					function(result) {
 				
-				test.ok( result.success, "Request successful" );
+				test.ok( result.success, "Request successful (" + filename + ")" );
 				test.ok( result.objectId != null, "Object ID not null" );
 				test.equal( result.httpCode, 201, "HttpCode correct" );
 				
@@ -117,6 +128,82 @@ this.atmosApi = {
 				});
 				
 			});			
+		},
+		
+		testCreateObjectWithMetadata: function(test) {
+			this.atmos.info( "atmosApi.testCreateObjectWithMetadata" );
+			
+			test.expect(7);
+			var meta = {foo:"bar", foo2:"baz"};
+			var listableMeta = {listable:""};
+			this.atmos.createObject(null, meta, listableMeta, "Hello World!", "text/plain", null,
+					function(result) {
+				
+				test.ok( result.success, "Request successful" );
+				test.ok( result.objectId != null, "Object ID not null" );
+				test.equal( result.httpCode, 201, "HttpCode correct" );
+				
+				// Enqueue for cleanup
+				this.cleanup.push( result.objectId );
+				
+				// Read the object metadata back and verify content
+				this.atmos.getUserMetadata( result.objectId, ["foo", "listable"], null, function(result2) {
+					test.ok( result2.success, "Request successful" );
+					test.equal( result2.meta["foo"], "bar", "Metadata value: " + result2.meta["foo"] );
+					test.equal( result2.listableMeta["listable"], "", "Listable metadata" );
+					test.equal( result2.meta["foo2"], null, "Metadata filtering" );
+					test.done();
+				});
+			});
+		},
+		
+		testListObjects: function(test) {
+			this.atmos.info( "atmosApi.testListObjects" );
+			
+			test.expect(8);
+			var listableMeta = {listable:""};
+			var userMeta = {foo:"bar"};
+			this.atmos.createObject(null, userMeta, listableMeta, "Hello World!", "text/plain", null,
+					function(result) {
+				
+				test.ok( result.success, "Request successful" );
+				test.ok( result.objectId != null, "Object ID not null" );
+				test.equal( result.httpCode, 201, "HttpCode correct" );
+				
+				// Enqueue for cleanup
+				this.cleanup.push( result.objectId );
+				
+				var options = new ListOptions( 0, null, true, null, null );
+				this.atmos.listObjects( "listable", options, null, function(result2) {
+					test.ok( result2.success, "Request successful" );
+					if( !result2.success ) {
+						test.done();
+						return;
+					}
+					// Iterate through the results and make sure our OID is present
+					for( var i=0; i<result2.results.length; i++ ) {
+						/**
+						 * @type ObjectResult
+						 */
+						var obj = result2.results[i];
+						if( obj.objectId == result.objectId ) {
+							test.equal( obj.objectId, result.objectId, "Object ID equal" );
+							test.equal( obj.userMeta["foo"], "bar", "Object metadata" );
+							test.equal( obj.listableUserMeta["listable"], "", "Listable object metadata");
+							test.equal( obj.systemMeta["size"], "12", "System metadata" );
+							test.done();
+							return;
+						}
+					}
+					
+					test.ok( false, "Could not find oid " + result.objectId + " in object list" );
+					test.done();
+				});
+			});
+		},
+		
+		testReadDirectory: function(test) {
+			
 		}
 
 
@@ -131,15 +218,19 @@ this.cleanupTest = {
 			
 			this.atmos.info( this.cleanup.length + " objects to cleanup" );
 			for( var i=0; i<this.cleanup.length; i++ ) {
-				var current = i;
-				this.atmos.deleteObject( this.cleanup[i], null, function(result) {
-					this.atmos.debug( "Deleted " + current + ": " + this.cleanup[current] );
-					test.ok( result.success, "Request successful" );
-					this.cleanupCount++;
-					if( this.cleanupCount == this.cleanup.length ) {
-						test.done();
-					}
-				} );
+				this.doCleanup( i, this.cleanup[i], test );
 			}
 		}
+};
+
+this.doCleanup = function( i, oid, test ) {
+	var current = i;
+	this.atmos.deleteObject( this.cleanup[i], null, function(result) {
+		this.atmos.debug( "Deleted " + current + ": " + this.cleanup[current] );
+		test.ok( result.success, "Request successful" );
+		this.cleanupCount++;
+		if( this.cleanupCount == this.cleanup.length ) {
+			test.done();
+		}
+	} );	
 };
