@@ -25,7 +25,6 @@ Redistribution and use in source and binary forms, with or without modification,
 <link type="text/css" href="nodeunit/nodeunit.css" rel="Stylesheet">
 <title>AtmosJS Unit Tests</title>
 
-<script type="text/javascript" src="http://code.jquery.com/jquery-1.6.1.js"></script>
 <script type="text/javascript" src="lib/crypto.js"></script>
 <script type="text/javascript" src="lib/hmac.js"></script>
 <script type="text/javascript" src="lib/sha1.js"></script>
@@ -38,8 +37,8 @@ Redistribution and use in source and binary forms, with or without modification,
 <body>
 <h1 id="nodeunit-header">AtmosJS Unit Tests</h1>
     <script>
-	this.atmos = new AtmosRest( window.atmosConfig );
-	this.atmos.info( "atmosApi.setUp" );
+	var atmos = new AtmosRest( window.atmosConfig );
+	atmos.info( "atmosApi.setUp" );
       nodeunit.run({
         'Low Level Tests': atmosLowLevel,
         'REST API': atmosApi,

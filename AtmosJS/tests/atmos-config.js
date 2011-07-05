@@ -23,3 +23,12 @@ var atmosConfig = {
 		uid: "bb1d64e2c2be41a9a33106a6a2b36723/atmosjs",
 		secret: "im2GKDI8X2cn8r/Dd/h6588uqaw="
 };
+
+
+if( typeof(global) != 'undefined' ) {
+	// We're running inside node.js
+	atmosConfig.host = 'lciga070.lss.emc.com';
+	atmosConfig.protocol = 'http';
+	
+	global.atmosConfig = atmosConfig;
+}
