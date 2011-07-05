@@ -19,12 +19,24 @@ Redistribution and use in source and binary forms, with or without modification,
  
 */
 
-this.cleanup = [];
+if( typeof(exports) != 'undefined' ) {
+	console.log("Loading modules" );
+	// We're running inside node.js
+	//require( 'tests/atmos-config.js' );
+	
+	var AtmosRest = require( 'atmos-js.js' ).AtmosRest;
+	require('tests/atmos-config.js');
+	global.atmos = new AtmosRest( atmosConfig );
 
-this.fileChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=+*,!#%$&()";
-this.innerChars = this.fileChars + " ";
+}
 
-this.randomFilename = function( name, ext ) {
+
+cleanup = [];
+
+fileChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=+*,!#%$&()";
+innerChars = this.fileChars + " ";
+
+randomFilename = function( name, ext ) {
 	var fn = "";
 	for( var i = 0; i<name; i++ ) {
 		if( i == 0 ) {
@@ -44,15 +56,15 @@ this.randomFilename = function( name, ext ) {
 	return fn;
 };
 
-this.atmosApi = {
+atmosApi = {
 		
 		testEncodeUri: function(test) {
-			this.atmos.info( "atmosApi.testEncodeUri" );
+			atmos.info( "atmosApi.testEncodeUri" );
 			test.expect(3);
 			
-			test.equal( this.atmos._encodeURI( "/foo#bar" ), "/foo%23bar", "Encode file" );
-			test.equal( this.atmos._encodeURI( "/foo#bar/" ), "/foo%23bar/", "Encode directory" );
-			test.equal( this.atmos._encodeURI( "/foo#bar?baz=bl#ah" ), "/foo%23bar?baz=bl#ah", "Encode file with query" );
+			test.equal( atmos._encodeURI( "/foo#bar" ), "/foo%23bar", "Encode file" );
+			test.equal( atmos._encodeURI( "/foo#bar/" ), "/foo%23bar/", "Encode directory" );
+			test.equal( atmos._encodeURI( "/foo#bar?baz=bl#ah" ), "/foo%23bar?baz=bl#ah", "Encode file with query" );
 			
 			test.done();
 		},
@@ -62,7 +74,7 @@ this.atmosApi = {
 			this.atmos.info( "atmosApi.testCreateObject" );
 			
 			test.expect(6);
-			this.atmos.createObject(null, null, null, "Hello World!", "text/plain", null,
+			atmos.createObject(null, null, null, "Hello World!", "text/plain", null,
 					function(result) {
 				
 				test.ok( result.success, "Request successful" );
@@ -73,7 +85,7 @@ this.atmosApi = {
 				this.cleanup.push( result.objectId );
 				
 				// Read the object back and verify content
-				this.atmos.readObject( result.objectId, null, null, function(result2) {
+				atmos.readObject( result.objectId, null, null, function(result2) {
 					test.ok( result2.success, "Request successful" );
 					test.equal( result2.httpCode, 200, "HttpCode correct" );
 					test.equal( result2.data, "Hello World!", "Data correct" );
@@ -85,14 +97,14 @@ this.atmosApi = {
 		},
 
 		testDeleteObject: function(test) {
-			this.atmos.info( "atmosApi.testDeleteObject" );
+			atmos.info( "atmosApi.testDeleteObject" );
 			test.expect(4);
 			
-			this.atmos.createObject( null, null, null, "Hello World!", null, null, function(result) {
+			atmos.createObject( null, null, null, "Hello World!", null, null, function(result) {
 				test.ok( result.success, "Request successful" );
 				test.ok( result.objectId != null, "Object ID not null" );
 				
-				this.atmos.deleteObject( result.objectId, null, function(result2) {
+				atmos.deleteObject( result.objectId, null, function(result2) {
 					test.ok( result2.success, "Delete successful" );
 					test.equal( result2.httpCode, 204, "HttpCode correct" );
 					
@@ -102,14 +114,14 @@ this.atmosApi = {
 		},
 		
 		testCreateObjectOnPath: function(test) {
-			this.atmos.info( "atmosApi.testCreateObject" );
+			atmos.info( "atmosApi.testCreateObject" );
 			
 			test.expect(6);
 			
 			var filename = "/" + this.randomFilename(8,0) + "/" + this.randomFilename(8,3);
-			this.atmos.debug( "Filename: " + filename );
+			atmos.debug( "Filename: " + filename );
 			
-			this.atmos.createObjectOnPath(filename, null, null, null, "Hello World!", "text/plain", null,
+			atmos.createObjectOnPath(filename, null, null, null, "Hello World!", "text/plain", null,
 					function(result) {
 				
 				test.ok( result.success, "Request successful (" + filename + ")" );
@@ -120,7 +132,7 @@ this.atmosApi = {
 				this.cleanup.push( result.objectId );
 				
 				// Read the object back and verify content
-				this.atmos.readObject( filename, null, null, function(result2) {
+				atmos.readObject( filename, null, null, function(result2) {
 					test.ok( result2.success, "Request successful" );
 					test.equal( result2.httpCode, 200, "HttpCode correct" );
 					test.equal( result2.data, "Hello World!", "Data correct" );
@@ -131,12 +143,12 @@ this.atmosApi = {
 		},
 		
 		testCreateObjectWithMetadata: function(test) {
-			this.atmos.info( "atmosApi.testCreateObjectWithMetadata" );
+			atmos.info( "atmosApi.testCreateObjectWithMetadata" );
 			
 			test.expect(7);
 			var meta = {foo:"bar", foo2:"baz"};
 			var listableMeta = {listable:""};
-			this.atmos.createObject(null, meta, listableMeta, "Hello World!", "text/plain", null,
+			atmos.createObject(null, meta, listableMeta, "Hello World!", "text/plain", null,
 					function(result) {
 				
 				test.ok( result.success, "Request successful" );
@@ -147,7 +159,7 @@ this.atmosApi = {
 				this.cleanup.push( result.objectId );
 				
 				// Read the object metadata back and verify content
-				this.atmos.getUserMetadata( result.objectId, ["foo", "listable"], null, function(result2) {
+				atmos.getUserMetadata( result.objectId, ["foo", "listable"], null, function(result2) {
 					test.ok( result2.success, "Request successful" );
 					test.equal( result2.meta["foo"], "bar", "Metadata value: " + result2.meta["foo"] );
 					test.equal( result2.listableMeta["listable"], "", "Listable metadata" );
@@ -158,12 +170,12 @@ this.atmosApi = {
 		},
 		
 		testListObjects: function(test) {
-			this.atmos.info( "atmosApi.testListObjects" );
+			atmos.info( "atmosApi.testListObjects" );
 			
 			test.expect(8);
-			var listableMeta = {listable:""};
+			var listableMeta = {listable3:""};
 			var userMeta = {foo:"bar"};
-			this.atmos.createObject(null, userMeta, listableMeta, "Hello World!", "text/plain", null,
+			atmos.createObject(null, userMeta, listableMeta, "Hello World!", "text/plain", null,
 					function(result) {
 				
 				test.ok( result.success, "Request successful" );
@@ -174,7 +186,7 @@ this.atmosApi = {
 				this.cleanup.push( result.objectId );
 				
 				var options = new ListOptions( 0, null, true, null, null );
-				this.atmos.listObjects( "listable", options, null, function(result2) {
+				atmos.listObjects( "listable3", options, null, function(result2) {
 					test.ok( result2.success, "Request successful" );
 					if( !result2.success ) {
 						test.done();
@@ -189,7 +201,7 @@ this.atmosApi = {
 						if( obj.objectId == result.objectId ) {
 							test.equal( obj.objectId, result.objectId, "Object ID equal" );
 							test.equal( obj.userMeta["foo"], "bar", "Object metadata" );
-							test.equal( obj.listableUserMeta["listable"], "", "Listable object metadata");
+							test.equal( obj.listableUserMeta["listable3"], "", "Listable object metadata");
 							test.equal( obj.systemMeta["size"], "12", "System metadata" );
 							test.done();
 							return;
@@ -203,30 +215,31 @@ this.atmosApi = {
 		},
 		
 		testReadDirectory: function(test) {
-			
+			test.done();
 		}
 
 
 };
 
-this.cleanupTest = {
+cleanupTest = {
 		
 		testCleanup: function(test) {
+			atmos.info( "cleanupTest.testCleanup" );
 			this.cleanupCount = 0;
 			
 			test.expect( this.cleanup.length );
 			
-			this.atmos.info( this.cleanup.length + " objects to cleanup" );
+			atmos.info( this.cleanup.length + " objects to cleanup" );
 			for( var i=0; i<this.cleanup.length; i++ ) {
 				this.doCleanup( i, this.cleanup[i], test );
 			}
 		}
 };
 
-this.doCleanup = function( i, oid, test ) {
+doCleanup = function( i, oid, test ) {
 	var current = i;
-	this.atmos.deleteObject( this.cleanup[i], null, function(result) {
-		this.atmos.debug( "Deleted " + current + ": " + this.cleanup[current] );
+	atmos.deleteObject( this.cleanup[i], null, function(result) {
+		atmos.debug( "Deleted " + current + ": " + this.cleanup[current] );
 		test.ok( result.success, "Request successful" );
 		this.cleanupCount++;
 		if( this.cleanupCount == this.cleanup.length ) {
@@ -234,3 +247,9 @@ this.doCleanup = function( i, oid, test ) {
 		}
 	} );	
 };
+
+if( typeof(exports) != 'undefined' ) {
+	// Register the test groups for node.js
+	exports.atmosApi = atmosApi;
+	exports.cleanupTest = cleanupTest;
+}

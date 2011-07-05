@@ -19,6 +19,14 @@ Redistribution and use in source and binary forms, with or without modification,
  
 */
 
+if( typeof(require) != 'undefined' ) {
+	// We're running inside node.js
+	require( 'tests/atmos-config.js' );
+	AtmosRest = require( 'atmos-js.js' ).AtmosRest;
+	
+	console.log( "AtmosRest: " + AtmosRest );
+}
+
 this.atmosLowLevel = {
     'sanity test': function(test) {
         test.ok(true, 'nodeunit is ok');
@@ -33,13 +41,13 @@ this.atmosLowLevel = {
     		test.done();
     	};
     	
-    	window.setTimeout(callback, 100);
+    	setTimeout(callback, 100);
     },
     
     'atmos credentials': function(test) {
-    	test.ok( typeof(window.atmosConfig) !== 'undefined', 'Found atmosConfig' );
-    	test.ok( typeof(window.atmosConfig.uid) !== 'undefined', 'Found atmos UID: ' + window.atmosConfig.uid );
-    	test.ok( typeof(window.atmosConfig.secret) !== 'undefined', 'Found atmos shared secret' );
+    	test.ok( typeof(atmosConfig) !== 'undefined', 'Found atmosConfig' );
+    	test.ok( typeof(atmosConfig.uid) !== 'undefined', 'Found atmos UID: ' + atmosConfig.uid );
+    	test.ok( typeof(atmosConfig.secret) !== 'undefined', 'Found atmos shared secret' );
     	test.done();
     },
     
