@@ -24,41 +24,15 @@ if( typeof(exports) != 'undefined' ) {
 	// We're running inside node.js
 	//require( 'tests/atmos-config.js' );
 	
-	var AtmosJS = require( 'atmos-js.js' );
-	var AtmosRest = AtmosJS.AtmosRest;
-	var ListOptions = AtmosJS.ListOptions;
-	require('tests/atmos-config.js');
-	global.atmos = new AtmosRest( atmosConfig );
-
+	var AtmosRest = require( 'atmos-js.js' ).AtmosRest;
 }
-
 
 cleanup = [];
 
-fileChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=+*,!#%$&()";
-innerChars = this.fileChars + " ";
 
-randomFilename = function( name, ext ) {
-	var fn = "";
-	for( var i = 0; i<name; i++ ) {
-		if( i == 0 ) {
-			fn += this.fileChars.charAt( Math.floor( Math.random() * (this.fileChars.length-1)));
-		} else {
-			fn += this.innerChars.charAt( Math.floor( Math.random() * (this.innerChars.length-1)));			
-		}
-	}
-	
-	if( ext && ext>0 ) {
-		fn += ".";
-		for( var j=0; j<ext; j++ ) {
-			fn += this.fileChars.charAt( Math.floor( Math.random() * (this.fileChars.length-1)));
-		}
-	}
-	
-	return fn;
-};
 
-atmosApi = {
+
+testAtmosApi = {
 		
 		testEncodeUri: function(test) {
 			atmos.info( "atmosApi.testEncodeUri" );
@@ -219,39 +193,6 @@ atmosApi = {
 		testReadDirectory: function(test) {
 			test.done();
 		}
-
-
 };
 
-cleanupTest = {
-		
-		testCleanup: function(test) {
-			atmos.info( "cleanupTest.testCleanup" );
-			this.cleanupCount = 0;
-			
-			test.expect( this.cleanup.length );
-			
-			atmos.info( this.cleanup.length + " objects to cleanup" );
-			for( var i=0; i<this.cleanup.length; i++ ) {
-				this.doCleanup( i, this.cleanup[i], test );
-			}
-		}
-};
-
-doCleanup = function( i, oid, test ) {
-	var current = i;
-	atmos.deleteObject( this.cleanup[i], null, function(result) {
-		atmos.debug( "Deleted " + current + ": " + this.cleanup[current] );
-		test.ok( result.success, "Request successful" );
-		this.cleanupCount++;
-		if( this.cleanupCount == this.cleanup.length ) {
-			test.done();
-		}
-	} );	
-};
-
-if( typeof(exports) != 'undefined' ) {
-	// Register the test groups for node.js
-	exports.atmosApi = atmosApi;
-	exports.cleanupTest = cleanupTest;
-}
+exports.testAtmosApi = testAtmosApi;

@@ -23,7 +23,7 @@ var isNodejs = false;
 if( typeof(require) != 'undefined' ) {
 	// We're running inside node.js
 	var crypto = require( 'crypto' );
-	var o3xml = require( 'lib/o3-xml' );
+	var jsdom = require('jsdom');
 	var XMLHttpRequest = require( 'lib/XMLHttpRequest.js' ).XMLHttpRequest;
 	
 	isNodejs = true;
@@ -526,7 +526,7 @@ AtmosRest.prototype._ajax = function( options ) {
 		options.url = this.atmosConfig.protocol + "://" + this.atmosConfig.host + options.url;
 	}
 	
-	var xhr = new XMLHttpRequest();
+	var xhr = this._getXMLHttpRequest();
 	var me = this;
 	xhr.onreadystatechange = function(evt) {
 		me._onreadystatechange( evt, options, xhr );
@@ -547,6 +547,25 @@ AtmosRest.prototype._ajax = function( options ) {
 		xhr.send();
 	}
 };
+
+AtmosRest.prototype._getXMLHttpRequest = function() 
+{
+	if( isNodejs ) {
+		return new XMLHttpRequest();
+	}
+	
+    if (window.XMLHttpRequest) {
+        return new window.XMLHttpRequest;
+    }
+    else {
+        try {
+            return new ActiveXObject("MSXML2.XMLHTTP.3.0");
+        }
+        catch(ex) {
+            return null;
+        }
+    }
+}
 
 /**
  * Handles asynchronous events from XHR.
@@ -712,16 +731,23 @@ AtmosRest.prototype._handleError = function( jqXHR, message, state, callback ) {
 
 /**
  * Handles the response from the ListObjects method
- * @param {XMLHttpRequest} jqXHR the JQuery XHR object
+ * @param {XMLHttpRequest} xhr the XHR object
  * 
  */
-AtmosRest.prototype._handleListObjectsResponse = function( jqXHR, state, callback ) {
+AtmosRest.prototype._handleListObjectsResponse = function( xhr, state, callback ) {
 	var result = new AtmosResult( true, state );
-	result.httpCode = jqXHR.status;
-	result.httpMessage = jqXHR.statusText;
-	result.token = jqXHR.getResponseHeader("x-emc-token");
+	result.httpCode = xhr.status;
+	result.httpMessage = xhr.statusText;
+	result.token = xhr.getResponseHeader("x-emc-token");
 	
-	var doc = jqXHR.responseXML;
+	var doc = null;
+	
+	if( isNodejs ) {
+		// NodeJS doesn't have an XML parser yet; use the jsdom parser.
+		doc = jsdom.jsdom(xhr.responseText);
+	} else {
+		doc = xhr.responseXML;
+	}
 	
 	/**
 	 * @type Array
@@ -733,13 +759,17 @@ AtmosRest.prototype._handleListObjectsResponse = function( jqXHR, state, callbac
 	 */
 	var objlist = doc.getElementsByTagName("Object");
 	
+//	this.debug( "Found " + objlist.length + " objects" );
+	
 	for( var i=0; i<objlist.length; i++ ) {
 		var userMeta = null;
 		var systemMeta = null;
 		var userListableMeta = null;
 		
 		var node = objlist.item(i);
+//		this.debug( "node is " + node );
 		var oidNode = this._getChildByTagName(node, "ObjectID");
+//		this.debug( "oidNode is " + oidNode );
 		var smNode = this._getChildByTagName(node, "SystemMetadataList");
 		var umNode = this._getChildByTagName(node, "UserMetadataList");
 		
@@ -770,7 +800,7 @@ AtmosRest.prototype._handleListObjectsResponse = function( jqXHR, state, callbac
 AtmosRest.prototype._parseResponseMeta = function( nodeList, regMeta, listableMeta ) {
 	for( var i=0; i<nodeList.length; i++ ) {
 		var child = nodeList.item(i);
-		if( child.nodeName != "Metadata" ) {
+		if(  !/Metadata/i.test(child.nodeName) ) {
 			continue;
 		}
 		var metaName = this._getText( this._getChildByTagName(child, "Name") );
@@ -794,10 +824,16 @@ AtmosRest.prototype._parseResponseMeta = function( nodeList, regMeta, listableMe
  * @return {Node} the found node or null if not found.
  */
 AtmosRest.prototype._getChildByTagName = function( node, tagName ) {
+	var reg = new RegExp(tagName, "i"); // jsnode uses HTML uppercase names, so do insensitive
 	var children = node.childNodes;
+//	this.debug( "found " + children.length + " child nodes" );
 	for( var i=0; i<children.length; i++ ) {
 		var child = children.item(i);
-		if( child.nodeName == tagName ) {
+		if( child.nodeType != 1 ) {
+			continue; // not an element
+		}
+//		this.debug( "child " + child.tagName );
+		if( reg.test(child.nodeName) ) {
 			return child;
 		}
 	}

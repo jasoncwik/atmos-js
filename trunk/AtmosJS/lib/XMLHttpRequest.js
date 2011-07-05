@@ -1,18 +1,20 @@
-var sys = require('sys');
 /**
  * Wrapper for built-in http.js to emulate the browser XMLHttpRequest object.
  *
  * This can be used with JS designed for browsers to improve reuse of code and
  * allow the use of existing libraries.
  *
- * Usage: require("XMLHttpRequest.js") and use XMLHttpRequest per W3C specs.
- * Don't depend on case-sensitivity of HTTP Headers - RFC2616 specifies them
- * to be case insensitive, so node.js automatically lowercases them.
+ * Usage: include("XMLHttpRequest.js") and use XMLHttpRequest per W3C specs.
  *
  * @todo SSL Support
  * @author Dan DeFelippi <dan@driverdan.com>
+ * @contributor David Ellis <d.f.ellis@ieee.org>
  * @license MIT
  */
+
+var Url = require("url"),
+	spawn = require("child_process").spawn,
+	fs = require('fs');
 
 exports.XMLHttpRequest = function() {
 	/**
@@ -20,14 +22,17 @@ exports.XMLHttpRequest = function() {
 	 */
 	var self = this;
 	var http = require('http');
+	var https = require('https');
 
 	// Holds http.js objects
 	var client;
 	var request;
 	var response;
 	
-	var settings = {}; // Request settings
+	// Request settings
+	var settings = {};
 	
+	// Set some default headers
 	var defaultHeaders = {
 		"User-Agent": "node.js",
 		"Accept": "*/*",
@@ -35,13 +40,23 @@ exports.XMLHttpRequest = function() {
 	
 	var headers = defaultHeaders;
 	
+	/**
+	 * Constants
+	 */
 	this.UNSENT = 0;
 	this.OPENED = 1;
 	this.HEADERS_RECEIVED = 2;
 	this.LOADING = 3;
 	this.DONE = 4;
 
-	this.readyState = this.UNSENT; // Current state
+	/**
+	 * Public vars
+	 */
+	// Current state
+	this.readyState = this.UNSENT;
+
+	// default ready state change handler in case one is not set or is set late
+	this.onreadystatechange = null;
 
 	// Result & response
 	this.responseText = "";
@@ -62,9 +77,9 @@ exports.XMLHttpRequest = function() {
 		settings = {
 			"method": method,
 			"url": url,
-			"async": async,
-			"user": user,
-			"password": password
+			"async": async || null,
+			"user": user || null,
+			"password": password || null
 		};
 		
 		this.abort();
@@ -118,22 +133,21 @@ exports.XMLHttpRequest = function() {
 	 *
 	 * @param string data Optional data to send as request body.
 	 */
-    this.send = function(data) {
-        if (this.readyState != this.OPENED) {
-            throw "INVALID_STATE_ERR: connection must be opened before send() is called";
+	this.send = function(data) {
+		if (this.readyState != this.OPENED) {
+			throw "INVALID_STATE_ERR: connection must be opened before send() is called";
 		}
 		
-		/**
-         * Figure out if a host and/or port were specified.  Regex borrowed
-         * from parseUri and modified. Needs additional optimization.  
-         * @see http://blog.stevenlevithan.com/archives/parseuri
-		 */
-		var loc = /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?([^?#]*)/.exec(settings.url);
+		var ssl = false;
+		var url = Url.parse(settings.url);
 		
 		// Determine the server
-		switch (loc[1]) {
-			case 'http':
-				var host = loc[6];
+		switch (url.protocol) {
+			case 'https:':
+				ssl = true;
+				// SSL & non-SSL both need host, no break here.
+			case 'http:':
+				var host = url.hostname;
 				break;
 			
 			case undefined:
@@ -141,60 +155,135 @@ exports.XMLHttpRequest = function() {
 				var host = "localhost";
 				break;
 			
-			case 'https':
-				throw "SSL is not implemented.";
-				break;
-			
 			default:
 				throw "Protocol not supported.";
 		}
-		
-        // Default to port 80. If accessing localhost on another port be sure
-        // to use http://localhost:port/path
-		var port = loc[7] || 80;
-		
-		var uri = loc[8] || "/";
+
+		// Default to port 80. If accessing localhost on another port be sure
+		// to use http://localhost:port/path
+		var port = url.port || (ssl ? 443 : 80);
+		// Add query string if one is used
+		var uri = url.pathname + (url.search ? url.search : '');
 		
 		// Set the Host header or the server may reject the request
-		headers["Host"] = host;
-		
-		client = http.createClient(port, host);
+		this.setRequestHeader("Host", host);
 
+		// Set Basic Auth if necessary
+		if (settings.user) {
+			if (typeof settings.password == "undefined") {
+				settings.password = "";
+			}
+			var authBuf = new Buffer(settings.user + ":" + settings.password);
+			headers["Authorization"] = "Basic " + authBuf.toString("base64");
+		}
+		
+		// Set content length header
 		if (settings.method == "GET" || settings.method == "HEAD") {
 			data = null;
 		} else if (data) {
-			headers["Content-Length"] = data.length;
+			this.setRequestHeader("Content-Length", Buffer.byteLength(data));
 			
 			if (!headers["Content-Type"]) {
-				headers["Content-Type"] = "text/plain;charset=UTF-8";
+				this.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
 			}
 		}
 		
-		// Use the correct request method
-        request = client.request(settings.method, uri, headers);
+		var options = {
+			host: host,
+			port: port,
+			path: uri,
+			method: settings.method,
+			headers: headers
+		};
 
-		if (data) request.write(data);
-
-        request.addListener("response", function(resp) {
-            response = resp;
-			response.setEncoding("utf8");
+		if(!settings.hasOwnProperty("async") || settings.async) { //Normal async path
+			// Use the proper protocol
+			var doRequest = ssl ? https.request : http.request;
 			
-			setState(self.HEADERS_RECEIVED);
-			self.status = response.statusCode;
-
-			response.addListener("data", function(chunk) {
-				// Make sure there's some data
-				if (chunk) {
-					self.responseText += chunk;
-				}
-				setState(self.LOADING);
+			var req = doRequest(options, function(resp) {
+				response = resp;
+				response.setEncoding("utf8");
+				
+				setState(self.HEADERS_RECEIVED);
+				self.status = response.statusCode;
+				
+				response.on('data', function(chunk) {
+					// Make sure there's some data
+					if (chunk) {
+						self.responseText += chunk;
+					}
+					setState(self.LOADING);
+				});
+				
+				response.on('end', function() {
+					setState(self.DONE);
+				});
+				
+				response.on('error', function(error) {
+					self.handleError(error);
+				});
+			}).on('error', function(error) {
+				self.handleError(error);
 			});
-	
-			response.addListener("end", function() {
+			
+			// Node 0.4 and later won't accept empty data. Make sure it's needed.
+			if (data) {
+				req.write(data);
+			}
+			
+			req.end();
+		} else { // Synchronous
+			// Create a temporary file for communication with the other Node process
+			var syncFile = ".node-xmlhttprequest-sync-" + process.pid;
+			fs.writeFileSync(syncFile, "", "utf8");
+			// The async request the other Node process executes
+			var execString = "var http = require('http'), https = require('https'), fs = require('fs');"
+				+ "var doRequest = http" + (ssl?"s":"") + ".request;"
+				+ "var options = " + JSON.stringify(options) + ";"
+				+ "var responseText = '';"
+				+ "var req = doRequest(options, function(response) {"
+				+ "response.setEncoding('utf8');"
+				+ "response.on('data', function(chunk) {"
+				+ "responseText += chunk;"
+				+ "});"
+				+ "response.on('end', function() {"
+				+ "fs.writeFileSync('" + syncFile + "', 'NODE-XMLHTTPREQUEST-STATUS:' + response.statusCode + ',' + responseText, 'utf8');"
+				+ "});"
+				+ "response.on('error', function(error) {"
+				+ "fs.writeFileSync('" + syncFile + "', 'NODE-XMLHTTPREQUEST-ERROR:' + JSON.stringify(error), 'utf8');"
+				+ "});"
+				+ "}).on('error', function(error) {"
+				+ "fs.writeFileSync('" + syncFile + "', 'NODE-XMLHTTPREQUEST-ERROR:' + JSON.stringify(error), 'utf8');"
+				+ "});"
+				+ (data ? "req.write('" + data.replace(/'/g, "\\'") + "');":"")
+				+ "req.end();";
+			// Start the other Node Process, executing this string
+			syncProc = spawn(process.argv[0], ["-e", execString]);
+			while((self.responseText = fs.readFileSync(syncFile, 'utf8')) == "") {
+				// Wait while the file is empty
+			}
+			// Kill the child process once the file has data
+			syncProc.stdin.end();
+			// Remove the temporary file
+			fs.unlinkSync(syncFile);
+			if(self.responseText.match(/^NODE-XMLHTTPREQUEST-ERROR:/)) {
+				// If the file returned an error, handle it
+				var errorObj = self.responseText.replace(/^NODE-XMLHTTPREQUEST-ERROR:/, "");
+				self.handleError(errorObj);
+			} else {
+				// If the file returned okay, parse its data and move to the DONE state
+				self.status = self.responseText.replace(/^NODE-XMLHTTPREQUEST-STATUS:([0-9]*),.*/, "$1");
+				self.responseText = self.responseText.replace(/^NODE-XMLHTTPREQUEST-STATUS:[0-9]*,(.*)/, "$1");
 				setState(self.DONE);
-			});
-        });
-        request.end();
+			}
+		}
+	};
+
+	this.handleError = function(error) {
+		this.status = 503;
+		this.statusText = error;
+		this.responseText = error.stack;
+		setState(this.DONE);
 	};
 
 	/**
@@ -207,8 +296,15 @@ exports.XMLHttpRequest = function() {
 		this.responseXML = "";
 	};
 	
+	/**
+	 * Changes readyState and calls onreadystatechange.
+	 *
+	 * @param int state New state
+	 */
 	var setState = function(state) {
 		self.readyState = state;
-		self.onreadystatechange();
-	}
+		if (typeof self.onreadystatechange === "function") {
+			self.onreadystatechange();
+		}
+	};
 };
