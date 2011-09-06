@@ -1,0 +1,17 @@
+{
+  "author": "Jason Cwik <jason.cwik@emc.com>",
+  "name": "atmos",
+  "description": "Connector for EMC Atmos cloud storage",
+  "version": "0.1.0",
+  "homepage": "http://code.google.com/p/atmos-js",
+  "repository": {
+    "url": ""
+  },
+  "engines": {
+    "node": ">=v0.4.8"
+  },
+  "dependencies": {
+       "jsdom": ">=0.2.0"
+  },
+  "devDependencies": {}
+}
