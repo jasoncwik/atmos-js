@@ -58,9 +58,9 @@ randomFilename = function( name, ext ) {
 	return fn;
 };
 
-atmosApi = {
+this.atmosApi = {
 		
-		testEncodeUri: function(test) {
+		'testEncodeUri': function(test) {
 			atmos.info( "atmosApi.testEncodeUri" );
 			test.expect(3);
 			
@@ -72,7 +72,7 @@ atmosApi = {
 		},
 
 		// Basic Create object with some content.
-		testCreateObject: function(test) {
+		'testCreateObject': function(test) {
 			this.atmos.info( "atmosApi.testCreateObject" );
 			
 			test.expect(6);
@@ -98,7 +98,7 @@ atmosApi = {
 			
 		},
 
-		testDeleteObject: function(test) {
+		'testDeleteObject': function(test) {
 			atmos.info( "atmosApi.testDeleteObject" );
 			test.expect(4);
 			
@@ -115,7 +115,7 @@ atmosApi = {
 			});
 		},
 		
-		testCreateObjectOnPath: function(test) {
+		'testCreateObjectOnPath': function(test) {
 			atmos.info( "atmosApi.testCreateObject" );
 			
 			test.expect(6);
@@ -144,7 +144,7 @@ atmosApi = {
 			});			
 		},
 		
-		testCreateObjectWithMetadata: function(test) {
+		'testCreateObjectWithMetadata': function(test) {
 			atmos.info( "atmosApi.testCreateObjectWithMetadata" );
 			
 			test.expect(7);
@@ -171,7 +171,7 @@ atmosApi = {
 			});
 		},
 		
-		testListObjects: function(test) {
+		'testListObjects': function(test) {
 			atmos.info( "atmosApi.testListObjects" );
 			
 			test.expect(8);
@@ -180,7 +180,7 @@ atmosApi = {
 			atmos.createObject(null, userMeta, listableMeta, "Hello World!", "text/plain", null,
 					function(result) {
 				
-				test.ok( result.success, "Request successful" );
+				test.ok( result.success, "Creation successful" );
 				test.ok( result.objectId != null, "Object ID not null" );
 				test.equal( result.httpCode, 201, "HttpCode correct" );
 				
@@ -216,16 +216,60 @@ atmosApi = {
 			});
 		},
 		
-		testReadDirectory: function(test) {
-			test.done();
-		}
+		'testListDirectory': function(test) {
+            atmos.info( "atmosApi.testListDirectory" );
 
+            test.expect(7);
+
+            var directory = "/" + this.randomFilename(8,0) + "/";
+            var filename = this.randomFilename(8,3);
+            var fullPath = directory + filename;
+            atmos.debug( "Full Path: " + fullPath );
+
+            atmos.createObjectOnPath(fullPath, null, null, null, "Hello World!", "text/plain", null,
+                    function(result) {
+
+                test.ok( result.success, "Creation successful" );
+                test.ok( result.objectId != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                this.cleanup.push( result.objectId );
+
+                var options = new ListOptions( 0, null, false, null, null );
+                atmos.listDirectory( directory, options, null, function(result2) {
+                    test.ok( result2.success, "List successful" );
+                    if( !result2.success ) {
+                        test.done();
+                        return;
+                    }
+                    // Iterate through the results and make sure our OID is present
+                    for( var i=0; i<result2.results.length; i++ ) {
+                        /**
+                         * @type DirectoryEntry
+                         */
+                        var entry = result2.results[i];
+                        atmos.debug( "entry: " + entry.dump() );
+                        if( entry.objectId == result.objectId ) {
+                            test.equal( entry.path, fullPath, "Path equal" );
+                            test.equal( entry.name, filename, "Filename equal" );
+                            test.equal( entry.objectId, result.objectId, "Object ID equal" );
+                            test.done();
+                            return;
+                        }
+                    }
+
+                    test.ok( false, "Could not find oid " + result.objectId + " in object list" );
+                    test.done();
+                });
+            });
+		}
 
 };
 
 cleanupTest = {
 		
-		testCleanup: function(test) {
+		'testCleanup': function(test) {
 			atmos.info( "cleanupTest.testCleanup" );
 			this.cleanupCount = 0;
 			

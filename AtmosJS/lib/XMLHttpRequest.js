@@ -123,6 +123,7 @@ exports.XMLHttpRequest = function() {
 		var result = "";
 		
 		for (var i in response.headers) {
+            if (!response.headers.hasOwnProperty(i)) continue;
 			result += i + ": " + response.headers[i] + "\r\n";
 		}
 		return result.substr(0, result.length - 2);

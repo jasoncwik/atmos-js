@@ -58,7 +58,25 @@ if( typeof(require) != 'undefined' ) {
 		    return this.replace(/^\s+|\s+$/g,"");
 		};
 	}
-	
+
+	//////////////////////////////////////////////////
+	// dump function for use in debugging           //
+	// (recursive)                                  //
+	//////////////////////////////////////////////////
+    if(!Object.prototype.dump) {
+        Object.prototype.dump = function() {
+            var output = "[";
+            for (var property in this) {
+                if (!this.hasOwnProperty(property)) continue;
+                var value = this[property];
+                if (typeof(value) === 'object') value = value.dump();
+                output += property + "=" + value + ", ";
+            }
+            output = output.substr(0, output.length - 2) + "]";
+            return output;
+        };
+    }
+
 }
 
 
@@ -145,6 +163,20 @@ function ObjectResult( objectId, userMeta, listableUserMeta, systemMeta ) {
 	this.userMeta = userMeta;
 	this.listableUserMeta = listableUserMeta;
 	this.systemMeta = systemMeta;
+}
+
+/**
+ * Creates a new DirectoryEntry
+ * @param path the full path of the object
+ * @param name the name of the object (excluding path info)
+ * @param objectId the object's identifier
+ * @param type the type of object ("directory" or "regular")
+ */
+function DirectoryEntry( path, name, objectId, type ) {
+    this.path = path;
+    this.name = name;
+    this.objectId = objectId;
+    this.type = type;
 }
 
 /**
@@ -305,29 +337,44 @@ AtmosRest.prototype.listObjects = function( tag, options, state, callback ) {
 		throw "Tag cannot be null";
 	}
 	
-	headers["X-Emc-Tags"] = tag;
+	headers["x-emc-tags"] = tag;
 	
-	if( options ) {
-		if( options.limit ) {
-			headers["X-Emc-Limit"] = ""+options.limit;
-		}
-		if( options.token ) {
-			headers["X-Emc-Token"] = options.token;
-		}
-		if( options.includeMeta ) {
-			headers["X-Emc-Include-Meta"] = "1";
-			if( options.userMetaTags ) {
-				headers["X-Emc-User-Tags"] = options.userMetaTags.join(",");
-			}
-			if( options.systemMetaTags ) {
-				headers["X-Emc-System-Tags"] = options.systemMetaTags.join(",");
-			}
-		}
-	}
+    this._addListOptions(headers, options);
 	
 	this._restGet(this.context + "/objects", headers, null, state, callback, 
 			function(xhr, state, callback) {
 		me._handleListObjectsResponse(xhr, state, callback);
+	});
+};
+
+/**
+ * Lists objects from the server within a directory (path).
+ * @param {String} directory the directory (path) in which to list objects (must exist!)
+ * @param {ListOptions} options for listing objects.  See the ListOptions class. NOTE: metadata cannot be returned in
+ * this call (Atmos 1.2)
+ * @param {Object} state the user-defined state object that will be passed to the callback
+ * @param {function} callback the completion callback (both error and success).  Upon success,
+ * the result's results property will be populated with an Array of ObjectResult objects.  Also
+ * be sure to check the value of the token property.  If defined, you did not receive all results
+ * and should call this method again using the token inside a ListOptions object to continue
+ * your listing.
+ */
+AtmosRest.prototype.listDirectory = function( directory, options, state, callback ) {
+	var headers = new Object();
+	var me = this;
+
+	if( !directory ) {
+		throw "Directory cannot be null";
+	}
+    if ( directory.substr(-1) !== "/" ) {
+        throw "Directory must end with a slash";
+    }
+
+    this._addListOptions(headers, options);
+
+	this._restGet(this.context + "/namespace" + directory, headers, null, state, callback,
+			function(xhr, state, callback) {
+		me._handleListDirectoryResponse(directory, xhr, state, callback);
 	});
 };
 
@@ -357,8 +404,8 @@ AtmosRest.prototype._processAcl = function( acl, headers ) {
 	if( acl == null ) {
 		return;
 	}
-	headers["X-Emc-Useracl"] = this._processAclEntries( acl.useracl );
-	headers["X-Emc-Groupacl"] = this._processAclEntries( acl.groupacl );
+	headers["x-emc-useracl"] = this._processAclEntries( acl.useracl );
+	headers["x-emc-groupacl"] = this._processAclEntries( acl.groupacl );
 };
 
 /**
@@ -387,9 +434,9 @@ AtmosRest.prototype._processMeta = function( meta, headers, listable ) {
 		return;
 	}
 	if( listable ) {
-		headers["X-Emc-Listable-Meta"] = this._processMetaList( meta );
+		headers["x-emc-listable-meta"] = this._processMetaList( meta );
 	} else {
-		headers["X-Emc-Meta"] = this._processMetaList( meta );
+		headers["x-emc-meta"] = this._processMetaList( meta );
 	}
 };
 
@@ -401,6 +448,7 @@ AtmosRest.prototype._processMeta = function( meta, headers, listable ) {
 AtmosRest.prototype._processMetaList = function( meta ) {
 	var value = "";
 	for( prop in meta ) {
+        if (!meta.hasOwnProperty(prop)) continue;
 		if( value != "" ) {
 			value += ",";
 		}
@@ -408,6 +456,31 @@ AtmosRest.prototype._processMetaList = function( meta ) {
 	}
 	
 	return value;
+};
+
+/**
+ * Adds headers for the list options
+ * @param headers {Map} the existing headers map
+ * @param options {ListOptions} the desired list options
+ */
+AtmosRest.prototype._addListOptions = function( headers, options ) {
+    if( options ) {
+        if( options.limit ) {
+            headers["x-emc-limit"] = ""+options.limit;
+        }
+        if( options.token ) {
+            headers["x-emc-token"] = options.token;
+        }
+        if( options.includeMeta ) {
+            headers["x-emc-include-meta"] = "1";
+            if( options.userMetaTags ) {
+                headers["x-emc-user-tags"] = options.userMetaTags.join(",");
+            }
+            if( options.systemMetaTags ) {
+                headers["x-emc-system-tags"] = options.systemMetaTags.join(",");
+            }
+        }
+    }
 };
 
 /**
@@ -422,7 +495,7 @@ AtmosRest.prototype._processMetaList = function( meta ) {
  * @param {function} handler the response processing handler function
  */
 AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, state, callback, handler ) {
-	headers["X-Emc-Date"] = new Date().toGMTString();
+	headers["x-emc-date"] = new Date().toGMTString();
 	if( mimeType == "" || mimeType == undefined) {
 		mimeType = "text/plain; charset=UTF-8";
 	}
@@ -465,7 +538,7 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, s
  * @param {function} handler the response processing function
  */
 AtmosRest.prototype._restDelete = function( uri, headers, state, callback, handler ) {
-	headers["X-Emc-Date"] = new Date().toGMTString();
+	headers["x-emc-date"] = new Date().toGMTString();
 
 	this._signRequest( 'DELETE', headers, null, null, uri);
 	var errorHandler = this._handleError;
@@ -496,7 +569,7 @@ AtmosRest.prototype._restDelete = function( uri, headers, state, callback, handl
  * @param {function} handler
  */
 AtmosRest.prototype._restGet = function(uri, headers, range, state, callback, handler) {
-	headers["X-Emc-Date"] = new Date().toGMTString();
+	headers["x-emc-date"] = new Date().toGMTString();
 	
 	this._signRequest( 'GET', headers, null, range, uri);
 	var errorHandler = this._handleError;
@@ -590,6 +663,7 @@ AtmosRest.prototype._onreadystatechange = function( evt, options, xhr ) {
  */
 AtmosRest.prototype._setHeaders = function( xhr, headers ) {
 	for(var prop in headers) {
+        if (!headers.hasOwnProperty(prop)) continue;
 		xhr.setRequestHeader( prop, headers[prop] );
 	}
 };
@@ -792,6 +866,50 @@ AtmosRest.prototype._handleListObjectsResponse = function( xhr, state, callback 
 };
 
 /**
+ * Handles the response from the ListDirectory method
+ * @param {XMLHttpRequest} xhr the XHR object
+ *
+ */
+AtmosRest.prototype._handleListDirectoryResponse = function( directoryPath, xhr, state, callback ) {
+	var result = new AtmosResult( true, state );
+	result.httpCode = xhr.status;
+	result.httpMessage = xhr.statusText;
+	result.token = xhr.getResponseHeader("x-emc-token");
+
+	var doc = null;
+
+	if( isNodejs ) {
+		// NodeJS doesn't have an XML parser yet; use the jsdom parser.
+		doc = jsdom.jsdom(xhr.responseText);
+	} else {
+		doc = xhr.responseXML;
+	}
+
+	/**
+	 * @type Array
+	 */
+	var entries = Array();
+
+	/**
+	 * @type NodeList
+	 */
+	var dirlist = doc.getElementsByTagName("DirectoryEntry");
+
+	for( var i=0; i<dirlist.length; i++ ) {
+		var node = dirlist.item(i);
+		var oidNode = this._getChildByTagName(node, "ObjectID");
+        var pathName = this._getChildByTagName(node, "Filename");
+        var type = this._getChildByTagName(node, "FileType");
+
+		var entry = new DirectoryEntry( directoryPath + this._getText(pathName), this._getText(pathName), this._getText(oidNode), this._getText(type) );
+		entries.push(entry);
+	}
+
+	result.results = entries;
+	callback(result);
+};
+
+/**
  * Parses object metadata for an object listing result
  * @param {NodeList} nodeList the node list containing Metadata
  * @param {Object} regMeta property object to populate with regular metadata
@@ -865,7 +983,6 @@ AtmosRest.prototype._getText = function( node ) {
  * @param {String} content_type the MIME type of the request body
  * @param {AtmosRange} range the range, if requested
  * @param {String} uri the path to the request
- * @returns
  */
 AtmosRest.prototype._signRequest = function( method, headers, content_type, range, uri ) {
 	this.debug( this.atmosConfig.uid );
@@ -877,7 +994,7 @@ AtmosRest.prototype._signRequest = function( method, headers, content_type, rang
 	    emcheaders = headers;
 	}
 
-	emcheaders["X-Emc-Uid"] = this.atmosConfig.uid;
+	emcheaders["x-emc-uid"] = this.atmosConfig.uid;
 	var hash_string = this._buildHashString(method, content_type, '', 
 			headers["Date"], uri, emcheaders);
 	
@@ -886,7 +1003,7 @@ AtmosRest.prototype._signRequest = function( method, headers, content_type, rang
 	signature = this._doSignature(hash_string,this.atmosConfig.secret);
 	
 	this.debug( "Signature: " + signature );
-	emcheaders["X-Emc-Signature"] = signature;
+	emcheaders["x-emc-signature"] = signature;
 	
 	return signature;
 };
@@ -926,19 +1043,18 @@ AtmosRest.prototype._buildHashString = function(method, content_type, range, dat
 	string += path.toLowerCase().trim() + "\n";
 
 	for(var prop in headers) {
-	    if(headers.hasOwnProperty(prop)) {
-	    	this.debug("headers: prop: " + prop + " value: " + headers[prop]);
-	    
-	    	
-			var key = this._normalizeWS(prop.toLowerCase().trim());
-			if( key.indexOf("x-emc") != 0) {
-				this.debug( "Skipping " + key );
-				continue;
-			}
-			
-			var value = this._normalizeWS(headers[prop].trim());
-			emcheaders[key] = value;
-	    }
+        if (!headers.hasOwnProperty(prop)) continue;
+        this.debug("headers: prop: " + prop + " value: " + headers[prop]);
+
+
+        var key = this._normalizeWS(prop.toLowerCase().trim());
+        if( key.indexOf("x-emc") != 0) {
+            this.debug( "Skipping " + key );
+            continue;
+        }
+
+        var value = this._normalizeWS(headers[prop].trim());
+        emcheaders[key] = value;
 	}
 	
 	var keys = this._getKeys(emcheaders);
@@ -969,9 +1085,8 @@ AtmosRest.prototype._normalizeWS = function(str) {
 AtmosRest.prototype._getKeys = function(obj) {
 	var keys = Array();
 	for(var prop in obj) {
-	    if(obj.hasOwnProperty(prop)) {
-	    	keys.push( prop );
-	    }
+        if (!obj.hasOwnProperty(prop)) continue;
+        keys.push( prop );
 	}
 	return keys;
 };
@@ -1055,4 +1170,5 @@ if( typeof(exports) != 'undefined' ) {
 	exports.AtmosResult = AtmosResult;
 	exports.ListOptions = ListOptions;
 	exports.ObjectResult = ObjectResult;
+    exports.DirectoryEntry = DirectoryEntry;
 }
