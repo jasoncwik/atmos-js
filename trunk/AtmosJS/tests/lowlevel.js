@@ -32,6 +32,11 @@ this.atmosLowLevel = {
         test.ok(true, 'nodeunit is ok');
         test.done();
     },
+
+    'dump test': function(test) {
+        test.ok({foo: "bar", obj1: {a: "b", c: "d"}}.dump() === "[foo=bar, obj1=[a=b, c=d]]", "object.dump is ok");
+        test.done();
+    },
     
     'async test': function(test) {
     	test.expect(1);
