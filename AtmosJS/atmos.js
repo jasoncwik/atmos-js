@@ -1,14 +1,14 @@
 /*
- 
+
  Copyright (c) 2011, EMC Corporation
- 
+
  All rights reserved.
- 
+
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
  * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
  * Neither the name of the EMC Corporation nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
- 
+
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
  INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
@@ -16,7 +16,7 @@ Redistribution and use in source and binary forms, with or without modification,
  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
+
 */
 
 var isNodejs = false;
@@ -25,7 +25,7 @@ if( typeof(require) != 'undefined' ) {
 	var crypto = require( 'crypto' );
 	var jsdom = require('jsdom');
 	var XMLHttpRequest = require( 'lib/XMLHttpRequest.js' ).XMLHttpRequest;
-	
+
 	isNodejs = true;
 } else {
 	///////////////////////////////////////////////////
@@ -86,7 +86,7 @@ if( typeof(require) != 'undefined' ) {
  * to determine the contents of the result object.
  * @param success
  * @param state
- * @class creates a new AtmosResult object
+ * @class AtmosResult
  */
 function AtmosResult( success, state ) {
 	this.success = success;
@@ -96,9 +96,9 @@ function AtmosResult( success, state ) {
 
 /**
  * ACL objects contain two properties: useracl and groupacl
- * Each of those properties should be an Array of AclEntry 
+ * Each of those properties should be an Array of AclEntry
  * objects.
- * @class Creates a new ACL
+ * @class Acl
  */
 function Acl( useracl, groupacl ) {
 	this.useracl = useracl;
@@ -106,10 +106,10 @@ function Acl( useracl, groupacl ) {
 }
 
 /**
- * Defines an entry on an ACL.  Use of this class is optional, you
+ * Defines an entry on an ACL (grantee -> Permission).  Use of this class is optional, you
  * can simply define with JSON, e.g.
  * [ {key=AclEntry.GROUPS.OTHER,value=AclEntry.ACL_PERMISSIONS.READ} ]
- * @class Represents an Access Control List entry (grantee -> Permission)
+ * @class AclEntry
  */
 function AclEntry( key, value ) {
 	this.key = key;
@@ -123,7 +123,7 @@ function AclEntry( key, value ) {
 AclEntry.ACL_PERMISSIONS = { READ: "READ", WRITE: "WRITE", FULL_CONTROL: "FULL_CONTROL", NONE: "NONE" };
 /**
  * Predefined groups
- * @static 
+ * @static
  */
 AclEntry.GROUPS = { OTHER: "other" };
 
@@ -133,14 +133,14 @@ AclEntry.GROUPS = { OTHER: "other" };
  * { limit: 0, includeMeta: true }
  * @param {int} limit maximum number of objects to return from server.  0=default (generally
  * the default limit is 5000).
- * @param {String} token server token for continuing results.  Check your results object for a 
+ * @param {String} token server token for continuing results.  Check your results object for a
  * token and pass into this field on the subsequent request to continue your listing.
  * @param {boolean} includeMeta if true, object metadata will be returned with the results
  * @param {Array} userMetaTags if non-null, the list of user metadata tags to return in the metadata
  * (assumes includeMeta=true).  If null, all metadata tags will be returned.
  * @param {Array} systemMetaTags if non-null, the list of system metadata tags to return in the metadata
- * (assumes includeMeta=true).  If null, all system metadata tags will be returned. 
- * @class Options for listing Atmos objects
+ * (assumes includeMeta=true).  If null, all system metadata tags will be returned.
+ * @class ListOptions
  */
 function ListOptions( limit, token, includeMeta, userMetaTags, systemMetaTags ) {
 	this.limit = limit;
@@ -156,7 +156,7 @@ function ListOptions( limit, token, includeMeta, userMetaTags, systemMetaTags ) 
  * @param {Object} userMeta an object containing the user metadata properties
  * @param {Object} listableUserMeta an object containing the listable user metadata properties
  * @param {Object} systemMeta an object containing the system metadata properties
- * @class Encapsulates information about objects returned from ListObjects.
+ * @class ObjectResult.
  */
 function ObjectResult( objectId, userMeta, listableUserMeta, systemMeta ) {
 	this.objectId = objectId;
@@ -171,6 +171,7 @@ function ObjectResult( objectId, userMeta, listableUserMeta, systemMeta ) {
  * @param name the name of the object (excluding path info)
  * @param objectId the object's identifier
  * @param type the type of object ("directory" or "regular")
+ * @class DirectoryEntry
  */
 function DirectoryEntry( path, name, objectId, type ) {
     this.path = path;
@@ -180,26 +181,27 @@ function DirectoryEntry( path, name, objectId, type ) {
 }
 
 /**
+ * Provides access to the EMC Atmos REST API through JavaScript.
  * Constructs a new AtmosRest object.
- * 
+ *
  * @param {Object} atmosConfig the Atmos configuration object. Possible settings:
- * 
+ *
  * <ul>
  * <li>uid (required): the Atmos UID for the connection
  * <li>secret (required): the Atmos shared secret key for the connection
  * </ul>
- * 
- * @class Provides access to the EMC Atmos REST API through JavaScript
+ *
+ * @class AtmosRest
  */
 var AtmosRest = function( atmosConfig ) {
 	this.atmosConfig = atmosConfig;
-	
+
 	this.info( "AtmosRest loaded" );
 };
 
 /**
  * Context the URI context for the REST service.  Defaults to "/rest"
- * @type {String} 
+ * @type {String}
  */
 AtmosRest.prototype.context = "/rest";
 
@@ -219,14 +221,14 @@ AtmosRest.prototype.context = "/rest";
  * where result will be an AtmosResult object.  The created Object ID will be in the objectId field of the result object.
  */
 AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mimeType, state, callback ) {
-	
+
 	var headers = new Object();
 	var me = this;
-	
-	this._processAcl( acl, headers );		
+
+	this._processAcl( acl, headers );
 	this._processMeta( meta, headers, false );
 	this._processMeta( listableMeta, headers, true );
-	
+
 	this._restPost( this.context + '/objects', headers, data, null, mimeType, state, callback, function(xhr, state, callback) {
 		me._createObjectHandler(xhr, state, callback); } );
 
@@ -234,7 +236,7 @@ AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mime
 
 /**
  * Creates an object in Atmos on the path provided.
- * 
+ *
  * @param {String} path the namespace path in Atmos (must start with a slash)
  * @param {Acl} acl an Acl for the new object.  If null, the object will get the default Acl.
  * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
@@ -251,14 +253,47 @@ AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta
 	}
 	var headers = new Object();
 	var me = this;
-	
-	this._processAcl( acl, headers );		
+
+	this._processAcl( acl, headers );
 	this._processMeta( meta, headers, false );
 	this._processMeta( listableMeta, headers, true );
-	
+
 	this._restPost( this._getPath(path), headers, data, null, mimeType, state, callback, function(xhr, state, callback) {
 		me._createObjectHandler(xhr, state, callback); } );
 
+};
+
+
+/**
+ * Creates a shareable URL that anyone (globally) can access.
+ *
+ * @param id the object ID or path for which to generate the URL
+ * @param expirationDate the expiration date of the URL (as
+ * @return a URL that can be used to share the object's content
+ */
+AtmosRest.prototype.getShareableUrl = function( id, expirationDate ) {
+    if (!expirationDate.getTime) {
+        throw "expirationDate must be a Date object";
+    }
+
+    var expires = Math.floor(expirationDate.getTime() / 1000);
+
+    var hash_string = "GET\n" + this._getPath(id).toLowerCase() + "\n" + this.atmosConfig.uid + "\n" + expires;
+
+    var signature = this._doSignature(hash_string, this.atmosConfig.secret);
+
+    var query = "uid=" + escape(this.atmosConfig.uid) + "&expires=" + expires +
+        "&signature=" + escape(signature);
+
+    var port = '';
+    if (window.location.protocol === "http" && window.location.port == 80) {
+    } else if (window.location.protocol === "https" && window.location.port == 443) {
+    } else if (!window.location.port) {
+    } else {
+        port = ':' + window.location.port;
+    }
+
+    return window.location.protocol + "//" + window.location.host + port + this._getPath(id) + "?" + query;
 };
 
 
@@ -271,7 +306,7 @@ AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta
 AtmosRest.prototype.deleteObject = function( id, state, callback ) {
 	var headers = new Object();
 	var me = this;
-	
+
 	this._restDelete(this._getPath(id), headers, state, callback, function(xhr, state, callback) {
 		me._genericHandler(xhr, state, callback);
 	});
@@ -288,11 +323,11 @@ AtmosRest.prototype.deleteObject = function( id, state, callback ) {
 AtmosRest.prototype.readObject = function( id, range, state, callback ) {
 	var headers = new Object();
 	var me = this;
-	
+
 	this._restGet(this._getPath(id), headers, range, state, callback, function(xhr, state, callback) {
 		me._readObjectHandler(xhr, state, callback);
 	});
-	
+
 };
 
 /**
@@ -301,18 +336,18 @@ AtmosRest.prototype.readObject = function( id, range, state, callback ) {
  * @param {Array} filter if not null, an array of strings defining which metadata tags should be returned.
  * @param {Object} state the user-defined state object passed to the callback
  * @param {function} callback the completion callback (both error and success).  Upon success,
- * the object's metadata will be returned in the meta property of the result object and the 
+ * the object's metadata will be returned in the meta property of the result object and the
  * listable metadata will be returned in the listableMeta property.
  */
 AtmosRest.prototype.getUserMetadata = function( id, filter, state, callback ) {
 	var headers = new Object();
 	var me = this;
-	
+
 	if( filter ) {
 		headers["x-emc-tags"] = filter.join(",");
 	}
-	
-	this._restGet(this._getPath(id) + "?metadata/user", headers, null, state, callback, 
+
+	this._restGet(this._getPath(id) + "?metadata/user", headers, null, state, callback,
 			function(xhr, state, callback) {
 		me._readUserMetadataHandler(xhr, state, callback);
 	});
@@ -323,25 +358,25 @@ AtmosRest.prototype.getUserMetadata = function( id, filter, state, callback ) {
  * @param {String} tag the listable tag to search
  * @param {ListOptions} options for listing objects.  See the ListOptions class.
  * @param {Object} state the user-defined state object that will be passed to the callback
- * @param {function} callback the completion callback (both error and success).  Upon success, 
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the result's results property will be populated with an Array of ObjectResult objects.  Also
  * be sure to check the value of the token property.  If defined, you did not receive all results
- * and should call this method again using the token inside a ListOptions object to continue 
+ * and should call this method again using the token inside a ListOptions object to continue
  * your listing.
  */
 AtmosRest.prototype.listObjects = function( tag, options, state, callback ) {
 	var headers = new Object();
 	var me = this;
-	
+
 	if( !tag ) {
 		throw "Tag cannot be null";
 	}
-	
+
 	headers["x-emc-tags"] = tag;
-	
+
     this._addListOptions(headers, options);
-	
-	this._restGet(this.context + "/objects", headers, null, state, callback, 
+
+	this._restGet(this.context + "/objects", headers, null, state, callback,
 			function(xhr, state, callback) {
 		me._handleListObjectsResponse(xhr, state, callback);
 	});
@@ -415,9 +450,9 @@ AtmosRest.prototype._processAclEntries = function( entries ) {
 	if( entries == undefined || entries.length < 1 ) {
 		return null;
 	}
-	
+
 	var value = "";
-	
+
 	for( var i=0; i<entries.length; i++ ) {
 		if( i>0 ) {
 			value += ",";
@@ -454,7 +489,7 @@ AtmosRest.prototype._processMetaList = function( meta ) {
 		}
 		value += prop + "=" + meta[prop];
 	}
-	
+
 	return value;
 };
 
@@ -499,10 +534,10 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, s
 	if( mimeType == "" || mimeType == undefined) {
 		mimeType = "text/plain; charset=UTF-8";
 	}
-	
+
 	// The browser will append this on the way out.  Do it ourselves
 	// so it gets into our signature.
-	if ( mimeType.indexOf("charset") == -1 ){ 
+	if ( mimeType.indexOf("charset") == -1 ){
 		mimeType += "; charset=UTF-8";
 	}
 
@@ -526,7 +561,7 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, s
 			handler( jqXHR, state, callback );
 		}
 	});
-	
+
 };
 
 /**
@@ -556,7 +591,7 @@ AtmosRest.prototype._restDelete = function( uri, headers, state, callback, handl
 			handler( jqXHR, state, callback );
 		}
 	});
-	
+
 };
 
 /**
@@ -570,7 +605,7 @@ AtmosRest.prototype._restDelete = function( uri, headers, state, callback, handl
  */
 AtmosRest.prototype._restGet = function(uri, headers, range, state, callback, handler) {
 	headers["x-emc-date"] = new Date().toGMTString();
-	
+
 	this._signRequest( 'GET', headers, null, range, uri);
 	var errorHandler = this._handleError;
 	var setHeaders = this._setHeaders;
@@ -598,7 +633,7 @@ AtmosRest.prototype._ajax = function( options ) {
 	if( this.atmosConfig.host && this.atmosConfig.protocol ) {
 		options.url = this.atmosConfig.protocol + "://" + this.atmosConfig.host + options.url;
 	}
-	
+
 	var xhr = this._getXMLHttpRequest();
 	var me = this;
 	xhr.onreadystatechange = function(evt) {
@@ -608,12 +643,12 @@ AtmosRest.prototype._ajax = function( options ) {
 	if(options.beforeSend) {
 		options.beforeSend( xhr, options );
 	}
-	
+
 	if( options.mimeType ) {
 		xhr.setRequestHeader( "Content-Type", options.mimeType );
 	}
-	
-	
+
+
 	if( options.data ) {
 		xhr.send(options.data);
 	} else {
@@ -621,12 +656,12 @@ AtmosRest.prototype._ajax = function( options ) {
 	}
 };
 
-AtmosRest.prototype._getXMLHttpRequest = function() 
+AtmosRest.prototype._getXMLHttpRequest = function()
 {
 	if( isNodejs ) {
 		return new XMLHttpRequest();
 	}
-	
+
     if (window.XMLHttpRequest) {
         return new window.XMLHttpRequest;
     }
@@ -687,13 +722,13 @@ AtmosRest.prototype._encodeURI = function( uri ) {
 		parts[i] = encodeURIComponent(parts[i]);
 	}
 	outURI = parts.join( "/" );
-	
+
 	if( queryIndex != -1 ) {
 		outURI += encodeURI(query);
 	}
-	
+
 	this.debug( "encodeURI: out: " + outURI );
-	
+
 	return outURI;
 };
 
@@ -706,16 +741,16 @@ AtmosRest.prototype._encodeURI = function( uri ) {
 AtmosRest.prototype._createObjectHandler = function( xhr, state, callback ) {
 	// Extract the new ObjectId and return
 	var location = xhr.getResponseHeader('location');
-	
+
 	this.debug( "location: " + location );
-	
+
 	var matches = location.match( AtmosRest.locationMatch );
 	if( matches == null ) {
 		var err = new AtmosResult( false, state );
 		err.message = "Could not find location in " + location;
 		callback(err);
 	}
-	
+
 	var result = new AtmosResult( true, state );
 	result.httpCode = xhr.status;
 	result.httpMessage = xhr.statusText;
@@ -746,10 +781,10 @@ AtmosRest.prototype._readObjectHandler = function( jqXHR, state, callback ) {
  */
 AtmosRest.prototype._readUserMetadataHandler = function( jqXHR, state, callback ) {
 	var result = new AtmosResult( true, state );
-	
+
 	result.meta = this._parseMetadata( jqXHR.getResponseHeader( "x-emc-meta" ) );
 	result.listableMeta = this._parseMetadata( jqXHR.getResponseHeader( "x-emc-listable-meta" ) );
-	
+
 	callback(result);
 };
 
@@ -762,9 +797,9 @@ AtmosRest.prototype._parseMetadata = function( value ) {
 	if( typeof(value) == 'undefined' || value == null ) {
 		return null;
 	}
-	
+
 	var result = {};
-	
+
 	var values = value.split(",");
 	for( var i=0; i<values.length; i++ ) {
 		var nvpair = values[i].split("=", 2);
@@ -775,7 +810,7 @@ AtmosRest.prototype._parseMetadata = function( value ) {
 			result[name] = nvpair[1];
 		}
 	}
-	
+
 	return result;
 };
 
@@ -799,54 +834,54 @@ AtmosRest.prototype._handleError = function( jqXHR, message, state, callback ) {
 	result.errorMessage = message;
 	result.httpCode = jqXHR.status;
 	result.httpMessage = jqXHR.statusText;
-	
+
 	callback( result );
 };
 
 /**
  * Handles the response from the ListObjects method
  * @param {XMLHttpRequest} xhr the XHR object
- * 
+ *
  */
 AtmosRest.prototype._handleListObjectsResponse = function( xhr, state, callback ) {
 	var result = new AtmosResult( true, state );
 	result.httpCode = xhr.status;
 	result.httpMessage = xhr.statusText;
 	result.token = xhr.getResponseHeader("x-emc-token");
-	
+
 	var doc = null;
-	
+
 	if( isNodejs ) {
 		// NodeJS doesn't have an XML parser yet; use the jsdom parser.
 		doc = jsdom.jsdom(xhr.responseText);
 	} else {
 		doc = xhr.responseXML;
 	}
-	
+
 	/**
 	 * @type Array
 	 */
 	var objects = Array();
-	
+
 	/**
 	 * @type NodeList
 	 */
 	var objlist = doc.getElementsByTagName("Object");
-	
+
 //	this.debug( "Found " + objlist.length + " objects" );
-	
+
 	for( var i=0; i<objlist.length; i++ ) {
 		var userMeta = null;
 		var systemMeta = null;
 		var userListableMeta = null;
-		
+
 		var node = objlist.item(i);
 //		this.debug( "node is " + node );
 		var oidNode = this._getChildByTagName(node, "ObjectID");
 //		this.debug( "oidNode is " + oidNode );
 		var smNode = this._getChildByTagName(node, "SystemMetadataList");
 		var umNode = this._getChildByTagName(node, "UserMetadataList");
-		
+
 		if( smNode ) {
 			systemMeta = new Object();
 			this._parseResponseMeta( smNode.childNodes, systemMeta, null );
@@ -856,11 +891,11 @@ AtmosRest.prototype._handleListObjectsResponse = function( xhr, state, callback 
 			userListableMeta = new Object();
 			this._parseResponseMeta( umNode.childNodes, userMeta, userListableMeta );
 		}
-		
+
 		var obj = new ObjectResult( this._getText(oidNode), userMeta, userListableMeta, systemMeta );
 		objects.push(obj);
 	}
-	
+
 	result.results = objects;
 	callback(result);
 };
@@ -972,7 +1007,7 @@ AtmosRest.prototype._getText = function( node ) {
 			text += child.data;
 		}
 	}
-	
+
 	return text;
 };
 
@@ -995,16 +1030,16 @@ AtmosRest.prototype._signRequest = function( method, headers, content_type, rang
 	}
 
 	emcheaders["x-emc-uid"] = this.atmosConfig.uid;
-	var hash_string = this._buildHashString(method, content_type, '', 
+	var hash_string = this._buildHashString(method, content_type, '',
 			headers["Date"], uri, emcheaders);
-	
+
 	this.debug( "HashString:\n" + hash_string );
-	
+
 	signature = this._doSignature(hash_string,this.atmosConfig.secret);
-	
+
 	this.debug( "Signature: " + signature );
 	emcheaders["x-emc-signature"] = signature;
-	
+
 	return signature;
 };
 
@@ -1024,8 +1059,8 @@ AtmosRest.prototype._buildHashString = function(method, content_type, range, dat
 	var string = "";
 	string = method + "\n";
 
-	if (content_type) { 
-	    string += content_type + "\n";	
+	if (content_type) {
+	    string += content_type + "\n";
 	} else {
 	    string +="\n";
 	}
@@ -1033,12 +1068,12 @@ AtmosRest.prototype._buildHashString = function(method, content_type, range, dat
 	    string += range + "\n";
 	} else {
 	    string +="\n";
-	}	
+	}
 	if (date) {
 	    string += date+'\n';
 	} else {
 	    string +="\n";
-	}	
+	}
 
 	string += path.toLowerCase().trim() + "\n";
 
@@ -1056,11 +1091,11 @@ AtmosRest.prototype._buildHashString = function(method, content_type, range, dat
         var value = this._normalizeWS(headers[prop].trim());
         emcheaders[key] = value;
 	}
-	
+
 	var keys = this._getKeys(emcheaders);
 	this.debug( "keys " + keys );
 
-	keys.sort().forEach (function (k) { 
+	keys.sort().forEach (function (k) {
 		string += k+":" + emcheaders[k] + "\n";
 	    });
 
@@ -1074,7 +1109,7 @@ AtmosRest.prototype._buildHashString = function(method, content_type, range, dat
  */
 AtmosRest.prototype._normalizeWS = function(str) {
     str = str.replace(/\n/," ");
-    return str.replace(/\s+/," ");	
+    return str.replace(/\s+/," ");
 };
 
 /**
@@ -1099,15 +1134,15 @@ AtmosRest.prototype._getKeys = function(obj) {
  */
 AtmosRest.prototype._doSignature = function(string, secret) {
 	this.debug( "Secret: " + secret );
-	
+
 	if( isNodejs ) {
 		var key = new Buffer(secret, 'base64');
 		var hmac = crypto.createHmac( "sha1", key.toString('binary') );
 		hmac.update(string);
 		return hmac.digest('base64');
 	} else {
-		var sig = Crypto.HMAC(Crypto.SHA1,string, Crypto.util.base64ToBytes(secret), {asBytes:true});	
-		return Crypto.util.bytesToBase64(sig);				
+		var sig = Crypto.HMAC(Crypto.SHA1,string, Crypto.util.base64ToBytes(secret), {asBytes:true});
+		return Crypto.util.bytesToBase64(sig);
 	}
 };
 
@@ -1146,7 +1181,7 @@ AtmosRest.prototype.info = function( message ) {
 AtmosRest.prototype.warn = function( message ) {
 	if( typeof(console) !== 'undefined' && typeof(console.warn) !== 'undefined' ) {
 		console.warn( message );
-	}	
+	}
 };
 
 /**

@@ -24,7 +24,7 @@ if( typeof(exports) != 'undefined' ) {
 	// We're running inside node.js
 	//require( 'tests/atmos-config.js' );
 	
-	var AtmosJS = require( 'atmos-js.js' );
+	var AtmosJS = require( 'atmos.js' );
 	var AtmosRest = AtmosJS.AtmosRest;
 	var ListOptions = AtmosJS.ListOptions;
 	require('tests/atmos-config.js');
@@ -116,7 +116,7 @@ this.atmosApi = {
 		},
 		
 		'testCreateObjectOnPath': function(test) {
-			atmos.info( "atmosApi.testCreateObject" );
+			atmos.info( "atmosApi.testCreateObjectOnPath" );
 			
 			test.expect(6);
 			
@@ -144,6 +144,35 @@ this.atmosApi = {
 			});			
 		},
 		
+        'testDeleteObjectOnPath': function(test) {
+            atmos.info( "atmosApi.testDeleteObjectOnPath" );
+
+            test.expect(5);
+
+            var filename = "/" + this.randomFilename(8,0) + "/" + this.randomFilename(8,3);
+            atmos.debug( "Filename: " + filename );
+
+            atmos.createObjectOnPath(filename, null, null, null, "Hello World!", "text/plain", null,
+                    function(result) {
+
+                test.ok( result.success, "Request successful (" + filename + ")" );
+                test.ok( result.objectId != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                atmos.deleteObject( filename, null, function(result2) {
+                    test.ok( result2.success, "Delete successful" );
+                    test.equal( result2.httpCode, 204, "HttpCode correct" );
+
+                    if (!result2.success) {
+                        // Delete failed, so make sure object is cleaned up
+                        this.cleanup.push( result.objectId );
+                    }
+
+                    test.done();
+                });
+            });
+        },
+
 		'testCreateObjectWithMetadata': function(test) {
 			atmos.info( "atmosApi.testCreateObjectWithMetadata" );
 			
@@ -263,7 +292,81 @@ this.atmosApi = {
                     test.done();
                 });
             });
-		}
+		},
+
+        'testGetShareableUrl': function(test) {
+            this.atmos.info( "atmosApi.testGetShareableUrl" );
+            var text = "Hello World!";
+
+            test.expect(4);
+            atmos.createObject(null, null, null, text, "text/plain", null,
+                    function(result) {
+
+                test.ok( result.success, "Request successful" );
+                test.ok( result.objectId != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                this.cleanup.push( result.objectId );
+
+                var expires = new Date();
+                expires.setHours(expires.getHours() + 4);
+                var url = atmos.getShareableUrl(result.objectId, expires);
+
+                atmos._ajax({
+                    type: "GET",
+                    url: url,
+                    error: function( jqXHR, textStatus, errorThrown) {
+                        test.ok( false, textStatus );
+                        test.done();
+                    },
+                    success: function( textStatus, jqXHR ) {
+                        test.ok( jqXHR.responseText == text, "Correct content returned" );
+                        test.done();
+                    }
+                });
+            });
+        },
+
+        'testGetShareableUrlOnPath': function(test) {
+            atmos.info( "atmosApi.testGetShareableUrlOnPath" );
+
+            test.expect(4);
+
+            var text = "Hello World!";
+            var directory = "/" + this.randomFilename(8,0) + "/";
+            var filename = this.randomFilename(8,3);
+            var fullPath = directory + filename;
+            atmos.debug( "Full Path: " + fullPath );
+
+            atmos.createObjectOnPath(fullPath, null, null, null, text, "text/plain", null,
+                    function(result) {
+
+                test.ok( result.success, "Creation successful" );
+                test.ok( result.objectId != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                this.cleanup.push( result.objectId );
+
+                var expires = new Date();
+                expires.setHours(expires.getHours() + 4);
+                var url = atmos.getShareableUrl(fullPath, expires);
+
+                atmos._ajax({
+                    type: "GET",
+                    url: url,
+                    error: function( jqXHR, textStatus, errorThrown) {
+                        test.ok( false, textStatus );
+                        test.done();
+                    },
+                    success: function( textStatus, jqXHR ) {
+                        test.ok( jqXHR.responseText == text, "Correct content returned" );
+                        test.done();
+                    }
+                });
+            });
+        }
 
 };
 
