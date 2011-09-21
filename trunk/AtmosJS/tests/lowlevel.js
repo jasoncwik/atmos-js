@@ -22,7 +22,7 @@ Redistribution and use in source and binary forms, with or without modification,
 if( typeof(require) != 'undefined' ) {
 	// We're running inside node.js
 	require( 'tests/atmos-config.js' );
-	AtmosRest = require( 'atmos-js.js' ).AtmosRest;
+	AtmosRest = require( 'atmos.js' ).AtmosRest;
 	
 	console.log( "AtmosRest: " + AtmosRest );
 }
