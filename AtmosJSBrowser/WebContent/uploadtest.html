@@ -24,11 +24,11 @@ Redistribution and use in source and binary forms, with or without modification,
     <meta charset="UTF-8">
     <title>AtmosJS Upload Test</title>
 
-    <script type="text/javascript" src="lib/crypto.js"></script>
-    <script type="text/javascript" src="lib/hmac.js"></script>
-    <script type="text/javascript" src="lib/sha1.js"></script>
-    <script type="text/javascript" src="atmos.js"></script>
-    <script type="text/javascript" src="tests/atmos-config.js.aol"></script>
+    <script type="text/javascript" src="js/crypto-min.js"></script>
+    <script type="text/javascript" src="js/hmac-min.js"></script>
+    <script type="text/javascript" src="js/sha1-min.js"></script>
+    <script type="text/javascript" src="js/atmos.js"></script>
+    <script type="text/javascript" src="js/atmos-config.js"></script>
     <style type="text/css">
         .content {
             width: 600px;
@@ -80,10 +80,6 @@ Redistribution and use in source and binary forms, with or without modification,
             padding: 10px;
         }
     </style>
-</head>
-<body>
-<div class="content">
-    <h1 id="nodeunit-header">AtmosJS Upload Test</h1>
     <script>
         var atmos = new AtmosRest(window.atmosConfig);
         atmos.info("atmosApi.setUp");
@@ -114,6 +110,8 @@ Redistribution and use in source and binary forms, with or without modification,
         function dropFiles(event) {
             event.stopPropagation();
             event.preventDefault();
+
+            dumpAll(event.dataTransfer.types);
 
             // FileList (HTML5 File API)
             var fileList = event.dataTransfer.files;
@@ -185,6 +183,10 @@ Redistribution and use in source and binary forms, with or without modification,
             });
         }
     </script>
+</head>
+<body>
+<div class="content">
+    <h1 id="nodeunit-header">AtmosJS Upload Test</h1>
     <p><label>Target Path: <input type="text" id="path" name="pathToFile" class="longTextField"
                                   title="Target Path" value="/stu/test"/></label></p>
 
