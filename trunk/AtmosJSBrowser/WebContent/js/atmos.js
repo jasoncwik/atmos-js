@@ -86,7 +86,7 @@ if( typeof(require) != 'undefined' ) {
  * to determine the contents of the result object.
  * @param success
  * @param state
- * @class creates a new AtmosResult object
+ * @class AtmosResult
  */
 function AtmosResult( success, state ) {
 	this.success = success;
@@ -98,7 +98,7 @@ function AtmosResult( success, state ) {
  * ACL objects contain two properties: useracl and groupacl
  * Each of those properties should be an Array of AclEntry
  * objects.
- * @class Creates a new ACL
+ * @class Acl
  */
 function Acl( useracl, groupacl ) {
 	this.useracl = useracl;
@@ -106,10 +106,10 @@ function Acl( useracl, groupacl ) {
 }
 
 /**
- * Defines an entry on an ACL.  Use of this class is optional, you
+ * Defines an entry on an ACL (grantee -> Permission).  Use of this class is optional, you
  * can simply define with JSON, e.g.
  * [ {key=AclEntry.GROUPS.OTHER,value=AclEntry.ACL_PERMISSIONS.READ} ]
- * @class Represents an Access Control List entry (grantee -> Permission)
+ * @class AclEntry
  */
 function AclEntry( key, value ) {
 	this.key = key;
@@ -140,7 +140,7 @@ AclEntry.GROUPS = { OTHER: "other" };
  * (assumes includeMeta=true).  If null, all metadata tags will be returned.
  * @param {Array} systemMetaTags if non-null, the list of system metadata tags to return in the metadata
  * (assumes includeMeta=true).  If null, all system metadata tags will be returned.
- * @class Options for listing Atmos objects
+ * @class ListOptions
  */
 function ListOptions( limit, token, includeMeta, userMetaTags, systemMetaTags ) {
 	this.limit = limit;
@@ -156,7 +156,7 @@ function ListOptions( limit, token, includeMeta, userMetaTags, systemMetaTags ) 
  * @param {Object} userMeta an object containing the user metadata properties
  * @param {Object} listableUserMeta an object containing the listable user metadata properties
  * @param {Object} systemMeta an object containing the system metadata properties
- * @class Encapsulates information about objects returned from ListObjects.
+ * @class ObjectResult.
  */
 function ObjectResult( objectId, userMeta, listableUserMeta, systemMeta ) {
 	this.objectId = objectId;
@@ -171,6 +171,7 @@ function ObjectResult( objectId, userMeta, listableUserMeta, systemMeta ) {
  * @param name the name of the object (excluding path info)
  * @param objectId the object's identifier
  * @param type the type of object ("directory" or "regular")
+ * @class DirectoryEntry
  */
 function DirectoryEntry( path, name, objectId, type ) {
     this.path = path;
@@ -180,6 +181,7 @@ function DirectoryEntry( path, name, objectId, type ) {
 }
 
 /**
+ * Provides access to the EMC Atmos REST API through JavaScript.
  * Constructs a new AtmosRest object.
  *
  * @param {Object} atmosConfig the Atmos configuration object. Possible settings:
@@ -189,7 +191,7 @@ function DirectoryEntry( path, name, objectId, type ) {
  * <li>secret (required): the Atmos shared secret key for the connection
  * </ul>
  *
- * @class Provides access to the EMC Atmos REST API through JavaScript
+ * @class AtmosRest
  */
 var AtmosRest = function( atmosConfig ) {
 	this.atmosConfig = atmosConfig;
@@ -526,8 +528,9 @@ AtmosRest.prototype._addListOptions = function( headers, options ) {
  * @param {Object} state the user's state object
  * @param {function} callback the user's callback
  * @param {function} handler the response processing handler function
+ * @param {function} progress an optional function to track upload progress
  */
-AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, state, callback, handler ) {
+AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, state, callback, handler, progress ) {
 	headers["x-emc-date"] = new Date().toGMTString();
 	if( mimeType == "" || mimeType == undefined) {
 		mimeType = "text/plain; charset=UTF-8";
@@ -557,7 +560,10 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, s
 		type: "POST",
 		success: function( textStatus, jqXHR ) {
 			handler( jqXHR, state, callback );
-		}
+		},
+        progress: function( progressPercent ) {
+            if ( progress ) progress( progressPercent );
+        }
 	});
 
 };
@@ -637,6 +643,9 @@ AtmosRest.prototype._ajax = function( options ) {
 	xhr.onreadystatechange = function(evt) {
 		me._onreadystatechange( evt, options, xhr );
 	};
+    xhr.onprogress = function(evt) {
+        me._onprogress( evt, options, xhr );
+    };
 	xhr.open( options.type, options.url, true );
 	if(options.beforeSend) {
 		options.beforeSend( xhr, options );
@@ -687,6 +696,14 @@ AtmosRest.prototype._onreadystatechange = function( evt, options, xhr ) {
 			options.error( xhr, xhr.statusText, "" );
 		}
 	}
+};
+
+AtmosRest.prototype._onprogress = function( evt, options, xhr ) {
+    if ( !options.progress ) return;
+    if ( evt.lengthComputable ) {
+        var progressPercent = ( evt.loaded / evt.total ) * 100;
+        options.progress( progressPercent );
+    }
 };
 
 /**
