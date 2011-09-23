@@ -699,6 +699,7 @@ AtmosRest.prototype._onreadystatechange = function( evt, options, xhr ) {
 };
 
 AtmosRest.prototype._onprogress = function( evt, options, xhr ) {
+    if ( !options.progress ) return;
     if ( evt.lengthComputable ) {
         var progressPercent = ( evt.loaded / evt.total ) * 100;
         options.progress( progressPercent );
