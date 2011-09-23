@@ -528,8 +528,9 @@ AtmosRest.prototype._addListOptions = function( headers, options ) {
  * @param {Object} state the user's state object
  * @param {function} callback the user's callback
  * @param {function} handler the response processing handler function
+ * @param {function} progress an optional function to track upload progress
  */
-AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, state, callback, handler ) {
+AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, state, callback, handler, progress ) {
 	headers["x-emc-date"] = new Date().toGMTString();
 	if( mimeType == "" || mimeType == undefined) {
 		mimeType = "text/plain; charset=UTF-8";
@@ -559,7 +560,10 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, s
 		type: "POST",
 		success: function( textStatus, jqXHR ) {
 			handler( jqXHR, state, callback );
-		}
+		},
+        progress: function( progressPercent ) {
+            if ( progress ) progress( progressPercent );
+        }
 	});
 
 };
@@ -639,6 +643,9 @@ AtmosRest.prototype._ajax = function( options ) {
 	xhr.onreadystatechange = function(evt) {
 		me._onreadystatechange( evt, options, xhr );
 	};
+    xhr.onprogress = function(evt) {
+        me._onprogress( evt, options, xhr );
+    };
 	xhr.open( options.type, options.url, true );
 	if(options.beforeSend) {
 		options.beforeSend( xhr, options );
@@ -689,6 +696,13 @@ AtmosRest.prototype._onreadystatechange = function( evt, options, xhr ) {
 			options.error( xhr, xhr.statusText, "" );
 		}
 	}
+};
+
+AtmosRest.prototype._onprogress = function( evt, options, xhr ) {
+    if ( evt.lengthComputable ) {
+        var progressPercent = ( evt.loaded / evt.total ) * 100;
+        options.progress( progressPercent );
+    }
 };
 
 /**
