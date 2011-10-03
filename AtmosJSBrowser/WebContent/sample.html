@@ -34,13 +34,17 @@ Redistribution and use in source and binary forms, with or without modification,
     <script type="text/javascript" src="js/hmac-min.js"></script>
     <script type="text/javascript" src="js/sha1-min.js"></script>
     <script type="text/javascript" src="js/atmos.js"></script>
-    <script type="text/javascript" src="js/atmos-config.js"></script>
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="js/jquery.sortElements.js"></script>
     <script type="text/javascript" src="js/atmos-browser.js"></script>
     <script type="text/javascript">
         $(document).ready(function() {
-            $('#atmosBrowser').atmosBrowser();
+            $('#atmosBrowser').atmosBrowser({
+                uid: "0bc871f97086456db2e803ccc172ccec/stu",
+                secret: "1ofJI8FYceLBTGvflJutDvc4uwc=",
+                location: '/stu/test/'
+            });
         });
     </script>
 </head>
