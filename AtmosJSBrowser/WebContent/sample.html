@@ -39,13 +39,14 @@ Redistribution and use in source and binary forms, with or without modification,
     <script type="text/javascript" src="js/jquery.sortElements.js"></script>
     <script type="text/javascript" src="js/atmos-browser.js"></script>
     <script type="text/javascript">
-        $(document).ready(function() {
-            $('#atmosBrowser').atmosBrowser({
-                uid: "0bc871f97086456db2e803ccc172ccec/stu",
-                secret: "1ofJI8FYceLBTGvflJutDvc4uwc=",
+        $( document ).ready( function() {
+            $( '#atmosBrowser' ).atmosBrowser( {
+                subtenant: "0bc871f97086456db2e803ccc172ccec",
+                //user: "stu",
+                //secret: "1ofJI8FYceLBTGvflJutDvc4uwc=",
                 location: '/stu/test/'
-            });
-        });
+            } );
+        } );
     </script>
 </head>
 <body>
