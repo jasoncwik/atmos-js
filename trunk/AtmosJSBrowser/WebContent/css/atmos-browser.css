@@ -185,3 +185,28 @@
 .transparent {
     opacity: 0.5;
 }
+
+.atmosLoginFrame {
+    width: 400px;
+}
+
+.atmosLoginTable {
+    display: table;
+}
+
+.atmosLoginTable .row {
+    display: table-row;
+}
+
+.atmoslogintable .row .cell {
+    display: table-cell;
+    padding: 2px 4px;
+}
+
+.atmosCredentialName {
+    width: 120px;
+}
+
+.atmosCredentialValue {
+    width: 250px;
+}
