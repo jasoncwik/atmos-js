@@ -69,7 +69,8 @@ if ( typeof(require) != 'undefined' ) {
                 if ( typeof(value) === 'object' && value != null ) value = value.dump();
                 output += property + "=" + value + ", ";
             }
-            if ( output.length > 1 ) output = output.substr( 0, output.length - 2 ) + "]";
+            if ( output.length > 1 ) output = output.substr( 0, output.length - 2 );
+            output += "]";
             return output;
         };
     }
