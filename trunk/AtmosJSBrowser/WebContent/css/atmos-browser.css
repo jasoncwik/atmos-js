@@ -1,6 +1,6 @@
 .atmosBrowser {
     padding: 4px;
-    box-shadow: 3px 3px 7px #777;
+    box-shadow: 3px 3px 5px #777;
 }
 
 .atmosLocation {
@@ -9,16 +9,15 @@
 }
 
 .atmosLocationField {
-    width: 90%;
-    float: left;
-    margin: 0;
+    width: 85%;
+    margin: 0 4px 0 0;
     font-size: 10pt;
 }
 
-.atmosLocationButton {
+.atmosButton {
     display: inline-block;
     width: auto;
-    margin: 0 0 0 4px;
+    margin: 0 4px;
     padding: 1px 4px;
     border: 1.5pt solid gray;
     border-radius: 4px;
@@ -45,6 +44,7 @@
 
 .atmosFileList div.table {
     width: 100%;
+    height: auto;
     display: table;
 }
 
@@ -52,20 +52,20 @@
     display: table-row;
 }
 
-.atmosFileList div.row * {
+.atmosFileList div.row .cell {
     display: table-cell;
     padding: 2px 4px;
     font: bold 10pt Courier New;
     overflow: hidden;
 }
 
-.atmosFileList div.row h1 {
+.atmosFileList div.row h4.cell {
     background-color: #dddddd;
-    border-right: 2px solid #999999;
-    font: bold 10pt arial,sans-serif;
+    border-right: 2px solid white;
+    font: bold 10pt arial, sans-serif;
 }
 
-.atmosFileList div.row h1:last-of-type {
+.atmosFileList div.row h4:last-of-type {
     border-right: none;
 }
 
@@ -83,5 +83,105 @@
 }
 
 .atmosFileList .selected {
-    background-color: #3366ff;
+    color: #fff;
+    background-color: #06c;
+}
+
+.atmosStatusBar {
+    width: 0;
+    height: 18px;
+    background-color: #85c2ff;
+    text-align: center;
+}
+
+.atmosModalBackground {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    opacity: 0.6;
+    z-index: 1000;
+}
+
+.atmosModalWindow {
+    position: fixed;
+    top: 200px;
+    left: 300px;
+    width: 500px;
+    background-color: #fff;
+    border: 1px solid black;
+    box-shadow: 3px 3px 5px #555;
+    z-index: 10000;
+}
+
+.atmosModalWindowTitleBar {
+    background-color: #bbb;
+    padding: 3px 5px;
+    cursor: default;
+}
+
+.atmosModalWindowTitle {
+    display: inline-block;
+    overflow: hidden;
+    font: bold 10pt sans-serif;
+    color: #333;
+}
+
+.atmosModalWindow .closeButton {
+    display: inline-block;
+    float: right;
+    font: bold 12pt sans-serif;
+    color: #333;
+}
+
+.atmosModalWindowContent {
+    max-height: 500px;
+    overflow: auto;
+    padding: 8px;
+    font: 10pt sans-serif;
+}
+
+.atmosPropertiesPage {
+    text-align: center;
+}
+
+.atmosPropertiesTableWrapper {
+    clear: both;
+    border: 1px inset #999;
+    padding: 4px;
+    margin-bottom: 6px;
+}
+
+.atmosPropertiesTableTitle {
+    float: left;
+    border-bottom: 1px solid black;
+    margin-bottom: 5px;
+}
+
+.atmosPropertiesTable {
+    display: table;
+}
+
+.atmosPropertiesTable .row {
+    display: table-row;
+}
+
+.atmosPropertiesTable .row .cell {
+    display: table-cell;
+    padding: 2px 4px;
+}
+
+.atmosPropertyName {
+    width: 150px;
+    overflow: hidden;
+}
+
+.atmosPropertyValue {
+    width: 250px;
+}
+
+.transparent {
+    opacity: 0.5;
 }
