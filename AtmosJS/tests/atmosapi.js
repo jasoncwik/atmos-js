@@ -80,7 +80,7 @@ this.atmosApi = {
         this.atmos.info( "atmosApi.testCreateObject" );
 
         test.expect( 6 );
-        atmos.createObject( null, null, null, "Hello World!", "text/plain", null,
+        atmos.createObject( null, null, null, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
@@ -106,7 +106,7 @@ this.atmosApi = {
         atmos.info( "atmosApi.testDeleteObject" );
         test.expect( 4 );
 
-        atmos.createObject( null, null, null, "Hello World!", null, null, function( result ) {
+        atmos.createObject( null, null, null, "Hello World!", null, false, null, function( result ) {
             test.ok( result.success, "Request successful" );
             test.ok( result.objectId != null, "Object ID not null" );
 
@@ -127,7 +127,7 @@ this.atmosApi = {
         var filename = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
         atmos.debug( "Filename: " + filename );
 
-        atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", null,
+        atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + filename + ")" );
@@ -156,7 +156,7 @@ this.atmosApi = {
         var filename = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
         atmos.debug( "Filename: " + filename );
 
-        atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", null,
+        atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + filename + ")" );
@@ -183,7 +183,7 @@ this.atmosApi = {
         test.expect( 7 );
         var meta = {foo:"bar", foo2:"baz"};
         var listableMeta = {listable:""};
-        atmos.createObject( null, meta, listableMeta, "Hello World!", "text/plain", null,
+        atmos.createObject( null, meta, listableMeta, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
@@ -210,7 +210,7 @@ this.atmosApi = {
         test.expect( 8 );
         var listableMeta = {listable3:""};
         var userMeta = {foo:"bar"};
-        atmos.createObject( null, userMeta, listableMeta, "Hello World!", "text/plain", null,
+        atmos.createObject( null, userMeta, listableMeta, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Creation successful" );
@@ -259,7 +259,7 @@ this.atmosApi = {
         var userMeta = {foo:"bar"};
         atmos.debug( "Full Path: " + fullPath );
 
-        atmos.createObjectOnPath( fullPath, null, userMeta, listableMeta, "Hello World!", "text/plain", null,
+        atmos.createObjectOnPath( fullPath, null, userMeta, listableMeta, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Creation successful" );
@@ -304,7 +304,7 @@ this.atmosApi = {
         var text = "Hello World!";
 
         test.expect( 4 );
-        atmos.createObject( null, null, null, text, "text/plain", null,
+        atmos.createObject( null, null, null, text, "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
@@ -344,7 +344,7 @@ this.atmosApi = {
         var fullPath = directory + filename;
         atmos.debug( "Full Path: " + fullPath );
 
-        atmos.createObjectOnPath( fullPath, null, null, null, text, "text/plain", null,
+        atmos.createObjectOnPath( fullPath, null, null, null, text, "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Creation successful" );
@@ -381,7 +381,7 @@ this.atmosApi = {
         var filename = "/" + specialCharacterName + "/test123.stu";
         atmos.debug( "Filename: " + filename );
 
-        atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", null,
+        atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + filename + ")" );
@@ -410,7 +410,7 @@ this.atmosApi = {
         var filename = "/" + specialCharacterName + "/test2123.stu";
         atmos.debug( "Filename: " + filename );
 
-        atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", null,
+        atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + filename + ")" );
@@ -448,7 +448,7 @@ this.atmosApi = {
         var groupAccess = new AclEntry( AclEntry.GROUPS.OTHER, AclEntry.ACL_PERMISSIONS.READ );
         var acl = new Acl( [myAccess], [groupAccess] );
 
-        atmos.createObject( acl, null, null, "Hello World!", "text/plain", null,
+        atmos.createObject( acl, null, null, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
@@ -473,7 +473,7 @@ this.atmosApi = {
         this.atmos.info( "atmosApi.testGetSystemMetadata" );
 
         test.expect( 7 );
-        atmos.createObject( null, null, null, "Hello World!", "text/plain", null,
+        atmos.createObject( null, null, null, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
@@ -500,7 +500,7 @@ this.atmosApi = {
         atmos.info( "atmosApi.testSetUserMetadata" );
 
         test.expect( 11 );
-        atmos.createObject( null, null, null, "Hello World!", "text/plain", null,
+        atmos.createObject( null, null, null, "Hello World!", "text/plain", false, null,
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
@@ -545,7 +545,7 @@ this.atmosApi = {
 
         var meta = {foo:"bar", foo2:"baz"};
         var listableMeta = {listable:""};
-        atmos.createObject( null, meta, listableMeta, "Hello World!", "text/plain", null, function( result ) {
+        atmos.createObject( null, meta, listableMeta, "Hello World!", "text/plain", false, null, function( result ) {
             test.ok( result.success, "Request successful" );
             test.ok( result.objectId != null, "Object ID not null" );
             test.equal( result.httpCode, 201, "HttpCode correct" );
