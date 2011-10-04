@@ -46,7 +46,7 @@ var ENTRY_TYPE = {
         var currentLocation = this.locationBar.currentLocation;
         var path = this._makeDirectory( currentLocation + name );
         var browser = this;
-        this.atmos.createObjectOnPath( path, null, null, null, null, null, null, function( result ) {
+        this.atmos.createObjectOnPath( path, null, null, null, null, null, false, null, function( result ) {
             if ( result.success ) {
                 browser.fileList.addRow( new FileRow( browser.fileList, {name: name, path: path, type: ENTRY_TYPE.DIRECTORY} ) );
             } else {
@@ -123,10 +123,17 @@ var ENTRY_TYPE = {
             (function( file, path, fileRow ) {
                 reader.onload = function( event ) {
                     var content = event.target.result;
-                    browser.atmos.createObjectOnPath( path, null, null, null, content, file.type || 'application/octet-stream', null,
+                    browser.atmos.createObjectOnPath( path, null, null, null, content, (file.type || 'application/octet-stream'), true, null,
                         function( result ) {
                             if ( result.success ) {
-                                fileRow.hideStatus();
+                                browser.atmos.getSystemMetadata( path, null, null, function( result2 ) {
+                                    if ( result2.success ) {
+                                        fileRow.updateEntry( {name: file.name, path: path, systemMeta: result2.systemMeta, type: ENTRY_TYPE.REGULAR} );
+                                        fileRow.hideStatus();
+                                    } else {
+                                        browser.error( result2.dump() );
+                                    }
+                                } );
                             } else {
                                 browser.error( result.dump() );
                                 fileRow.remove();
@@ -250,16 +257,16 @@ var ENTRY_TYPE = {
             event.preventDefault();
         } );
 
-        this.$body[0].addEventListener( 'dragover', function( event ) {
+        this.$body[0].ondragover = function( event ) {
             event.stopPropagation();
             event.preventDefault();
-        } );
+        };
 
-        this.$body[0].addEventListener( 'drop', function( event ) {
+        this.$body[0].ondrop = function( event ) {
             event.stopPropagation();
             event.preventDefault();
             fileList.browser.dropFiles( event );
-        } );
+        };
 
         // sortable columns
         this.$header.find( '.cell' ).each( function() {
@@ -335,11 +342,11 @@ var ENTRY_TYPE = {
     }
 
     FileRow.prototype.updateEntry = function( entry ) {
-        var size = entry.size || '';
-        if ( entry.type !== ENTRY_TYPE.DIRECTORY && entry.systemMeta ) size = entry.systemMeta.size || 'n/a';
+        this.size = entry.size || '';
+        if ( entry.type !== ENTRY_TYPE.DIRECTORY && entry.systemMeta ) this.size = entry.systemMeta.size || 'n/a';
 
         this.$name.text( entry.name );
-        this.$size.text( size );
+        this.$size.text( this.size );
         this.$type.text( entry.type );
         this.entry = entry;
     };
@@ -354,7 +361,7 @@ var ENTRY_TYPE = {
         this.$status.text( fraction + "%" );
     };
     FileRow.prototype.hideStatus = function() {
-        this.updateEntry( this.entry );
+        this.$size.html( this.size );
         this.interactive = true;
     };
     FileRow.prototype.remove = function() {
