@@ -75,6 +75,20 @@ if ( typeof(require) != 'undefined' ) {
         };
     }
 
+    if ( typeof XMLHttpRequest.prototype.sendAsBinary != "function" ) { // Chrome 9
+        // http://javascript0.org/wiki/Portable_sendAsBinary
+        XMLHttpRequest.prototype.sendAsBinary = function( text ) {
+            var data = new ArrayBuffer( text.length );
+            var ui8a = new Uint8Array( data, 0 );
+            for ( var i = 0; i < text.length; i++ ) ui8a[i] = (text.charCodeAt( i ) & 0xff);
+
+            var bb = new BlobBuilder(); // doesn't exist in Firefox 4
+            bb.append( data );
+            var blob = bb.getBlob();
+            this.send( blob );
+        }
+    }
+
 }
 
 
@@ -220,12 +234,13 @@ AtmosRest.prototype.context = "/rest";
  * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
  * @param {String} data the data for the new object.
  * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
+ * @param {Boolean} binary true if data is binary.
  * @param {Object} state the user-defined state object passed to the callback
  * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
  * where result will be an AtmosResult object.  The created Object ID will be in the objectId field of the result object.
  * @param {function} progressCallback the (optional) callback for progress updates (i.e. status bar)
  */
-AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback ) {
+AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mimeType, binary, state, successCallback, progressCallback ) {
 
     var headers = new Object();
     var me = this;
@@ -234,7 +249,7 @@ AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mime
     this._processMeta( meta, headers, false );
     this._processMeta( listableMeta, headers, true );
 
-    this._restPost( this.context + '/objects', headers, data, null, mimeType, state, successCallback, function( xhr, state, callback ) {
+    this._restPost( this.context + '/objects', headers, data, null, mimeType, binary, state, successCallback, function( xhr, state, callback ) {
         me._createObjectHandler( xhr, state, callback );
     }, progressCallback );
 
@@ -254,7 +269,7 @@ AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mime
  * where result will be an AtmosResult object.  The created Object ID will be in the objectId field of the result object.
  * @param {function} progressCallback the (optional) callback for progress updates (i.e. status bar)
  */
-AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback ) {
+AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta, data, mimeType, binary, state, successCallback, progressCallback ) {
     if ( !AtmosRest.objectPathMatch.test( path ) ) {
         throw "The path '" + path + "' is not valid";
     }
@@ -265,7 +280,7 @@ AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta
     this._processMeta( meta, headers, false );
     this._processMeta( listableMeta, headers, true );
 
-    this._restPost( this._getPath( path ), headers, data, null, mimeType, state, successCallback, function( xhr, state, callback ) {
+    this._restPost( this._getPath( path ), headers, data, null, mimeType, binary, state, successCallback, function( xhr, state, callback ) {
         me._createObjectHandler( xhr, state, callback );
     }, progressCallback );
 
@@ -408,7 +423,7 @@ AtmosRest.prototype.setUserMetadata = function( id, meta, listableMeta, state, c
     this._processMeta( listableMeta, headers, true );
 
     var me = this;
-    this._restPost( this._getPath( id ) + "?metadata/user", headers, null, null, null, state, callback, function( xhr, state, callback ) {
+    this._restPost( this._getPath( id ) + "?metadata/user", headers, null, null, null, false, state, callback, function( xhr, state, callback ) {
         me._genericHandler( xhr, state, callback );
     } );
 };
@@ -554,7 +569,7 @@ AtmosRest.prototype._processTags = function( tags, headers ) {
  * Compiles a list of metadata into a header value
  */
 AtmosRest.prototype._processMeta = function( meta, headers, listable ) {
-    if ( meta == null ) {
+    if ( meta == null || Object.keys( meta ).length == 0 ) {
         return;
     }
     if ( listable ) {
@@ -619,7 +634,7 @@ AtmosRest.prototype._addListOptions = function( headers, options ) {
  * @param {function} handler the response processing handler function
  * @param {function} progress an optional function to track upload progress
  */
-AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, state, callback, handler, progressCallback ) {
+AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, binary, state, callback, handler, progressCallback ) {
     headers["x-emc-date"] = new Date().toGMTString();
     if ( mimeType == "" || mimeType == undefined ) {
         mimeType = "text/plain; charset=UTF-8";
@@ -637,7 +652,7 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, s
     this._ajax( {
         url: this._encodeURI( uri ),
         data: data,
-        dataType: "text",
+        binary: binary,
         processData: false,
         mimeType: mimeType,
         beforeSend: function( jqXHR, settings ) {
@@ -746,9 +761,11 @@ AtmosRest.prototype._ajax = function( options ) {
         xhr.setRequestHeader( "Content-Type", options.mimeType );
     }
 
-
     if ( options.data ) {
-        xhr.send( options.data );
+        if ( options.binary )
+            xhr.sendAsBinary( options.data );
+        else
+            xhr.send( options.data );
     } else {
         xhr.send();
     }
