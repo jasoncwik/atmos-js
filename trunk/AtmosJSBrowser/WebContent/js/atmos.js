@@ -286,6 +286,34 @@ AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta
 
 };
 
+/**
+ * Renames a file or directory within the namespace.
+ * @param {String} oldPath The file or directory to rename
+ * @param {String} newPath The new path for the file or directory
+ * @param {Boolean} force If true, the desination file or
+ * directory will be overwritten.  Directories must be empty to be
+ * overwritten.  Also note that overwrite operations on files are
+ * not synchronous; a delay may be required before the object is
+ * available at its destination.
+ * @param {Object} state the user-defined state object passed to the callback
+ * @param {function} callback the completion callback (both error and success).
+ */
+AtmosRest.prototype.rename = function( oldPath, newPath, force, state, callback ) {
+    if ( !AtmosRest.objectPathMatch.test( newPath ) ) {
+        throw "The path '" + path + "' is not valid";
+    }
+    var headers = new Object();
+
+    headers["x-emc-path"] = newPath.substr( 1 );
+    if ( force ) {
+        headers["x-emc-force"] = "true";
+    }
+
+    var me = this;
+    this._restPost( this._getPath( oldPath ) + "?rename", headers, null, null, null, false, state, callback, function( xhr, state, callback ) {
+        me._genericHandler( xhr, state, callback );
+    } );
+};
 
 /**
  * Creates a shareable URL that anyone (globally) can access.
