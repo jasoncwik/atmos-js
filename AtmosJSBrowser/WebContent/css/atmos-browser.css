@@ -1,6 +1,13 @@
 .atmosBrowser {
     padding: 4px;
     box-shadow: 3px 3px 5px #777;
+    border-collapse: collapse;
+}
+
+.atmosButtonBar {
+    background-color: #eee;
+    border: 1px outset #eee;
+    padding: 2px 4px;
 }
 
 .atmosLocation {
@@ -9,7 +16,7 @@
 }
 
 .atmosLocationField {
-    width: 85%;
+    width: 75%;
     margin: 0 4px 0 0;
     font-size: 10pt;
 }
@@ -18,15 +25,17 @@
     display: inline-block;
     width: auto;
     margin: 0 4px;
-    padding: 1px 4px;
-    border: 1.5pt solid gray;
-    border-radius: 4px;
-    background-color: #ffff99;
-    font-size: 10pt;
-    font-weight: bold;
+    padding: 3px 4px;
+    border: 1pt outset #ddd;
+    border-radius: 3px;
+    background-color: #ddd;
+    box-shadow: 1px 1px 2px #aaa;
+    font-family: arial, sans-serif;
+    font-size: 8pt;
+    font-weight: 600;
     text-align: center;
-    text-transform: uppercase;
-    cursor: default;
+    text-transform: capitalize;
+    cursor: pointer;
 }
 
 .atmosFileList {
@@ -101,7 +110,7 @@
     width: 100%;
     height: 100%;
     background-color: #fff;
-    opacity: 0.6;
+    opacity: 0.7;
     z-index: 1000;
 }
 

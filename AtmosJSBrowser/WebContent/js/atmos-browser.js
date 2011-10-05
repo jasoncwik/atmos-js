@@ -163,6 +163,27 @@ var ENTRY_TYPE = {
             }
         } );
     };
+    AtmosBrowser.prototype.renameSelectedItem = function() {
+        var selectedRow = this.fileList.getSelectedRow();
+        var name = prompt( 'What name would you like to give this item?', '' );
+        while ( name != null && !this._validName( name ) ) {
+            alert( 'That is not a valid name.\nNote: the characters \'?\' and \'@\' cannot be used in a name.' );
+            name = prompt( 'What name would you like to give this item?', name );
+        }
+        if ( name == null ) return;
+        var currentLocation = this.locationBar.currentLocation;
+        var path = this._makeDirectory( currentLocation + name );
+        var browser = this;
+        this.atmos.rename( selectedRow.entry.path, path, false, null, function( result ) {
+            if ( result.success ) {
+                selectedRow.entry.path = path;
+                selectedRow.entry.name = name;
+                selectedRow.updateEntry( selectedRow.entry );
+            } else {
+                browser.error( result.dump() );
+            }
+        } )
+    };
     AtmosBrowser.prototype.error = function( message ) {
         alert( message );
     };
@@ -198,13 +219,18 @@ var ENTRY_TYPE = {
     function LocationBar( atmosBrowser ) {
         this.browser = atmosBrowser;
         this.$root = $( '<div class="atmosLocation" />' );
+        this.$upperBar = $( '<div class="atmosButtonBar" />' );
+        this.$lowerBar = $( '<div class="atmosButtonBar" />' );
         this.$field = $( '<input type="text" class="atmosLocationField" />' );
         this.$goButton = $( '<div class="atmosButton" />' ).text( 'Go' );
-        this.$deleteButton = $( '<div class="atmosButton" />' ).text( 'X' ).attr( 'title', 'Delete selected item' );
-        this.$createDirectoryButton = $( '<div class="atmosButton" />' ).text( '+' ).attr( 'title', 'Create directory' );
-        this.$propertiesButton = $( '<div class="atmosButton" />' ).text( '...' ).attr( 'title', 'Properties of selected item' );
+        this.$createDirectoryButton = $( '<div class="atmosButton" />' ).text( 'Create' ).attr( 'title', 'Create directory' );
+        this.$deleteButton = $( '<div class="atmosButton" />' ).text( 'Delete' ).attr( 'title', 'Delete selected item' );
+        this.$renameButton = $( '<div class="atmosButton" />' ).text( 'Rename' ).attr( 'title', 'Rename selected item' );
+        this.$propertiesButton = $( '<div class="atmosButton" />' ).text( 'Properties' ).attr( 'title', 'Properties of selected item' );
 
-        this.$root.append( this.$field ).append( this.$deleteButton ).append( this.$createDirectoryButton ).append( this.$propertiesButton );
+        this.$upperBar.append( this.$field ).append( this.$goButton ).append( this.$createDirectoryButton );
+        this.$lowerBar.append( this.$deleteButton ).append( this.$renameButton ).append( this.$propertiesButton );
+        this.$root.append( this.$upperBar ).append( this.$lowerBar );
 
         var locationBar = this;
         this.$field.keypress(
@@ -220,11 +246,14 @@ var ENTRY_TYPE = {
         this.$goButton.click( function() {
             locationBar.browser.openDirectory( locationBar.$field.val() );
         } );
+        this.$createDirectoryButton.click( function() {
+            locationBar.browser.createDirectory();
+        } );
         this.$deleteButton.click( function() {
             locationBar.browser.deleteSelectedItem();
         } );
-        this.$createDirectoryButton.click( function() {
-            locationBar.browser.createDirectory();
+        this.$renameButton.click( function() {
+            locationBar.browser.renameSelectedItem();
         } );
         this.$propertiesButton.click( function() {
             locationBar.browser.viewSelectedItemProperties();
@@ -316,6 +345,7 @@ var ENTRY_TYPE = {
         this.$size = $( '<div class="cell atmosFileSize" />' );
         this.$type = $( '<div class="cell atmosFileType" />' );
         this.$status = $( '<div class="atmosStatusBar" />' );
+        this.contextMenu = new ContextMenu( fileList.browser );
         this.interactive = true;
 
         this.$root.append( this.$name ).append( this.$size ).append( this.$type );
@@ -328,6 +358,15 @@ var ENTRY_TYPE = {
                 fileList.selectRow( fileRow );
             }
         } );
+        // right-click behavior
+        this.$root[0].oncontextmenu = function( event ) {
+            if ( fileRow.interactive ) {
+                event.stopPropagation();
+                event.preventDefault();
+                fileRow.contextMenu.show();
+            }
+        };
+
         this.$root.dblclick( function( event ) {
             event.stopPropagation();
             event.preventDefault();
@@ -388,6 +427,41 @@ var ENTRY_TYPE = {
 
         this.hide();
     }
+
+    function ContextMenu( browser ) {
+        this.fileRow = fileRow;
+        this.$root = $( '<div class="atmosContextMenu" />' );
+
+        this.addOption( 'Open', function() {
+            browser.openSelectedItem();
+        } );
+        this.createOption( 'Save-As', function() {
+            alert( 'TODO: implement' ) // TODO: implement
+        } );
+        this.createOption( 'Rename', function() {
+            browser.renameSelectedItem();
+        } );
+        this.createOption( 'Delete', function() {
+            browser.deleteSelectedItem();
+        } );
+        this.createOption( 'Properties', function() {
+            browser.viewSelectedItemProperties();
+        } );
+    }
+
+    ContextMenu.prototype.createOption = function( name, callback ) {
+        var $option = $( '<div class="atmosContextMenuOption" />' ).text( name );
+        $option.click( function() {
+            callback();
+        } )
+        this.$root.append( $option );
+    };
+    ContextMenu.prototype.show = function() {
+        this.$root.show();
+    };
+    ContextMenu.prototype.hide = function() {
+        this.$root.hide();
+    };
 
     ModalWindow.prototype.show = function() {
         this.$background.show();
@@ -503,9 +577,11 @@ var ENTRY_TYPE = {
         this.editable = editable;
         this.$root = $( '<div class="atmosPropertiesTableWrapper" />' );
         this.$tableTitle = $( '<div class="atmosPropertiesTableTitle" />' ).text( title );
-        this.$addButton = $( '<div class="atmosButton" />' ).text( "+" );
+        this.$addButton = $( '<div class="atmosButton" />' ).text( 'Add' );
         this.$table = $( '<div class="atmosPropertiesTable" />' );
-        this.$root.append( this.$tableTitle ).append( this.$addButton ).append( this.$table );
+        this.$root.append( this.$tableTitle );
+        if ( editable ) this.$root.append( this.$addButton )
+        this.$root.append( this.$table );
         for ( var prop in properties ) {
             if ( !properties.hasOwnProperty( prop ) ) continue;
             this.$table.append( new Property( prop, properties[prop], editable ).$root );
@@ -545,7 +621,7 @@ var ENTRY_TYPE = {
         } else {
             this.$root = $( '<div class="row"><h4 class="cell atmosPropertyName">' + name + '</h4><div class="cell atmosPropertyValue">' + value + '</div></div>' );
         }
-        this.$deleteButton = $( '<div class="atmosButton" />' ).text( 'X' );
+        this.$deleteButton = $( '<div class="atmosButton" />' ).text( 'Delete' );
         if ( editable ) this.$root.append( $( '<div class="cell" />' ).append( this.$deleteButton ) );
 
         var property = this;
