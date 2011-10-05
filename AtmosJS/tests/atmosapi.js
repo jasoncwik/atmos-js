@@ -576,6 +576,41 @@ this.atmosApi = {
                 } );
             } );
         } );
+    },
+
+    'testRename': function( test ) {
+        atmos.info( "atmosApi.testRename" );
+
+        test.expect( 8 );
+
+        var filename = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+        atmos.debug( "Filename: " + filename );
+
+        atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", false, null,
+            function( result ) {
+
+                test.ok( result.success, "Request successful (" + filename + ")" );
+                test.ok( result.objectId != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                this.cleanup.push( result.objectId );
+
+                // rename the object
+                var newName = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+                atmos.rename( filename, newName, false, null, function( result2 ) {
+                    test.ok( result2.success, "Request successful" );
+                    test.equal( result2.httpCode, 200, "HttpCode correct" );
+
+                    // Read the object back and verify content
+                    atmos.readObject( newName, null, null, function( result3 ) {
+                        test.ok( result3.success, "Request successful" );
+                        test.equal( result3.httpCode, 200, "HttpCode correct" );
+                        test.equal( result3.data, "Hello World!", "Data correct" );
+                        test.done();
+                    } );
+                } );
+            } );
     }
 
 };
@@ -586,8 +621,8 @@ cleanupTest = {
         atmos.info( "cleanupTest.testCleanup" );
         this.cleanupCount = 0;
 
-        this.cleanup.push( "/" + directoryName );
         this.cleanup.push( "/" + specialCharacterName );
+        this.cleanup.push( "/" + directoryName );
 
         test.expect( this.cleanup.length );
 
