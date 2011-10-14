@@ -1,17 +1,37 @@
 .atmosBrowser {
-    padding: 4px;
-    box-shadow: 3px 3px 5px #777;
+    position: relative;
+    background-color: #e8e8e8;
     border-collapse: collapse;
+    font: 10pt arial, sans-serif;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    box-shadow: 2px 3px 5px #555;
+}
+
+.atmosTitleBar {
+    height: 18px;
+    background: -webkit-linear-gradient(top, #aaa, #000);
+    background: -moz-linear-gradient(top, #aaa, #000);
+    background: -ms-linear-gradient(top, #aaa, #000);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding: 8px 10px;
+    font: bold 11pt arial, sans-serif;
+    color: #fff;
+    cursor: default;
+}
+
+.atmosTitle {
+    display: inline-block;
+    overflow: hidden;
 }
 
 .atmosButtonBar {
-    background-color: #eee;
-    border: 1px outset #eee;
-    padding: 2px 4px;
+    height: 22px;
+    padding: 3px 6px;
 }
 
-.atmosLocation {
-    padding: 2px;
+.atmosToolBar {
     margin-bottom: 4px;
 }
 
@@ -21,65 +41,106 @@
     font-size: 10pt;
 }
 
+.atmosUploadField {
+    cursor: pointer;
+}
+
+.atmosLabel {
+    display: inline-block;
+    padding: 3px 6px;
+}
+
 .atmosButton {
     display: inline-block;
     width: auto;
+    background: -webkit-linear-gradient(top, #fff, #ccc);
+    background: -moz-linear-gradient(top, #fff, #ccc);
+    background: -ms-linear-gradient(top, #fff, #ccc);
     margin: 0 4px;
     padding: 3px 4px;
-    border: 1pt outset #ddd;
-    border-radius: 3px;
-    background-color: #ddd;
-    box-shadow: 1px 1px 2px #aaa;
-    font-family: arial, sans-serif;
-    font-size: 8pt;
-    font-weight: 600;
+    border: 1pt solid #777;
+    border-radius: 4px;
+    vertical-align: top;
+    font: bold 8pt arial, sans-serif;
+    color: #444;
     text-align: center;
     text-transform: capitalize;
     cursor: pointer;
 }
 
 .atmosFileList {
+    position: absolute;
+    top: 90px;
+    bottom: 0;
     width: 100%;
+    height: auto;
     cursor: default;
 }
 
-.atmosFileList div.head {
-    margin-right: 15px;
+.atmosFileList .head {
+    margin-left: 23px;
 }
 
-.atmosFileList div.body {
-    overflow-y: scroll;
-}
-
-.atmosFileList div.table {
+.atmosFileList .body {
+    position: absolute;
+    top: 22px;
+    bottom: 0;
     width: 100%;
     height: auto;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+.atmosBrowser .table,
+.atmosModalWindow .table {
+    width: 100%;
     display: table;
 }
 
-.atmosFileList div.row {
+.atmosBrowser .table .row,
+.atmosModalWindow .table .row {
     display: table-row;
+    background-color: #fff;
 }
 
-.atmosFileList div.row .cell {
+.atmosBrowser .table .row:nth-child(even),
+.atmosModalWindow .table .row:nth-child(even) {
+    background-color: #f0f0f0;
+}
+
+.atmosBrowser .table .row .cell,
+.atmosModalWindow .table .row .cell {
     display: table-cell;
-    padding: 2px 4px;
-    font: bold 10pt Courier New;
+    border: 1px solid #ccc;
+    padding: 2px 6px;
     overflow: hidden;
+    vertical-align: middle;
 }
 
-.atmosFileList div.row h4.cell {
-    background-color: #dddddd;
-    border-right: 2px solid white;
+.atmosBrowser .table .row h4.cell,
+.atmosModalWindow .table .row h4.cell {
+    background: -webkit-linear-gradient(top, #fff, #ddd);
+    background: -moz-linear-gradient(top, #fff, #ddd);
+    background: -ms-linear-gradient(top, #fff, #ddd);
+    border: 1px solid #aaa;
+    padding: 3px 6px;
     font: bold 10pt arial, sans-serif;
 }
 
-.atmosFileList div.row h4:last-of-type {
-    border-right: none;
+.atmosBrowser .table .row.selected,
+.atmosModalWindow .table .row.selected {
+    color: #fff;
+    background-color: #06c;
+}
+
+.atmosBrowser .table .row .atmosFileIcon {
+    width: 20px;
+    padding: 1px;
 }
 
 .atmosFileName {
     width: auto;
+    min-width: 150px;
 }
 
 .atmosFileSize {
@@ -91,17 +152,80 @@
     text-transform: capitalize;
 }
 
-.atmosFileList .selected {
-    color: #fff;
-    background-color: #06c;
-}
-
 .atmosStatusBar {
     width: 0;
-    height: 18px;
+    height: 15px;
     background-color: #85c2ff;
     text-align: center;
 }
+
+/* Icons */
+.atmosFileList .cell .icon {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    -webkit-background-size: contain;
+    -moz-background-size: contain;
+    -ms-background-size: contain;
+    backround-size: contain;
+    background-repeat: no-repeat;
+    vertical-align: middle;
+}
+
+.atmosFileList .cell .icon.directory {
+    background-image: url(../images/folder.png);
+}
+
+.atmosFileList .cell .icon.regular {
+    background-image: url(../images/document.png);
+}
+
+.atmosFileList .cell .icon.doc {
+    background-image: url(../images/doc.png);
+}
+
+.atmosFileList .cell .icon.gif {
+    background-image: url(../images/gif.png);
+}
+
+.atmosFileList .cell .icon.jpg,
+.atmosFileList .cell .icon.jpeg {
+    background-image: url(../images/jpg.png);
+}
+
+.atmosFileList .cell .icon.mov {
+    background-image: url(../images/mov.png);
+}
+
+.atmosFileList .cell .icon.mp4 {
+    background-image: url(../images/mp4.png);
+}
+
+.atmosFileList .cell .icon.pdf {
+    background-image: url(../images/pdf.png);
+}
+
+.atmosFileList .cell .icon.png {
+    background-image: url(../images/png.png);
+}
+
+.atmosFileList .cell .icon.ppt {
+    background-image: url(../images/ppt.png);
+}
+
+.atmosFileList .cell .icon.txt {
+    background-image: url(../images/txt.png);
+}
+
+.atmosFileList .cell .icon.wmv {
+    background-image: url(../images/wmv.png);
+}
+
+.atmosFileList .cell .icon.xls {
+    background-image: url(../images/xls.png);
+}
+
+/* END Icons */
 
 .atmosModalBackground {
     position: fixed;
@@ -111,38 +235,33 @@
     height: 100%;
     background-color: #fff;
     opacity: 0.7;
+    filter: alpha(opacity = 70);
     z-index: 1000;
 }
 
 .atmosModalWindow {
     position: fixed;
-    top: 200px;
-    left: 300px;
+    top: 50%;
+    left: 50%;
     width: 500px;
-    background-color: #fff;
-    border: 1px solid black;
-    box-shadow: 3px 3px 5px #555;
+    margin-top: -175px;
+    margin-left: -250px;
+    border: 1px solid #555;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-collapse: collapse;
+    box-shadow: 2px 3px 5px #555;
+    background-color: #e8e8e8;
     z-index: 10000;
-}
-
-.atmosModalWindowTitleBar {
-    background-color: #bbb;
-    padding: 3px 5px;
-    cursor: default;
-}
-
-.atmosModalWindowTitle {
-    display: inline-block;
-    overflow: hidden;
-    font: bold 10pt sans-serif;
-    color: #333;
 }
 
 .atmosModalWindow .closeButton {
     display: inline-block;
     float: right;
+    margin-top: -4px;
     font: bold 12pt sans-serif;
     color: #333;
+    cursor: pointer;
 }
 
 .atmosModalWindowContent {
@@ -158,58 +277,64 @@
 
 .atmosPropertiesTableWrapper {
     clear: both;
-    border: 1px inset #999;
     padding: 4px;
-    margin-bottom: 6px;
+    margin: 4px 0 6px 0;
 }
 
 .atmosPropertiesTableTitle {
-    float: left;
-    border-bottom: 1px solid black;
-    margin-bottom: 5px;
+    display: inline-block;
+    margin: 6px 8px 0px 4px;
+    font-weight: bold;
+    font-size: 10pt;
 }
 
-.atmosPropertiesTable {
-    display: table;
-}
-
-.atmosPropertiesTable .row {
-    display: table-row;
-}
-
-.atmosPropertiesTable .row .cell {
-    display: table-cell;
-    padding: 2px 4px;
+.atmosModalWindow .atmosPropertiesTable {
+    margin-top: 4px;
 }
 
 .atmosPropertyName {
-    width: 150px;
-    overflow: hidden;
+    width: 25%;
 }
 
 .atmosPropertyValue {
-    width: 250px;
+    width: auto;
+}
+
+input.atmosPropertyValue {
+    width: 98%;
+}
+
+.atmosModalWindow .table .row .atmosPropertyButton {
+    width: 10%;
+    background-color: #e8e8e8;
+    border: none;
+    padding: 0;
+}
+
+.atmosExpirationDate {
+    width: 100px;
+}
+
+.atmosShareInstructions {
+    margin: 10px 0;
+    padding: 3px 6px;
+    font-size: 9pt;
+    line-height: 110%;
+}
+
+.atmosShareUrl {
+    min-height: 50px;
+    background-color: #fff;
+    margin: 2px;
+    border: 1px solid black;
+    padding: 5px 8px;
+    font-size: 9pt;
+    word-wrap: break-word;
 }
 
 .transparent {
     opacity: 0.5;
-}
-
-.atmosLoginFrame {
-    width: 400px;
-}
-
-.atmosLoginTable {
-    display: table;
-}
-
-.atmosLoginTable .row {
-    display: table-row;
-}
-
-.atmoslogintable .row .cell {
-    display: table-cell;
-    padding: 2px 4px;
+    filter: alpha(opacity = 50);
 }
 
 .atmosCredentialName {
@@ -218,4 +343,29 @@
 
 .atmosCredentialValue {
     width: 250px;
+}
+
+.atmosContextMenu {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: auto;
+    padding: 3px 0;
+    background-color: #e8e8e8;
+    border-radius: 3px;
+    box-shadow: 2px 2px 2px #777;
+    cursor: default;
+}
+
+.atmosContextMenuOption {
+    padding: 2px 3px;
+    font: 9pt arial, sans-serif;
+    color: black;
+    cursor: pointer;
+}
+
+.atmosContextMenuOption:hover {
+    color: #fff;
+    background-color: #06c;
 }

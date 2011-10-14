@@ -57,40 +57,52 @@ if ( typeof(require) != 'undefined' ) {
     }
 
     //////////////////////////////////////////////////
-    // dump function for use in debugging           //
-    // (recursive)                                  //
+    // Object function backported                   //
+    // Needed by some browsers                      //
     //////////////////////////////////////////////////
-    if ( !Object.prototype.dump ) {
-        Object.prototype.dump = function() {
-            var output = "[";
-            for ( var property in this ) {
-                if ( !this.hasOwnProperty( property ) ) continue;
-                var value = this[property];
-                if ( typeof(value) === 'object' && value != null ) value = value.dump();
-                output += property + "=" + value + ", ";
+    if ( !Object.keys ) {
+        Object.keys = function( obj ) {
+            var objKeys = [];
+            for ( var p in obj ) {
+                if ( !obj.hasOwnProperty( p ) ) continue;
+                objKeys.push( p );
             }
-            if ( output.length > 1 ) output = output.substr( 0, output.length - 2 );
-            output += "]";
-            return output;
+            return objKeys;
         };
     }
-
-    if ( typeof XMLHttpRequest.prototype.sendAsBinary != "function" ) { // Chrome 9
-        // http://javascript0.org/wiki/Portable_sendAsBinary
-        XMLHttpRequest.prototype.sendAsBinary = function( text ) {
-            var data = new ArrayBuffer( text.length );
-            var ui8a = new Uint8Array( data, 0 );
-            for ( var i = 0; i < text.length; i++ ) ui8a[i] = (text.charCodeAt( i ) & 0xff);
-
-            var bb = new BlobBuilder(); // doesn't exist in Firefox 4
-            bb.append( data );
-            var blob = bb.getBlob();
-            this.send( blob );
-        }
-    }
-
 }
 
+//////////////////////////////////////////////////
+// dump function for use in debugging           //
+// (recursive)                                  //
+//////////////////////////////////////////////////
+function dumpObject( object, maxLevel ) {
+    if ( typeof(maxLevel) == 'undefined' ) maxLevel = 1;
+    if ( maxLevel < 0 ) return object; // we've reached our max depth
+    var output = "[";
+    for ( var property in object ) {
+        if ( !object.hasOwnProperty( property ) ) continue;
+        var value = object[property];
+        if ( typeof(value) === 'object' && value != null ) value = dumpObject( value, maxLevel - 1 );
+        output += property + "=" + value + ", ";
+    }
+    if ( output.length > 1 ) output = output.substr( 0, output.length - 2 );
+    output += "]";
+    return output;
+}
+
+/**
+ * The AtmosRange object is used to specify a range of object data to store or retrieve.
+ * @param {Number} offset the byte offset within an object's data from which to start the range.
+ * @param {Number} size the number of bytes to include in the range.
+ */
+function AtmosRange( offset, size ) {
+    this.offset = offset;
+    this.size = size;
+}
+AtmosRange.prototype.toString = function() {
+    return 'bytes=' + this.offset + '-' + (this.offset + this.size - 1);
+};
 
 /**
  * The AtmosResult object is returned to all of the
@@ -232,7 +244,7 @@ AtmosRest.prototype.context = "/rest";
  * @param {Acl} acl an Acl for the new object.  If null, the object will get the default Acl.
  * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
  * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
- * @param {String} data the data for the new object.
+ * @param {Object} data the data for the new object (can be a String, Blob or File).
  * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
  * @param {Boolean} binary true if data is binary.
  * @param {Object} state the user-defined state object passed to the callback
@@ -240,7 +252,7 @@ AtmosRest.prototype.context = "/rest";
  * where result will be an AtmosResult object.  The created Object ID will be in the objectId field of the result object.
  * @param {function} progressCallback the (optional) callback for progress updates (i.e. status bar)
  */
-AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mimeType, binary, state, successCallback, progressCallback ) {
+AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback ) {
 
     var headers = new Object();
     var me = this;
@@ -249,7 +261,7 @@ AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mime
     this._processMeta( meta, headers, false );
     this._processMeta( listableMeta, headers, true );
 
-    this._restPost( this.context + '/objects', headers, data, null, mimeType, binary, state, successCallback, function( xhr, state, callback ) {
+    this._restPost( this.context + '/objects', headers, data, null, mimeType, state, successCallback, function( xhr, state, callback ) {
         me._createObjectHandler( xhr, state, callback );
     }, progressCallback );
 
@@ -262,14 +274,14 @@ AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mime
  * @param {Acl} acl an Acl for the new object.  If null, the object will get the default Acl.
  * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
  * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
- * @param {String} data the data for the new object.
+ * @param {Object} data the data for the new object (can be a String, Blob or File).
  * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
  * @param {Object} state the user-defined state object passed to the callback
  * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
  * where result will be an AtmosResult object.  The created Object ID will be in the objectId field of the result object.
  * @param {function} progressCallback the (optional) callback for progress updates (i.e. status bar)
  */
-AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta, data, mimeType, binary, state, successCallback, progressCallback ) {
+AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback ) {
     if ( !AtmosRest.objectPathMatch.test( path ) ) {
         throw "The path '" + path + "' is not valid";
     }
@@ -280,8 +292,37 @@ AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta
     this._processMeta( meta, headers, false );
     this._processMeta( listableMeta, headers, true );
 
-    this._restPost( this._getPath( path ), headers, data, null, mimeType, binary, state, successCallback, function( xhr, state, callback ) {
+    this._restPost( this._getPath( path ), headers, data, null, mimeType, state, successCallback, function( xhr, state, callback ) {
         me._createObjectHandler( xhr, state, callback );
+    }, progressCallback );
+
+};
+
+/**
+ * Updates an object in Atmos with the given ID.
+ *
+ * @param {String} id the object ID or namespace path in Atmos.
+ * @param {Acl} acl an Acl for the object.  May be null for no updates.
+ * @param {Object} meta regular Metadata for the object.  May be null for no updates.
+ * @param {Object} listableMeta listable Metadata for the object.  May be null for no updates.
+ * @param {Object} data the replacement data for the object (can be a String, Blob or File).
+ * @param {AtmosRange} range the range of the object to update, pass null to replace the entire object.
+ * @param {String} mimeType the mimeType for the object.  If null, the object will be assigned application/octet-stream.
+ * @param {Object} state the user-defined state object passed to the callback
+ * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
+ * where result will be an AtmosResult object. The result of this call will only contain status information.
+ * @param {function} progressCallback the (optional) callback for progress updates (i.e. status bar)
+ */
+AtmosRest.prototype.updateObject = function( id, acl, meta, listableMeta, data, range, mimeType, state, successCallback, progressCallback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._processAcl( acl, headers );
+    this._processMeta( meta, headers, false );
+    this._processMeta( listableMeta, headers, true );
+
+    this._restPut( this._getPath( id ), headers, data, range, mimeType, state, successCallback, function( xhr, state, callback ) {
+        me._genericHandler( xhr, state, callback );
     }, progressCallback );
 
 };
@@ -310,7 +351,7 @@ AtmosRest.prototype.rename = function( oldPath, newPath, force, state, callback 
     }
 
     var me = this;
-    this._restPost( this._getPath( oldPath ) + "?rename", headers, null, null, null, false, state, callback, function( xhr, state, callback ) {
+    this._restPost( this._getPath( oldPath ) + "?rename", headers, null, null, null, state, callback, function( xhr, state, callback ) {
         me._genericHandler( xhr, state, callback );
     } );
 };
@@ -435,7 +476,7 @@ AtmosRest.prototype.getSystemMetadata = function( id, filter, state, callback ) 
         function( xhr, state, callback ) {
             me._getSystemMetadataHandler( xhr, state, callback );
         } );
-}
+};
 /**
  * Sets the user metadata for an object.
  * @param {String} id the object identifier (either an Object ID or an Object Path)
@@ -451,7 +492,7 @@ AtmosRest.prototype.setUserMetadata = function( id, meta, listableMeta, state, c
     this._processMeta( listableMeta, headers, true );
 
     var me = this;
-    this._restPost( this._getPath( id ) + "?metadata/user", headers, null, null, null, false, state, callback, function( xhr, state, callback ) {
+    this._restPost( this._getPath( id ) + "?metadata/user", headers, null, null, null, state, callback, function( xhr, state, callback ) {
         me._genericHandler( xhr, state, callback );
     } );
 };
@@ -522,7 +563,7 @@ AtmosRest.prototype.listDirectory = function( directory, options, state, callbac
     if ( !directory ) {
         throw "Directory cannot be null";
     }
-    if ( directory.substr( -1 ) !== "/" ) {
+    if ( directory.charAt( directory.length - 1 ) !== "/" ) {
         throw "Directory must end with a slash";
     }
 
@@ -660,9 +701,9 @@ AtmosRest.prototype._addListOptions = function( headers, options ) {
  * @param {Object} state the user's state object
  * @param {function} callback the user's callback
  * @param {function} handler the response processing handler function
- * @param {function} progress an optional function to track upload progress
+ * @param {function} progressCallback an optional function to track upload progress
  */
-AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, binary, state, callback, handler, progressCallback ) {
+AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, state, callback, handler, progressCallback ) {
     headers["x-emc-date"] = new Date().toGMTString();
     if ( mimeType == "" || mimeType == undefined ) {
         mimeType = "text/plain; charset=UTF-8";
@@ -680,16 +721,62 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, b
     this._ajax( {
         url: this._encodeURI( uri ),
         data: data,
-        binary: binary,
         processData: false,
         mimeType: mimeType,
         beforeSend: function( jqXHR, settings ) {
-            setHeaders( jqXHR, headers );
+            setHeaders( jqXHR, headers, range );
         },
         error: function( jqXHR, textStatus, errorThrown ) {
             errorHandler( jqXHR, textStatus + " " + errorThrown, state, callback );
         },
         type: "POST",
+        success: function( textStatus, jqXHR ) {
+            handler( jqXHR, state, callback );
+        },
+        progress: progressCallback
+    } );
+
+};
+
+/**
+ * Performs a REST PUT operation
+ * @param {String} uri the request URI
+ * @param {Object} headers an object hash of the header values
+ * @param {String} data the content for the request
+ * @param {AtmosRange} range the HTTP range value, if required
+ * @param {String} mimeType the mimeType of the data
+ * @param {Object} state the user's state object
+ * @param {function} callback the user's callback
+ * @param {function} handler the response processing handler function
+ * @param {function} progressCallback an optional function to track upload progress
+ */
+AtmosRest.prototype._restPut = function( uri, headers, data, range, mimeType, state, callback, handler, progressCallback ) {
+    headers["x-emc-date"] = new Date().toGMTString();
+    if ( mimeType == "" || mimeType == undefined ) {
+        mimeType = "text/plain; charset=UTF-8";
+    }
+
+    // The browser will append this on the way out.  Do it ourselves
+    // so it gets into our signature.
+    if ( mimeType.indexOf( "charset" ) == -1 ) {
+        mimeType += "; charset=UTF-8";
+    }
+
+    this._signRequest( 'PUT', headers, mimeType, range, uri );
+    var errorHandler = this._handleError;
+    var setHeaders = this._setHeaders;
+    this._ajax( {
+        url: this._encodeURI( uri ),
+        data: data,
+        processData: false,
+        mimeType: mimeType,
+        beforeSend: function( jqXHR, settings ) {
+            setHeaders( jqXHR, headers, range );
+        },
+        error: function( jqXHR, textStatus, errorThrown ) {
+            errorHandler( jqXHR, textStatus + " " + errorThrown, state, callback );
+        },
+        type: "PUT",
         success: function( textStatus, jqXHR ) {
             handler( jqXHR, state, callback );
         },
@@ -747,7 +834,7 @@ AtmosRest.prototype._restGet = function( uri, headers, range, state, callback, h
         type: "GET",
         url: this._encodeURI( uri ),
         beforeSend: function( jqXHR, settings ) {
-            setHeaders( jqXHR, headers );
+            setHeaders( jqXHR, headers, range );
         },
         error: function( jqXHR, textStatus, errorThrown ) {
             errorHandler( jqXHR, textStatus + " " + errorThrown, state, callback );
@@ -770,16 +857,20 @@ AtmosRest.prototype._ajax = function( options ) {
 
     var xhr = this._getXMLHttpRequest();
     var me = this;
-    xhr.onreadystatechange = function( evt ) {
-        me._onreadystatechange( evt, options, xhr );
+    xhr.onreadystatechange = function( event ) {
+        me._onreadystatechange( event, options, xhr );
     };
-    (xhr.upload || xhr).addEventListener( "progress", function( evt ) {
-        if ( !options.progress ) return;
-        if ( evt.lengthComputable ) {
-            var progressPercent = Math.floor( (evt.position || evt.loaded) / (evt.totalSize || evt.total) * 100 );
-            options.progress( progressPercent );
-        }
-    } );
+    try {
+        (xhr.upload || xhr).onprogress = function( event ) {
+            if ( !options.progress ) return;
+            if ( event.lengthComputable ) {
+                var progressPercent = Math.floor( (event.position || event.loaded) / (event.totalSize || event.total) * 100 );
+                options.progress( progressPercent );
+            }
+        };
+    } catch( e ) {
+        // progress isn't supported
+    }
     xhr.open( options.type, options.url, true );
     if ( options.beforeSend ) {
         options.beforeSend( xhr, options );
@@ -790,10 +881,7 @@ AtmosRest.prototype._ajax = function( options ) {
     }
 
     if ( options.data ) {
-        if ( options.binary )
-            xhr.sendAsBinary( options.data );
-        else
-            xhr.send( options.data );
+        xhr.send( options.data );
     } else {
         xhr.send();
     }
@@ -819,11 +907,11 @@ AtmosRest.prototype._getXMLHttpRequest = function() {
 
 /**
  * Handles asynchronous events from XHR.
- * @param {Event} evt the XMLHttpRequest event
+ * @param {Event} event the XMLHttpRequest event
  * @param {Object} options the ajax options object
  * @param {XMLHttpRequest} xhr the request object
  */
-AtmosRest.prototype._onreadystatechange = function( evt, options, xhr ) {
+AtmosRest.prototype._onreadystatechange = function( event, options, xhr ) {
     if ( xhr.readyState == 4 ) {
         if ( xhr.status < 400 ) {
             options.success( xhr.statusText, xhr );
@@ -838,11 +926,12 @@ AtmosRest.prototype._onreadystatechange = function( evt, options, xhr ) {
  * @param {XMLHttpRequest} xhr the XMLHttpRequest
  * @param {Object} headers the property hash containing the header values to set
  */
-AtmosRest.prototype._setHeaders = function( xhr, headers ) {
+AtmosRest.prototype._setHeaders = function( xhr, headers, range ) {
     for ( var prop in headers ) {
         if ( !headers.hasOwnProperty( prop ) ) continue;
         xhr.setRequestHeader( prop, headers[prop] );
     }
+    if ( range ) xhr.setRequestHeader( "Range", range.toString() );
 };
 
 /**
@@ -1247,7 +1336,7 @@ AtmosRest.prototype._signRequest = function( method, headers, content_type, rang
     }
 
     emcheaders["x-emc-uid"] = this.atmosConfig.uid;
-    var hash_string = this._buildHashString( method, content_type, '',
+    var hash_string = this._buildHashString( method, content_type, range,
         headers["Date"], uri, emcheaders );
 
     this.debug( "HashString:\n" + hash_string );
@@ -1282,7 +1371,7 @@ AtmosRest.prototype._buildHashString = function( method, content_type, range, da
         string += "\n";
     }
     if ( range ) {
-        string += range + "\n";
+        string += range.toString() + "\n";
     } else {
         string += "\n";
     }
@@ -1419,6 +1508,7 @@ AtmosRest.prototype.error = function( message ) {
 ////////////////////////
 if ( typeof(exports) != 'undefined' ) {
     exports.AtmosRest = AtmosRest;
+    exports.AtmosRange = AtmosRange;
     exports.Acl = Acl;
     exports.AclEntry = AclEntry;
     exports.AtmosResult = AtmosResult;

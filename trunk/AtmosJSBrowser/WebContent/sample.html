@@ -23,27 +23,48 @@ Redistribution and use in source and binary forms, with or without modification,
 <head>
     <meta charset="UTF-8">
     <title>Atmos JS Browser</title>
+    <link href="css/reset.css" rel="stylesheet" type="text/css">
     <link href="css/atmos-browser.css" rel="stylesheet" type="text/css">
+    <link href="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/base/jquery-ui.css" rel="stylesheet"
+          type="text/css">
     <style type="text/css">
-        #atmosBrowser {
-            width: 95%;
-            height: 400px;
+        html {
+            height: 100%;
         }
+
+        body {
+            height: 97%;
+            margin: 0;
+            padding: 8px;
+            background-color: #ddd;
+        }
+
+        #atmosBrowser {
+            width: 100%;
+            height: 100%;
+            /*
+            width: 675px;
+            height: 500px;
+            */
+        }
+
     </style>
     <script type="text/javascript" src="js/crypto-min.js"></script>
     <script type="text/javascript" src="js/hmac-min.js"></script>
     <script type="text/javascript" src="js/sha1-min.js"></script>
     <script type="text/javascript" src="js/atmos.js"></script>
-    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
     <script type="text/javascript" src="js/jquery.sortElements.js"></script>
     <script type="text/javascript" src="js/atmos-browser.js"></script>
+    <script type="text/javascript" src="js/atmos-templates.js"></script>
     <script type="text/javascript">
         $( document ).ready( function() {
             $( '#atmosBrowser' ).atmosBrowser( {
+                title: "File Manager",
                 subtenant: "0bc871f97086456db2e803ccc172ccec",
                 user: "stu",
-                secret: "1ofJI8FYceLBTGvflJutDvc4uwc=",
+                secret: "",
                 location: '/stu/test/'
             } );
         } );
