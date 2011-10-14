@@ -241,6 +241,7 @@ AtmosBrowser.prototype.uploadFiles = function( files ) { // FileList (HTML5 File
                 var fileRow = browser.fileList.findRow( file.name );
                 if ( !fileRow ) fileRow = browser.fileList.createRow( {name: file.name, path: path, size: file.size, type: ENTRY_TYPE.REGULAR} );
                 fileRow.showStatus();
+                fileRow.setStatus( 0 );
                 var successF = function( result2 ) {
                     if ( result2.success ) {
 
