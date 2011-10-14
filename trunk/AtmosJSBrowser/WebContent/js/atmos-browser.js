@@ -151,7 +151,7 @@ AtmosBrowser.prototype.openDirectory = function( path ) {
                 if ( path === '/' && entry.name === 'apache' ) continue;
                 fileList.createRow( entry );
             }
-            fileList.sort( 0, false );
+            fileList.sort( 1, false );
         } else {
             browser.error( dumpObject( result ) );
         }
@@ -489,7 +489,7 @@ function FileList( parent, atmosBrowser ) {
             inverse = false;
 
         header[0].onclick = function() {
-            fileList.sort( index, inverse );
+            fileList.sort( index + 1, inverse );
             inverse = !inverse;
         };
     } );
