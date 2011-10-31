@@ -1030,6 +1030,7 @@ AtmosRest.prototype._getSystemMetadataHandler = function( jqXHR, state, callback
     result.httpCode = jqXHR.status;
     result.httpMessage = jqXHR.statusText;
     result.systemMeta = this._parseMetadata( jqXHR.getResponseHeader( "x-emc-meta" ) );
+    result.systemMeta.mimeType = jqXHR.getResponseHeader( "Content-Type" );
 
     callback( result );
 };
