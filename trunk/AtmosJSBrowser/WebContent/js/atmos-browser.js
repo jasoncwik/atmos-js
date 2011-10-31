@@ -523,6 +523,7 @@ function ContextMenu( entry, browser ) {
     var $moveOption = this.$root.find( '.moveOption' ).addClass( 'ATMOS_contextMenuOption' );
     var $shareOption = this.$root.find( '.shareOption' ).addClass( 'ATMOS_contextMenuOption' );
     var $propertiesOption = this.$root.find( '.propertiesOption' ).addClass( 'ATMOS_contextMenuOption' );
+    var $aclOption = this.$root.find( '.aclOption' ).addClass( 'ATMOS_contextMenuOption' );
 
     if ( $openOption.length > 0 ) $openOption[0].onclick = function() {
         browser.openSelectedItems();
@@ -552,6 +553,10 @@ function ContextMenu( entry, browser ) {
         browser.showProperties( entry );
         menu.$root.remove();
     };
+    if ( $aclOption.length > 0 ) $aclOption[0].onclick = function() {
+        browser.showAcl( entry );
+        menu.$root.remove();
+    }
 }
 jQuery( window ).mousedown( function( event ) {
     if ( !jQuery( event.target ).hasClass( 'ATMOS_contextMenuOption' ) ) jQuery( '.ATMOS_contextMenu' ).remove();
