@@ -76,7 +76,7 @@ Redistribution and use in source and binary forms, with or without modification,
             var browser = new AtmosBrowser( {
                         subtenant: "0bc871f97086456db2e803ccc172ccec",
                         user: "stu",
-                        secret: "",
+                        secret: "1ofJI8FYceLBTGvflJutDvc4uwc=",
                         location: "/stu/test"
                     }, {
                         // in-line templates (optional; replaces default templates)
@@ -134,9 +134,12 @@ Redistribution and use in source and binary forms, with or without modification,
         <div class="atmosFileList">
             <div class="head">
                 <div class="table">
-                    <div class="row"><h4 class="cell atmosFileName atmosFileNameHeader">Name</h4><h4
-                            class="cell atmosFileSize atmosFileSizeHeader">Size</h4><h4
-                            class="cell atmosFileType atmosFileTypeHeader">Type</h4></div>
+                    <div class="row">
+                        <h4 class="cell atmosIcon">&nbsp;</h4>
+                        <h4 class="cell atmosFileName atmosFileNameHeader">Name</h4>
+                        <h4 class="cell atmosFileSize atmosFileSizeHeader">Size</h4>
+                        <h4 class="cell atmosFileType atmosFileTypeHeader">Type</h4>
+                    </div>
                 </div>
             </div>
             <div class="body atmosDropTarget">
@@ -271,6 +274,7 @@ Redistribution and use in source and binary forms, with or without modification,
     <ul class="atmosDirectoryList">
         <li class="atmosDirectoryItem">%{name}</li>
     </ul>
+    <div class="atmosSelectedDisplay"></div>
     <div class="atmosButtonBar">
         <div class="atmosButton atmosSelectButton" title="Select">Select</div>
         <div class="atmosButton atmosCancelButton" title="Cancel">Cancel</div>

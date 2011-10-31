@@ -84,10 +84,6 @@
     cursor: default;
 }
 
-.atmosFileList .head {
-    margin-left: 23px;
-}
-
 .atmosFileList .body {
     position: absolute;
     top: 22px;
@@ -161,7 +157,7 @@
     background-color: #06c;
 }
 
-.atmosBrowser .table .row .atmosIcon {
+.atmosBrowser .table .row .cell.atmosIcon {
     width: 20px;
     padding: 1px;
 }
@@ -195,7 +191,7 @@
     -webkit-background-size: contain;
     -moz-background-size: contain;
     -ms-background-size: contain;
-    backround-size: contain;
+    background-size: contain;
     background-repeat: no-repeat;
     vertical-align: middle;
 }
@@ -430,6 +426,10 @@ input.atmosPropertyValue {
 .atmosDirectoryItem {
     padding: 2px 4px;
     cursor: default;
+}
+
+.atmosSelectedDisplay {
+    margin: 8px 12px;
 }
 
 [draggable=true] {
