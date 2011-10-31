@@ -766,6 +766,7 @@ function DirectoryPage( util, startPath, templateEngine, callback ) {
     this.$root = jQuery( this.templates.get( 'directoryPage' ).render( {}, ['.atmosDirectoryDisplay', '.atmosDirectoryList'] ) );
     this.$display = this.$root.find( '.atmosDirectoryDisplay' );
     this.$list = this.$root.find( '.atmosDirectoryList' ).empty();
+    this.$selectedDisplay = this.$root.find( '.atmosSelectedDisplay' );
 
     var $upButton = this.$root.find( '.atmosUpButton' );
     var $createButton = this.$root.find( '.atmosCreateButton' );
@@ -785,7 +786,7 @@ function DirectoryPage( util, startPath, templateEngine, callback ) {
     };
     if ( $selectButton.length > 0 ) $selectButton[0].onclick = function() {
         modalWindow.remove();
-        callback( page.currentPath );
+        callback( page.selectedPath );
     };
     if ( $cancelButton.length > 0 ) $cancelButton[0].onclick = function() {
         modalWindow.remove();
@@ -808,7 +809,9 @@ DirectoryPage.prototype.goTo = function( path ) {
             }
         }
         page.currentPath = path;
+        page.selectedPath = path;
         page.$display.text( path );
+        page.$selectedDisplay.text( path );
     } );
 };
 // adds a directory to the list in the UI. uses insert-sort
@@ -818,6 +821,8 @@ DirectoryPage.prototype.addDirectory = function( name ) {
     $item[0].onmousedown = function() {
         $item.parent().find( '.selected' ).removeClass( 'selected' );
         $item.addClass( 'selected' );
+        page.selectedPath = page.util.endWithSlash( page.currentPath + name );
+        page.$selectedDisplay.text( page.selectedPath );
     };
     $item[0].ondblclick = function() {
         page.goTo( page.currentPath + name );
