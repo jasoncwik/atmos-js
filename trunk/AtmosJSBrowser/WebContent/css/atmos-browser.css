@@ -31,18 +31,25 @@
     padding: 3px 6px;
 }
 
-.atmosToolBar {
-    margin-bottom: 4px;
-}
-
 .atmosLocationField {
     width: 75%;
     margin: 0 4px 0 0;
     font-size: 10pt;
 }
 
+.atmosUploadContainer {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+}
+
 .atmosUploadField {
     cursor: pointer;
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0.0;
+    filter: 'alpha(opacity = 0)'
 }
 
 .atmosLabel {
@@ -91,6 +98,22 @@
     overflow-x: hidden;
 }
 
+.atmosStatusMessage {
+    position: absolute;
+    left: 50%;
+    top: 3px;
+    width: 400px;
+    margin-left: -200px;
+    border: 1px solid black;
+    padding: 5px 10px;
+    background-color: #999;
+    text-align: center;
+}
+
+.atmosBrowser .body .dragTarget {
+    border: 1px solid #0f0;
+}
+
 .atmosBrowser .table,
 .atmosModalWindow .table {
     width: 100%;
@@ -106,6 +129,10 @@
 .atmosBrowser .table .row:nth-child(even),
 .atmosModalWindow .table .row:nth-child(even) {
     background-color: #f0f0f0;
+}
+
+.atmosBrowser .table .loading {
+    padding: 2px 8px;
 }
 
 .atmosBrowser .table .row .cell,
@@ -128,12 +155,13 @@
 }
 
 .atmosBrowser .table .row.selected,
-.atmosModalWindow .table .row.selected {
+.atmosModalWindow .table .row.selected,
+.atmosDirectoryItem.selected {
     color: #fff;
     background-color: #06c;
 }
 
-.atmosBrowser .table .row .atmosFileIcon {
+.atmosBrowser .table .row .atmosIcon {
     width: 20px;
     padding: 1px;
 }
@@ -255,7 +283,7 @@
     z-index: 10000;
 }
 
-.atmosModalWindow .closeButton {
+.atmosModalWindow .atmosCloseButton {
     display: inline-block;
     float: right;
     margin-top: -4px;
@@ -271,17 +299,13 @@
     font: 10pt sans-serif;
 }
 
-.atmosPropertiesPage {
-    text-align: center;
-}
-
-.atmosPropertiesTableWrapper {
+.atmosTableWrapper {
     clear: both;
     padding: 4px;
     margin: 4px 0 6px 0;
 }
 
-.atmosPropertiesTableTitle {
+.atmosTableTitle {
     display: inline-block;
     margin: 6px 8px 0px 4px;
     font-weight: bold;
@@ -311,8 +335,8 @@ input.atmosPropertyValue {
     padding: 0;
 }
 
-.atmosExpirationDate {
-    width: 100px;
+.atmosExpirationCount {
+    width: 50px;
 }
 
 .atmosShareInstructions {
@@ -332,21 +356,36 @@ input.atmosPropertyValue {
     word-wrap: break-word;
 }
 
+.atmosAclName {
+    width: auto;
+}
+
+.atmosAclFC {
+    width: 40px;
+    text-align: center;
+}
+
+.atmosAclWRITE {
+    width: 40px;
+    text-align: center;
+}
+
+.atmosAclREAD {
+    width: 40px;
+    text-align: center;
+}
+
+.atmosAclNONE {
+    width: 40px;
+    text-align: center;
+}
+
 .transparent {
     opacity: 0.5;
     filter: alpha(opacity = 50);
 }
 
-.atmosCredentialName {
-    width: 120px;
-}
-
-.atmosCredentialValue {
-    width: 250px;
-}
-
 .atmosContextMenu {
-    display: none;
     position: absolute;
     left: 0;
     top: 0;
@@ -368,4 +407,38 @@ input.atmosPropertyValue {
 .atmosContextMenuOption:hover {
     color: #fff;
     background-color: #06c;
+}
+
+.atmosDirectoryDisplay {
+    display: inline-block;
+    width: 250px;
+    background-color: #fff;
+    margin: 0 4px;
+    border: 1px solid black;
+    padding: 2px 4px;
+}
+
+.atmosDirectoryList {
+    background-color: #fff;
+    margin: 5px 10px;
+    border: 1px solid black;
+}
+
+.atmosDirectoryItem {
+    padding: 2px 4px;
+    cursor: default;
+}
+
+[draggable] {
+    -webkit-user-drag: element;
+    -moz-user-drag: element;
+    -ms-user-drag: element;
+    user-drag: element;
+}
+
+[unselectable] {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
