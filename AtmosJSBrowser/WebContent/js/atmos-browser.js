@@ -437,9 +437,11 @@ function FileRow( browser, entry ) {
         }
     } );
     // drag-off behavior (drag-and-drop to local filesystem - HTML5)
-    atmosBind( this.$root[0], 'dragstart', function( event ) {
-        fileRow.dragStart( event );
-    } );
+    if ( !browser.util.isDirectory( entry ) ) {
+        atmosBind( this.$root[0], 'dragstart', function( event ) {
+            fileRow.dragStart( event );
+        } );
+    }
 }
 FileRow.prototype.updateEntry = function( entry ) {
     this.size = entry.size || '';
