@@ -110,7 +110,7 @@
     text-align: center;
 }
 
-.atmosBrowser .body .dragTarget {
+.atmosBrowser .atmosDropTarget.targetActive {
     border: 1px solid #0f0;
 }
 
@@ -200,16 +200,17 @@
     vertical-align: middle;
 }
 
-.atmosFileList .cell .icon.directory {
-    background-image: url(../images/folder.png);
+.atmosFileList .cell .icon.doc,
+.atmosFileList .cell .icon.docx {
+    background-image: url(../images/doc.png);
 }
 
 .atmosFileList .cell .icon.regular {
     background-image: url(../images/document.png);
 }
 
-.atmosFileList .cell .icon.doc {
-    background-image: url(../images/doc.png);
+.atmosFileList .cell .icon.directory {
+    background-image: url(../images/folder.png);
 }
 
 .atmosFileList .cell .icon.gif {
@@ -237,7 +238,8 @@
     background-image: url(../images/png.png);
 }
 
-.atmosFileList .cell .icon.ppt {
+.atmosFileList .cell .icon.ppt,
+.atmosFileList .cell .icon.pptx {
     background-image: url(../images/ppt.png);
 }
 
@@ -249,7 +251,8 @@
     background-image: url(../images/wmv.png);
 }
 
-.atmosFileList .cell .icon.xls {
+.atmosFileList .cell .icon.xls,
+.atmosFileList .cell .icon.xlsx {
     background-image: url(../images/xls.png);
 }
 
@@ -429,14 +432,18 @@ input.atmosPropertyValue {
     cursor: default;
 }
 
-[draggable] {
+[draggable=true] {
     -webkit-user-drag: element;
     -moz-user-drag: element;
     -ms-user-drag: element;
     user-drag: element;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
-[unselectable] {
+[unselectable=on] {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;

@@ -139,10 +139,10 @@ Redistribution and use in source and binary forms, with or without modification,
                             class="cell atmosFileType atmosFileTypeHeader">Type</h4></div>
                 </div>
             </div>
-            <div class="body">
+            <div class="body atmosDropTarget">
                 <div class="table atmosFileListTable">
                     <div class="loading">Please wait...</div>
-                    <div class="row">
+                    <div class="row" draggable="true">
                         <div class="atmosIcon cell"><span class="atmosFileIcon icon"></span></div>
                         <div class="atmosFileName cell"></div>
                         <div class="atmosFileSize cell">
@@ -177,7 +177,7 @@ Redistribution and use in source and binary forms, with or without modification,
 </div>
 
 <div unselectable="on" class="atmosModalBackground"></div>
-<div unselectable="on" class="atmosModalWindow">
+<div class="atmosModalWindow">
     <div class="atmosTitleBar">
         <div class="atmosTitle">%{title}</div>
         <div class="atmosCloseButton">x</div>
@@ -208,12 +208,12 @@ Redistribution and use in source and binary forms, with or without modification,
 <div class="atmosSharePage">
     <div unselectable="on" class="atmosShareExpirationWrapper">
         <div class="atmosLabel">How long will this URL remain active?</div>
-        <input type="text" class="atmosExpirationCount"/>
+        <input type="text" class="atmosExpirationCount" value="1"/>
         <select class="atmosExpirationUnit">
             <option>Hours</option>
             <option>Days</option>
             <option>Months</option>
-            <option>Years</option>
+            <option selected="selected">Years</option>
         </select>
     </div>
     <div unselectable="on" class="atmosButtonBar">
