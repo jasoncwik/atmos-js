@@ -126,21 +126,25 @@ AtmosBrowser.prototype._init = function( $parent ) {
     } );
 
     // drag-n-drop upload
-    this.$fileTable[0].ondragenter = function() { // TODO: highlight body when dragging over table
-        browser.$fileTable.addClass( 'dragTarget' );
-    };
-    this.$fileTable[0].ondragleave = function() {
-        browser.$fileTable.removeClass( 'dragTarget' );
-    };
-    atmosBind( this.$fileTable[0], 'dragover', function( event ) {
+    var $dropTarget = $main.find( '.atmosDropTarget' );
+    if ( $dropTarget.length == 0 ) $dropTarget = this.$fileTable;
+    var cancelEvent = function( event ) {
         event.stopPropagation();
         event.preventDefault();
-    } );
-    atmosBind( this.$fileTable[0], 'drop', function( event ) {
-        event.stopPropagation();
-        event.preventDefault();
+    };
+    atmosBind( $main[0], 'dragenter', cancelEvent );
+    atmosBind( $main[0], 'dragover', cancelEvent );
+    atmosBind( $main[0], 'drop', cancelEvent );
+    $dropTarget[0].ondragenter = function() {
+        $dropTarget.addClass( 'targetActive' );
+    };
+    $dropTarget[0].ondragleave = function() {
+        $dropTarget.removeClass( 'targetActive' );
+    };
+    $dropTarget[0].ondrop = function( event ) {
+        $dropTarget.removeClass( 'targetActive' );
         browser.uploadFiles( event.dataTransfer.files );
-    } );
+    };
 
     var $statusMessage = $main.find( '.atmosStatusMessage' );
     this.util = new AtmosUtil( this.settings.uid, this.settings.secret, this.templates, $statusMessage );
@@ -423,6 +427,7 @@ function FileRow( browser, entry ) {
             contextMenu.moveTo( event.pageX, event.pageY );
         }
     } );
+    // double-click behavior
     atmosBind( this.$root[0], 'dblclick', function( event ) {
         event.stopPropagation();
         event.preventDefault();
@@ -430,6 +435,10 @@ function FileRow( browser, entry ) {
             if ( browser.util.isDirectory( entry ) ) browser.listDirectory( entry.path );
             else browser.openFile( entry.path );
         }
+    } );
+    // drag-off behavior (drag-and-drop to local filesystem - HTML5)
+    atmosBind( this.$root[0], 'dragstart', function( event ) {
+        fileRow.dragStart( event );
     } );
 }
 FileRow.prototype.updateEntry = function( entry ) {
@@ -445,6 +454,23 @@ FileRow.prototype.updateEntry = function( entry ) {
     this.$size.text( this.size );
     this.$type.text( entry.type );
     this.entry = entry;
+};
+FileRow.prototype.dragStart = function( event ) {
+    if ( this.entry.systemMeta ) {
+        this.setDragData( event );
+    } else {
+        var fileRow = this;
+        this.browser.util.getSystemMetadata( this.entry.path, function( systemMeta ) {
+            fileRow.entry.systemMeta = systemMeta;
+            fileRow.setDragData( event );
+        } );
+    }
+};
+FileRow.prototype.setDragData = function( event ) {
+    if ( this.$root[0].dataset && event.dataTransfer && this.entry.systemMeta ) {
+        var fileInfo = this.entry.systemMeta.mimeType + ':' + this.entry.name + ':' + this.browser.util.getShareableUrl( this.entry.path, this.browser.util.futureDate( 1, 'hours' ) );
+        event.dataTransfer.setData( "DownloadURL", fileInfo );
+    }
 };
 FileRow.prototype.showStatus = function() {
     this.interactive = false;
@@ -1175,7 +1201,7 @@ jQuery.fn.outerHTML = function( replacement ) {
         else {
             var attributes = '';
             for ( var i = 0; i < this[0].attributes.length; i++ ) {
-                attributes += ' ' + this[0].attributs[i].name + '="' + this[0].attributes[i].value + '"';
+                attributes += ' ' + this[0].attributes[i].name + '="' + this[0].attributes[i].value + '"';
             }
             return '<' + this[0].tagName + attributes + '>' + this[0].innerHTML + '</' + this[0].tagName + '>';
         }
