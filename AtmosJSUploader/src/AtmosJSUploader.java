@@ -18,234 +18,236 @@ Redistribution and use in source and binary forms, with or without modification,
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  
 */
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.Calendar;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-
-import com.emc.esu.api.EsuApi;
 import com.emc.esu.api.EsuException;
 import com.emc.esu.api.ObjectPath;
 import com.emc.esu.api.rest.EsuRestApi;
 import com.emc.esu.api.rest.UploadHelper;
+import org.apache.commons.cli.*;
+
+import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class AtmosJSUploader {
 
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		Options options = new Options();
-		Option o = new Option("u", "uid", true, "Atmos UID");
-		o.setRequired(true);
-		options.addOption(o);
-		
-		o = new Option("s", "secret", true, "Atmos Shared Secret");
-		o.setRequired(true);
-		options.addOption(o);
-		
-		o = new Option("h", "host", true, "Atmos Access Point Host");
-		o.setRequired(true);
-		options.addOption(o);
-		
-		o = new Option("p", "port", true, "Atmos Access Point Port (Default 80)");
-		o.setRequired(false);
-		options.addOption(o);
-		
-		o = new Option("f", "file", true, "Local file path");
-		o.setRequired(true);
-		options.addOption(o);
-		
-		o = new Option("r", "remotedir", true, "Remote path to upload to.  Must be a directory (ends with a /)");
-		o.setRequired(false);
-		options.addOption(o);
-		
-		// create the parser
-	    CommandLineParser parser = new GnuParser();
-	    try {
-	        // parse the command line arguments
-	        CommandLine line = parser.parse( options, args );
-	        String uid = line.getOptionValue( "uid" );
-	        String secret = line.getOptionValue( "secret" );
-	        String host = line.getOptionValue( "host" );
-	        int port = Integer.parseInt(line.getOptionValue("port", "80"));
-	        String file = line.getOptionValue("file");
-	        String remotedir = line.getOptionValue("remotedir");
-	        
-			ObjectPath objectpath = new ObjectPath(remotedir);
-			
-			if( !objectpath.isDirectory() ) {
-				throw new RuntimeException( "remote path must be a directory" );
-			}
-						
-			EsuApi esu = new EsuRestApi(host, port, uid, secret);
+    /**
+     * @param args
+     */
+    public static void main( String[] args ) {
+        Options options = new Options();
+        Option o = new Option( "h", "host", true, "Atmos Access Point Host" );
+        o.setRequired( true );
+        options.addOption( o );
 
-			URL u = null;
-			// Look for other files to upload
-			if( file.endsWith(".html") ) {
-				u = uploadHtml( file, objectpath, esu );
-			} else {
-				u = uploadFile( file, objectpath, esu );
-			}
-			
-			System.out.println( "Access your file at: " + u );
-	    }
-	    catch( ParseException exp ) {
-	        // oops, something went wrong
-	        System.err.println( "Parsing failed.  Reason: " + exp.getMessage() );
-	     // automatically generate the help statement
-	        HelpFormatter formatter = new HelpFormatter();
-	        formatter.printHelp( "AtmosJSUploader", options );
-	        System.exit(1);
-	    } catch( EsuException e ) {
-	    	e.printStackTrace();
-	    	System.exit(1);
-	    } catch (IOException e) {
-			e.printStackTrace();
-			System.exit(2);
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-	    System.exit(0);
-	}
+        o = new Option( "p", "port", true, "Atmos Access Point Port (Default 80)" );
+        o.setRequired( false );
+        options.addOption( o );
 
-	private static URL uploadHtml(String file, ObjectPath objectpath,
-			EsuApi esu) throws IOException, URISyntaxException {
-		// Read through the HTML and look for local JS and CSS files to upload and then update the links
-		File f = new File(file);
-		File tmpDir = File.createTempFile("tmp", ".dir");
-		File outFile = new File(tmpDir, f.getName());
-		
-		tmpDir.delete();
-		tmpDir.mkdirs();
-		
-		BufferedReader br = new BufferedReader( new FileReader(f) );
-		PrintWriter pw = new PrintWriter( new FileWriter(outFile) );
-		
-		Pattern cssInclude = Pattern.compile( "(<link.*href=\")(.*\\.css)(\".*)" );
-		Pattern jsInclude = Pattern.compile( "(<script type=\"text/javascript\" src=\")(.*)(\".*)" );
-		
-		String line = null;
-		while( (line = br.readLine()) != null ) {
-			if( cssInclude.matcher(line).matches() ) {
-				Matcher m = cssInclude.matcher(line);
-				System.out.println("CSS Match: " + m);
-				
-				handleMatch( f, pw, line, m, file, objectpath, esu );
+        o = new Option( "u", "uid", true, "Atmos UID" );
+        o.setRequired( true );
+        options.addOption( o );
 
-			} else if( jsInclude.matcher(line).matches() ) {
-				Matcher m = jsInclude.matcher(line);
-				
-				handleMatch( f, pw, line, m, file, objectpath, esu );
-			} else {
-				pw.println( line );
-			}
-		}
-		
-		pw.close();
-		br.close();
-		
-		System.out.println( "Rewritten HTML in " + outFile);
-		
-		return uploadFile(outFile, file, objectpath, esu);
-	}
+        o = new Option( "s", "secret", true, "Atmos Shared Secret" );
+        o.setRequired( true );
+        options.addOption( o );
 
-	private static void handleMatch(File parent, PrintWriter pw, String line, Matcher m, String file,
-			ObjectPath objectpath, EsuApi esu) throws URISyntaxException {
-		m.matches();
-		String pre = m.group(1);
-		String fn = m.group(2);
-		String post = m.group(3);
-		
-		URI uri = new URI(fn);
-		if( uri.isAbsolute() ) {
-			// Ignore
-			System.out.println( "Ignoring absolute URI: " + uri );
-			pw.println(line);
-			return;
-		} else {
-			// Upload and create a new URI
-			File f = new File( parent.getParentFile(), fn );
-			if( !f.exists() ) {
-				System.out.println( "The child file " + f + " does not exist, skipping" );
-				pw.println(line);
-				return;
-			}
+        o = new Option( "f", "file", true, "Local file path" );
+        o.setRequired( true );
+        options.addOption( o );
 
-			URL u = uploadFile( f, fn, objectpath, esu );
-			
-			// Print out new URL
-			pw.println( pre + u + post );
+        o = new Option( "r", "remotedir", true, "Remote path to upload to.  Must be a directory (ends with a /)" );
+        o.setRequired( false );
+        options.addOption( o );
 
-		}
-	}
+        // create the parser
+        CommandLineParser parser = new GnuParser();
+        try {
+            // parse the command line arguments
+            CommandLine line = parser.parse( options, args );
 
-	private static URL uploadFile(String file, ObjectPath objectpath,
-			EsuApi esu) {
-		File f = new File(file);
-		return uploadFile(f, file, objectpath, esu);
-	}
-	
-	private static URL uploadFile(File f, String filename, ObjectPath objectpath,
-				EsuApi esu) {
-		if( !f.exists() ) {
-			throw new RuntimeException( "The file " + f + " does not exist" );
-		}
-		
-		ObjectPath uploadpath = new ObjectPath(objectpath + filename);
-		
-		System.out.println( "Uploading " + filename + " to " + uploadpath );
-		UploadHelper uh = new UploadHelper(esu);
-		
-		if( f.getName().endsWith( ".html" ) ) {
-			uh.setMimeType("text/html");
-		} else if( f.getName().endsWith( ".js" ) ) {
-			uh.setMimeType("text/javascript");
-		} else if( f.getName().endsWith( ".css" ) ) {
-			uh.setMimeType("text/css");
-		}
-		
-		try {
-			uh.createObjectOnPath(uploadpath, f, null, null);	
-			if( uh.isFailed() ) {
-				throw uh.getError();
-			}
-		} catch( Exception e ) {
-			if( e instanceof EsuException && ((EsuException)e).getAtmosCode() == 1016 ) {
-				// Object already exists
-				uh.updateObject(uploadpath, f, null, null);
-			} else {
-				if( e instanceof EsuException ) {
-					System.err.println( "Atmos Code: " + ((EsuException)e).getAtmosCode());
-				}
-				e.printStackTrace();
-				System.exit(2);
-			}
-		}
-		
-		// Create a shareable URL
-		Calendar c = Calendar.getInstance();
-		c.add(Calendar.YEAR, 40);
+            AtmosJSUploader uploader = new AtmosJSUploader(
+                    line.getOptionValue( "host" ),
+                    Integer.parseInt( line.getOptionValue( "port", "80" ) ),
+                    line.getOptionValue( "uid" ),
+                    line.getOptionValue( "secret" )
+            );
 
-		return esu.getShareableUrl(uploadpath, c.getTime());
-		
-	}
 
+            URL u = uploader.processFile( line.getOptionValue( "file" ), line.getOptionValue( "remotedir" ) );
+
+            System.out.println( "Access your file at: " + u );
+        } catch ( ParseException exp ) {
+            // oops, something went wrong
+            System.err.println( "Parsing failed.  Reason: " + exp.getMessage() );
+            // automatically generate the help statement
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp( "AtmosJSUploader", options );
+            System.exit( 1 );
+        } catch ( EsuException e ) {
+            e.printStackTrace();
+            System.exit( 1 );
+        } catch ( IOException e ) {
+            e.printStackTrace();
+            System.exit( 2 );
+        } catch ( URISyntaxException e ) {
+            e.printStackTrace();
+        }
+        System.exit( 0 );
+    }
+
+    private EsuRestApi esu;
+    private File tempDir;
+
+    public AtmosJSUploader( String host, int port, String uid, String secret ) throws IOException {
+        this.esu = new EsuRestApi( host, port, uid, secret );
+        tempDir = File.createTempFile( "tmp", ".dir" );
+        tempDir.delete();
+        tempDir.mkdirs();
+    }
+
+    public URL processFile( String filePath, String remoteDir ) throws IOException, URISyntaxException {
+        File f = new File( filePath );
+        if ( !f.exists() ) {
+            throw new RuntimeException( "file " + filePath + " does not exist" );
+        }
+        if ( !remoteDir.endsWith( "/" ) ) remoteDir += "/";
+        File localBaseDir = f.getParentFile();
+
+        if ( isBinary( f ) ) return uploadFile( f, remoteDir + f.getName() );
+        else {
+
+            // Read through the file and look for local file references to upload and then update the links
+            File outFile = new File( tempDir, f.getName() );
+
+            BufferedReader br = new BufferedReader( new FileReader( f ) );
+            PrintWriter pw = new PrintWriter( new FileWriter( outFile ) );
+
+            Pattern pattern = Pattern.compile( "(.* href=\"|.* src=\"|.*: *url\\( *\"?)([^\")]+)(\".*|\"? *\\).*)" );
+
+            String line = null;
+            Matcher matcher;
+            while ( (line = br.readLine()) != null ) {
+                matcher = pattern.matcher( line );
+                if ( matcher.matches() ) {
+                    System.out.println( "Match: " + matcher );
+                    String prefix = matcher.group( 1 ), linkPath = matcher.group( 2 ), suffix = matcher.group( 3 );
+                    linkPath = processLinkedFile( localBaseDir, linkPath, remoteDir );
+
+                    // Print out new URL
+                    pw.println( prefix + linkPath + suffix );
+                } else {
+                    pw.println( line );
+                }
+            }
+
+            pw.close();
+            br.close();
+
+            System.out.println( "Rewritten HTML in " + outFile );
+
+            return uploadFile( outFile, remoteDir + f.getName() );
+        }
+    }
+
+    private String processLinkedFile( File localBaseDir, String linkPath, String remotePath ) throws IOException, URISyntaxException {
+        URI uri = new URI( linkPath );
+        if ( uri.isAbsolute() ) {
+            // Ignore
+            System.out.println( "Ignoring absolute URI: " + uri );
+            return linkPath;
+        } else {
+            // Upload and create a new URI
+            File f = new File( localBaseDir, linkPath );
+            if ( !f.exists() ) {
+                System.out.println( "The child file " + f + " does not exist, skipping" );
+                return linkPath;
+            }
+
+            // calculate new remote path
+            remotePath = new File( remotePath + linkPath ).getParentFile().getPath();
+
+            URL u = processFile( f.getPath(), remotePath );
+
+            return u.toString();
+        }
+    }
+
+    private URL uploadFile( File f, String remotePath ) {
+        if ( !f.exists() ) {
+            throw new RuntimeException( "The file " + f + " does not exist" );
+        }
+
+        remotePath = removeDots( remotePath );
+
+        System.out.println( "Uploading " + f.getPath() + " to " + remotePath );
+        UploadHelper uh = new UploadHelper( esu );
+        uh.setMimeType( findMimeType( f ) );
+        ObjectPath objectPath = new ObjectPath( remotePath );
+
+        try {
+            uh.createObjectOnPath( objectPath, f, null, null );
+            if ( uh.isFailed() ) {
+                throw uh.getError();
+            }
+        } catch ( Exception e ) {
+            if ( e instanceof EsuException && ((EsuException) e).getAtmosCode() == 1016 ) {
+                // Object already exists
+                uh.updateObject( objectPath, f, null, null );
+            } else {
+                if ( e instanceof EsuException ) {
+                    System.err.println( "Atmos Code: " + ((EsuException) e).getAtmosCode() );
+                }
+                e.printStackTrace();
+                System.exit( 2 );
+            }
+        }
+
+        // Create a shareable URL
+        Calendar c = Calendar.getInstance();
+        c.add( Calendar.YEAR, 40 );
+
+        return esu.getShareableUrl( objectPath, c.getTime() );
+    }
+
+    private String getExtension( File f ) {
+        String[] parts = f.getName().split( "\\." );
+        if ( parts.length > 1 ) {
+            return parts[parts.length - 1];
+        }
+        return null;
+    }
+
+    private String findMimeType( File f ) {
+        FileType fileType = FileType.fromExtension( getExtension( f ) );
+        return (fileType == null) ? "application/octet-stream" : fileType.getMimeType(); // default is application/octet-stream
+    }
+
+    private boolean isBinary( File f ) {
+        FileType fileType = FileType.fromExtension( getExtension( f ) );
+        return fileType == null || fileType.isBinary(); // assume binary if extension is unknown
+    }
+
+    private String removeDots( String path ) {
+        List<String> segments = new ArrayList<String>();
+        segments.addAll( Arrays.asList( path.split( "/" ) ) );
+        for ( int i = 0; i < segments.size(); i++ ) {
+            String segment = segments.get( i );
+            if ( segment.equals( ".." ) ) {
+                // move this segment and the last
+                segments.remove( i-- );
+                segments.remove( i-- );
+            }
+        }
+        path = "";
+        for ( String segment : segments ) {
+            path += segment + "/";
+        }
+        return path.substring( 0, path.length() - 1 );
+    }
 }
