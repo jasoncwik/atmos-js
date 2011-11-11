@@ -148,6 +148,43 @@ this.atmosApi = {
             } );
     },
 
+    'testDotDotDirectory' : function( test ) {
+        atmos.info( "atmosApi.testDotDotDirectory" );
+
+        test.expect( 9 );
+
+        var subdirectory = "/" + directoryName + "/test/../";
+        var filename = this.randomFilename( 8, 3 );
+        var path = subdirectory + filename;
+
+        atmos.createObjectOnPath( path, null, null, null, "Hello World!", "text/plain", null,
+            function( result ) {
+
+                test.ok( result.success, "Request successful (" + path + ")" );
+                test.ok( result.objectId != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                this.cleanup.push( result.objectId );
+
+                // Read the object back and verify content
+                atmos.readObject( path, null, null, function( result2 ) {
+                    test.ok( result2.success, "Read content file successful" );
+                    test.equal( result2.httpCode, 200, "HttpCode correct" );
+                    test.equal( result2.data, "Hello World!", "Data correct" );
+
+                    // List the .. directory
+                    atmos.listDirectory( subdirectory, null, null, function( result3 ) {
+                        test.ok( result3.success, "List successful" );
+                        test.equal( result3.httpCode, 200, "HttpCode correct" );
+                        test.ok( result3.results.length > 0, "List not empty" );
+                        test.done();
+                    } )
+                } );
+
+            } );
+    },
+
     'testDeleteObjectOnPath' : function( test ) {
         atmos.info( "atmosApi.testDeleteObjectOnPath" );
 
@@ -469,6 +506,82 @@ this.atmosApi = {
             } );
     },
 
+    'testGetShareableUrlOnPathWithDisposition' : function( test ) {
+        atmos.info( "atmosApi.testGetShareableUrlOnPathWithDisposition" );
+
+        test.expect( 4 );
+
+        var text = "Hello World!";
+        var fullPath = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+
+        atmos.createObjectOnPath( fullPath, null, null, null, text, "text/plain", null,
+            function( result ) {
+
+                test.ok( result.success, "Creation successful" );
+                test.ok( result.objectId != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                this.cleanup.push( result.objectId );
+
+                var expires = new Date();
+                expires.setMinutes( expires.getMinutes() + 5 );
+                var disposition = atmos.createAttachmentDisposition();
+                var url = atmos.getShareableUrl( fullPath, expires, disposition );
+
+                atmos._ajax( {
+                    type: "GET",
+                    url: url,
+                    error: function( jqXHR, textStatus, errorThrown ) {
+                        test.ok( false, textStatus );
+                        test.done();
+                    },
+                    success: function( textStatus, jqXHR ) {
+                        test.ok( jqXHR.responseText == text, "Correct content returned" );
+                        test.done();
+                    }
+                } );
+            } );
+    },
+
+    'testGetShareableUrlOnPathWithDispositionFilename' : function( test ) {
+        atmos.info( "atmosApi.testGetShareableUrlOnPathWithDispositionFilename" );
+
+        test.expect( 4 );
+
+        var text = "Hello World!";
+        var fullPath = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+
+        atmos.createObjectOnPath( fullPath, null, null, null, text, "text/plain", null,
+            function( result ) {
+
+                test.ok( result.success, "Creation successful" );
+                test.ok( result.objectId != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                this.cleanup.push( result.objectId );
+
+                var expires = new Date();
+                expires.setMinutes( expires.getMinutes() + 5 );
+                var disposition = atmos.createAttachmentDisposition( "бöｼ.txt" );
+                var url = atmos.getShareableUrl( fullPath, expires, disposition );
+
+                atmos._ajax( {
+                    type: "GET",
+                    url: url,
+                    error: function( jqXHR, textStatus, errorThrown ) {
+                        test.ok( false, textStatus );
+                        test.done();
+                    },
+                    success: function( textStatus, jqXHR ) {
+                        test.ok( jqXHR.responseText == text, "Correct content returned" );
+                        test.done();
+                    }
+                } );
+            } );
+    },
+
     'testGetShareableUrlWithSpecialCharacters' : function( test ) {
         atmos.info( "atmosApi.testGetShareableUrlWithSpecialCharacters" );
 
@@ -533,6 +646,42 @@ this.atmosApi = {
                     test.done();
                 } );
 
+            } );
+    },
+
+    'testSetAcl' : function( test ) {
+        atmos.info( "atmosApi.testSetAcl" );
+
+        test.expect( 8 );
+
+        var myAccess = new AclEntry( 'stu', AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
+        var bobsAccess = new AclEntry( 'jimbob', AclEntry.ACL_PERMISSIONS.READ );
+        var groupAccess = new AclEntry( AclEntry.GROUPS.OTHER, AclEntry.ACL_PERMISSIONS.READ );
+        var acl = new Acl( [myAccess, bobsAccess], [groupAccess] );
+
+        atmos.createObject( null, null, null, "Hello World!", "text/plain", null,
+            function( result ) {
+
+                test.ok( result.success, "Request successful" );
+                test.ok( result.objectId != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                this.cleanup.push( result.objectId );
+
+                // Set ACL
+                atmos.setAcl( result.objectId, acl, null, function( result2 ) {
+                    test.ok( result2.success, "Request successful" );
+                    test.equal( result2.httpCode, 200, "HttpCode correct" );
+
+                    // Read the ACL back and verify
+                    atmos.getAcl( result.objectId, null, function( result3 ) {
+                        test.ok( result3.success, "Request successful" );
+                        test.equal( result3.httpCode, 200, "HttpCode correct" );
+                        test.equal( dumpObject( result3.acl ), dumpObject( acl ) );
+                        test.done();
+                    } );
+                } );
             } );
     },
 

@@ -89,5 +89,24 @@ this.atmosLowLevel = {
 
         test.equal( signature, 'WHJo1MFevMnK4jCthJ974L3YHoo=', 'Signature matches' );
         test.done();
+    },
+
+    'resolve dots test': function( test ) {
+        var config = {
+            uid: '6039ac182f194e15b9261d73ce044939/user1',
+            secret: 'LJLuryj6zs8ste6Y3jTGQp71xq0='
+        };
+        var esu = new AtmosRest( config );
+
+        test.equal( esu._resolveDots( "/x/test/../y" ), '/x/y', '.. passed' );
+        test.equal( esu._resolveDots( "/x/./y" ), '/x/y', '. passed' );
+        test.equal( esu._resolveDots( "/x/test/./../y" ), '/x/y', '. .. passed' );
+        test.equal( esu._resolveDots( "/x/test/.././y" ), '/x/y', '.. . passed' );
+        test.done();
+    },
+
+    'UTF-16 encode test': function( test ) {
+        test.ok( atmos.createAttachmentDisposition( "бöｼ.txt" ) == "attachment; filename*=UTF-8''%D0%B1%C3%B6%EF%BD%BC.txt" );
+        test.done();
     }
 };
