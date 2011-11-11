@@ -240,6 +240,20 @@ AtmosRest.prototype.context = "/rest";
 ////////////////////
 
 /**
+ * Returns the information about the Atmos REST web service (right now, just the version number)
+ * @param {Object} state the user-defined state object passed to the callback
+ * @param {function} callback the completion callback (both error and success). The version number is contains in
+ *        results.atmosVersion
+ */
+AtmosRest.prototype.getServiceInformation = function( state, callback ) {
+    var headers = new Object();
+    var me = this;
+    this._restGet( this.context + '/service', headers, null, state, callback, function( xhr, state, callback ) {
+        me._getServiceInformationHandler( xhr, state, callback );
+    } );
+};
+
+/**
  * Creates an object in Atmos
  * @param {Acl} acl an Acl for the new object.  If null, the object will get the default Acl.
  * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
@@ -356,14 +370,23 @@ AtmosRest.prototype.rename = function( oldPath, newPath, force, state, callback 
     } );
 };
 
+AtmosRest.prototype.createAttachmentDisposition = function( fileName ) {
+    if ( fileName ) {
+        return "attachment; filename*=" + encodeURIComponent( "UTF-8''" + fileName );
+    } else {
+        return "attachment";
+    }
+}
+
 /**
  * Creates a shareable URL that anyone (globally) can access.
  *
  * @param id the object ID or path for which to generate the URL
  * @param expirationDate the expiration date of the URL (as
+ * @param disposition the content-disposition that should be specified in the response header for the shareable URL
  * @return a URL that can be used to share the object's content
  */
-AtmosRest.prototype.getShareableUrl = function( id, expirationDate ) {
+AtmosRest.prototype.getShareableUrl = function( id, expirationDate, disposition ) {
     if ( !expirationDate.getTime ) {
         throw "expirationDate must be a Date object";
     }
@@ -372,9 +395,13 @@ AtmosRest.prototype.getShareableUrl = function( id, expirationDate ) {
 
     var hash_string = "GET\n" + this._getPath( id ).toLowerCase() + "\n" + this.atmosConfig.uid + "\n" + expires;
 
+    if ( disposition ) hash_string += "\n" + disposition;
+
     var signature = this._doSignature( hash_string, this.atmosConfig.secret );
 
     var query = "uid=" + encodeURIComponent( this.atmosConfig.uid ) + "&expires=" + expires + "&signature=" + encodeURIComponent( signature );
+
+    if ( disposition ) query += '&disposition=' + encodeURIComponent( disposition );
 
     var port = '';
     if ( window.location.protocol === "http" && window.location.port == 80 ) {
@@ -430,6 +457,17 @@ AtmosRest.prototype.getAcl = function( id, state, callback ) {
 
     this._restGet( this._getPath( id ) + "?acl", headers, null, state, callback, function( xhr, state, callback ) {
         me._handleGetAclResponse( xhr, state, callback );
+    } );
+};
+
+AtmosRest.prototype.setAcl = function( id, acl, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._processAcl( acl, headers );
+
+    this._restPost( this._getPath( id ) + "?acl", headers, null, null, null, state, callback, function( xhr, state, callback ) {
+        me._genericHandler( xhr, state, callback );
     } );
 };
 
@@ -716,18 +754,17 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, s
     }
 
     this._signRequest( 'POST', headers, mimeType, range, uri );
-    var errorHandler = this._handleError;
-    var setHeaders = this._setHeaders;
+    var rest = this;
     this._ajax( {
         url: this._encodeURI( uri ),
         data: data,
         processData: false,
         mimeType: mimeType,
         beforeSend: function( jqXHR, settings ) {
-            setHeaders( jqXHR, headers, range );
+            rest._setHeaders( jqXHR, headers, range );
         },
-        error: function( jqXHR, textStatus, errorThrown ) {
-            errorHandler( jqXHR, textStatus + " " + errorThrown, state, callback );
+        error: function( jqXHR ) {
+            rest._handleError( jqXHR, state, callback );
         },
         type: "POST",
         success: function( textStatus, jqXHR ) {
@@ -763,18 +800,17 @@ AtmosRest.prototype._restPut = function( uri, headers, data, range, mimeType, st
     }
 
     this._signRequest( 'PUT', headers, mimeType, range, uri );
-    var errorHandler = this._handleError;
-    var setHeaders = this._setHeaders;
+    var rest = this;
     this._ajax( {
         url: this._encodeURI( uri ),
         data: data,
         processData: false,
         mimeType: mimeType,
         beforeSend: function( jqXHR, settings ) {
-            setHeaders( jqXHR, headers, range );
+            rest._setHeaders( jqXHR, headers, range );
         },
-        error: function( jqXHR, textStatus, errorThrown ) {
-            errorHandler( jqXHR, textStatus + " " + errorThrown, state, callback );
+        error: function( jqXHR ) {
+            rest._handleError( jqXHR, state, callback );
         },
         type: "PUT",
         success: function( textStatus, jqXHR ) {
@@ -797,16 +833,15 @@ AtmosRest.prototype._restDelete = function( uri, headers, state, callback, handl
     headers["x-emc-date"] = new Date().toGMTString();
 
     this._signRequest( 'DELETE', headers, null, null, uri );
-    var errorHandler = this._handleError;
-    var setHeaders = this._setHeaders;
+    var rest = this;
     this._ajax( {
         type: "DELETE",
         url: this._encodeURI( uri ),
         beforeSend: function( jqXHR, settings ) {
-            setHeaders( jqXHR, headers );
+            rest._setHeaders( jqXHR, headers );
         },
-        error: function( jqXHR, textStatus, errorThrown ) {
-            errorHandler( jqXHR, textStatus + " " + errorThrown, state, callback );
+        error: function( jqXHR ) {
+            rest._handleError( jqXHR, state, callback );
         },
         success: function( textStatus, jqXHR ) {
             handler( jqXHR, state, callback );
@@ -828,16 +863,15 @@ AtmosRest.prototype._restGet = function( uri, headers, range, state, callback, h
     headers["x-emc-date"] = new Date().toGMTString();
 
     this._signRequest( 'GET', headers, null, range, uri );
-    var errorHandler = this._handleError;
-    var setHeaders = this._setHeaders;
+    var rest = this;
     this._ajax( {
         type: "GET",
         url: this._encodeURI( uri ),
         beforeSend: function( jqXHR, settings ) {
-            setHeaders( jqXHR, headers, range );
+            rest._setHeaders( jqXHR, headers, range );
         },
-        error: function( jqXHR, textStatus, errorThrown ) {
-            errorHandler( jqXHR, textStatus + " " + errorThrown, state, callback );
+        error: function( jqXHR ) {
+            rest._handleError( jqXHR, state, callback );
         },
         success: function( textStatus, jqXHR ) {
             handler( jqXHR, state, callback );
@@ -850,6 +884,8 @@ AtmosRest.prototype._restGet = function( uri, headers, range, state, callback, h
  * @param {Object} options the options for the call
  */
 AtmosRest.prototype._ajax = function( options ) {
+    options.url = this._resolveDots( options.url );
+
     // If a cross-domain request...
     if ( this.atmosConfig.host && this.atmosConfig.protocol ) {
         options.url = this.atmosConfig.protocol + "://" + this.atmosConfig.host + options.url;
@@ -905,6 +941,19 @@ AtmosRest.prototype._getXMLHttpRequest = function() {
     }
 };
 
+AtmosRest.prototype._resolveDots = function( path ) {
+    var segments = path.split( "/" );
+    for ( var i = 0; i < segments.length; i++ ) {
+        if ( segments[i] == ".." ) {
+            segments.splice( i - 1, 2 ); // remove this segment and the last
+            i -= 2; // two items were removed, so make sure the index rewinds by two
+        } else if ( segments[i] == "." ) {
+            segments.splice( i--, 1 ); // remove only this segment and rewind the index by one
+        }
+    }
+    return segments.join( "/" );
+};
+
 /**
  * Handles asynchronous events from XHR.
  * @param {Event} event the XMLHttpRequest event
@@ -916,7 +965,7 @@ AtmosRest.prototype._onreadystatechange = function( event, options, xhr ) {
         if ( xhr.status < 400 ) {
             options.success( xhr.statusText, xhr );
         } else {
-            options.error( xhr, xhr.statusText, "" );
+            options.error( xhr );
         }
     }
 };
@@ -961,6 +1010,26 @@ AtmosRest.prototype._encodeURI = function( uri ) {
     this.debug( "encodeURI: out: " + outURI );
 
     return outURI;
+};
+
+AtmosRest.prototype._getServiceInformationHandler = function( xhr, state, callback ) {
+    var result = new AtmosResult( true, state );
+    result.httpCode = xhr.status;
+    result.httpMessage = xhr.statusText;
+
+    var doc = null;
+    if ( isNodejs ) {
+        // NodeJS doesn't have an XML parser yet; use the jsdom parser.
+        doc = jsdom.jsdom( xhr.responseText );
+    } else {
+        doc = xhr.responseXML;
+    }
+
+    var versionNodes = doc.getElementsByTagName( "Version" );
+    if ( versionNodes.length )
+        result.atmosVersion = this._getText( this._getChildByTagName( versionNodes[0], "Atmos" ) );
+
+    callback( result );
 };
 
 /**
@@ -1076,11 +1145,24 @@ AtmosRest.prototype._genericHandler = function( jqXHR, state, callback ) {
 /**
  * Error handler.  Used by most functions.
  */
-AtmosRest.prototype._handleError = function( jqXHR, message, state, callback ) {
+AtmosRest.prototype._handleError = function( jqXHR, state, callback ) {
     var result = new AtmosResult( false, state );
-    result.errorMessage = message;
     result.httpCode = jqXHR.status;
     result.httpMessage = jqXHR.statusText;
+
+    var doc = null;
+    if ( isNodejs ) {
+        // NodeJS doesn't have an XML parser yet; use the jsdom parser.
+        doc = jsdom.jsdom( jqXHR.responseText );
+    } else {
+        doc = jqXHR.responseXML;
+    }
+
+    var errorNodes = doc.getElementsByTagName( "Error" );
+    if ( errorNodes.length ) {
+        result.errorCode = this._getText( this._getChildByTagName( errorNodes[0], "Code" ) );
+        result.errorMessage = this._getText( this._getChildByTagName( errorNodes[0], "Message" ) );
+    }
 
     callback( result );
 };
@@ -1329,6 +1411,9 @@ AtmosRest.prototype._getText = function( node ) {
 AtmosRest.prototype._signRequest = function( method, headers, content_type, range, uri ) {
     this.debug( this.atmosConfig.uid );
     this.debug( this.atmosConfig.secret );
+
+    uri = this._resolveDots( uri );
+
     var emcheaders;
     if ( headers == "" ) {
         emcheaders = new Hash();
