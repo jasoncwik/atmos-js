@@ -21,13 +21,14 @@
 
 if ( typeof(require) != 'undefined' ) {
     // We're running inside node.js
-    require( 'tests/atmos-config.js' );
-    AtmosRest = require( 'atmos.js' ).AtmosRest;
-
-    console.log( "AtmosRest: " + AtmosRest );
+    var atmosJS = require( '../atmos.js' );
+    AtmosRest = atmosJS.AtmosRest;
+    dumpObject = atmosJS.dumpObject;
+    require( './atmos-config.js' );
+    atmos = new AtmosRest( atmosConfig );
 }
 
-this.atmosLowLevel = {
+atmosLowLevel = {
     'sanity test': function( test ) {
         test.ok( true, 'nodeunit is ok' );
         test.done();
@@ -84,29 +85,47 @@ this.atmosLowLevel = {
         headers["X-Emc-Meta"] = 'part1=buy';
         headers["X-Emc-Groupacl"] = 'other=NONE';
         headers["X-Emc-Useracl"] = 'john=FULL_CONTROL,mary=WRITE';
+        headers["Content-Type"] = 'application/octet-stream';
+        headers["Range"] = '';
 
-        var signature = esu._signRequest( 'POST', headers, 'application/octet-stream', '', '/rest/objects' );
+        var signature = esu._signRequest( 'POST', headers, '/rest/objects' );
 
         test.equal( signature, 'WHJo1MFevMnK4jCthJ974L3YHoo=', 'Signature matches' );
         test.done();
     },
 
     'resolve dots test': function( test ) {
-        var config = {
-            uid: '6039ac182f194e15b9261d73ce044939/user1',
-            secret: 'LJLuryj6zs8ste6Y3jTGQp71xq0='
-        };
-        var esu = new AtmosRest( config );
-
-        test.equal( esu._resolveDots( "/x/test/../y" ), '/x/y', '.. passed' );
-        test.equal( esu._resolveDots( "/x/./y" ), '/x/y', '. passed' );
-        test.equal( esu._resolveDots( "/x/test/./../y" ), '/x/y', '. .. passed' );
-        test.equal( esu._resolveDots( "/x/test/.././y" ), '/x/y', '.. . passed' );
+        test.equal( atmos._resolveDots( "/x/test/../y" ), '/x/y', '.. passed' );
+        test.equal( atmos._resolveDots( "/x/./y" ), '/x/y', '. passed' );
+        test.equal( atmos._resolveDots( "/x/test/./../y" ), '/x/y', '. .. passed' );
+        test.equal( atmos._resolveDots( "/x/test/.././y" ), '/x/y', '.. . passed' );
         test.done();
     },
 
     'UTF-16 encode test': function( test ) {
         test.ok( atmos.createAttachmentDisposition( "бöｼ.txt" ) == "attachment; filename*=UTF-8''%D0%B1%C3%B6%EF%BD%BC.txt" );
         test.done();
+    },
+
+    'XML test': function( test ) {
+        var xml = "<root><main><child></child><child></child></main></root>";
+        var doc;
+        if ( typeof(require) != 'undefined' ) {
+            // inside NodeJS
+            doc = jsdom.jsdom( xml );
+        } else {
+            var parser = new DOMParser();
+            doc = parser.parseFromString( xml, "text/xml" );
+        }
+        var children = atmos._getChildrenByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
+        var child = atmos._getChildByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
+        test.equal( children.length, 2, "found 2 children" );
+        test.ok( child != null );
+        test.done();
     }
 };
+
+if ( typeof(exports) != 'undefined' ) {
+    // Register the test groups for node.js
+    exports.atmosLowLevel = atmosLowLevel;
+}
