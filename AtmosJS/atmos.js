@@ -22,9 +22,9 @@
 var isNodejs = false;
 if ( typeof(require) != 'undefined' ) {
     // We're running inside node.js
-    var crypto = require( 'crypto' );
-    var jsdom = require( 'jsdom' );
-    var XMLHttpRequest = require( 'lib/XMLHttpRequest.js' ).XMLHttpRequest;
+    crypto = require( 'crypto' );
+    jsdom = require( 'jsdom' );
+    XMLHttpRequest = require( './lib/XMLHttpRequest.js' ).XMLHttpRequest;
 
     isNodejs = true;
 } else {
@@ -180,7 +180,7 @@ function ListOptions( limit, token, includeMeta, userMetaTags, systemMetaTags ) 
  * @param {Object} userMeta an object containing the user metadata properties
  * @param {Object} listableUserMeta an object containing the listable user metadata properties
  * @param {Object} systemMeta an object containing the system metadata properties
- * @class ObjectResult.
+ * @class ObjectResult
  */
 function ObjectResult( objectId, userMeta, listableUserMeta, systemMeta ) {
     this.objectId = objectId;
@@ -208,6 +208,24 @@ function DirectoryEntry( path, name, type, objectId, userMeta, listableUserMeta,
     this.userMeta = userMeta;
     this.listableUserMeta = listableUserMeta;
     this.systemMeta = systemMeta;
+}
+
+function ObjectInfo( objectId, selection, replicas, expirationEnabled, expirationEndsAt, retentionEnabled, retentionEndsAt ) {
+    this.objectId = objectId;
+    this.selection = selection;
+    this.replicas = replicas;
+    this.expirationEnabled = expirationEnabled;
+    this.expirationEndsAt = expirationEndsAt;
+    this.retentionEnabled = retentionEnabled;
+    this.retentionEndsAt = retentionEndsAt;
+}
+
+function ObjectReplica( id, location, replicaType, current, storageType ) {
+    this.id = id;
+    this.location = location;
+    this.replicaType = replicaType;
+    this.current = current;
+    this.storageType = storageType;
 }
 
 /**
@@ -241,15 +259,23 @@ AtmosRest.prototype.context = "/rest";
 
 /**
  * Returns the information about the Atmos REST web service (right now, just the version number)
- * @param {Object} state the user-defined state object passed to the callback
- * @param {function} callback the completion callback (both error and success). The version number is contains in
- *        results.atmosVersion
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success). The version number is contained in
+ *        result.value
  */
 AtmosRest.prototype.getServiceInformation = function( state, callback ) {
     var headers = new Object();
     var me = this;
+
     this._restGet( this.context + '/service', headers, null, state, callback, function( xhr, state, callback ) {
-        me._getServiceInformationHandler( xhr, state, callback );
+        var result = me._createResult( xhr, true, state );
+        var doc = me._getXmlDoc( xhr );
+
+        // looking for /Version/Atmos (<Version><Atmos>X.X.X</Atmos></Version>)
+        var versionNodes = doc.getElementsByTagName( "Version" );
+        if ( versionNodes.length )
+            result.value = me._getText( me._getChildByTagName( versionNodes[0], "Atmos" ) );
+        callback( result );
     } );
 };
 
@@ -260,20 +286,18 @@ AtmosRest.prototype.getServiceInformation = function( state, callback ) {
  * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
  * @param {Object} data the data for the new object (can be a String, Blob or File).
  * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
- * @param {Boolean} binary true if data is binary.
- * @param {Object} state the user-defined state object passed to the callback
+ * @param {Object} state the user-defined state object passed to the callback as result.state
  * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
- * where result will be an AtmosResult object.  The created Object ID will be in the objectId field of the result object.
+ * where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.
  * @param {function} progressCallback the (optional) callback for progress updates (i.e. status bar)
  */
 AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback ) {
-
     var headers = new Object();
     var me = this;
 
-    this._processAcl( acl, headers );
-    this._processMeta( meta, headers, false );
-    this._processMeta( listableMeta, headers, true );
+    this._addAclHeaders( acl, headers );
+    this._addMetadataHeaders( meta, headers, false );
+    this._addMetadataHeaders( listableMeta, headers, true );
 
     this._restPost( this.context + '/objects', headers, data, null, mimeType, state, successCallback, function( xhr, state, callback ) {
         me._createObjectHandler( xhr, state, callback );
@@ -290,9 +314,9 @@ AtmosRest.prototype.createObject = function( acl, meta, listableMeta, data, mime
  * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
  * @param {Object} data the data for the new object (can be a String, Blob or File).
  * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
- * @param {Object} state the user-defined state object passed to the callback
+ * @param {Object} state the user-defined state object passed to the callback as result.state
  * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
- * where result will be an AtmosResult object.  The created Object ID will be in the objectId field of the result object.
+ * where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.
  * @param {function} progressCallback the (optional) callback for progress updates (i.e. status bar)
  */
 AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback ) {
@@ -302,14 +326,33 @@ AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta
     var headers = new Object();
     var me = this;
 
-    this._processAcl( acl, headers );
-    this._processMeta( meta, headers, false );
-    this._processMeta( listableMeta, headers, true );
+    this._addAclHeaders( acl, headers );
+    this._addMetadataHeaders( meta, headers, false );
+    this._addMetadataHeaders( listableMeta, headers, true );
 
     this._restPost( this._getPath( path ), headers, data, null, mimeType, state, successCallback, function( xhr, state, callback ) {
         me._createObjectHandler( xhr, state, callback );
     }, progressCallback );
 
+};
+
+/**
+ * Reads the contents of an object from Atmos
+ * @param {String} id the object identifier (either an object path or an object id)
+ * @param {AtmosRange} range the range of the object to read, pass null to read the entire object.
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success).  Upon success,
+ * the object's content will be returned in the data property of the result object.
+ */
+AtmosRest.prototype.readObject = function( id, range, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._restGet( this._getPath( id ), headers, range, state, callback, function( xhr, state, callback ) {
+        var result = me._createResult( xhr, true, state );
+        result.data = xhr.responseText;
+        callback( result );
+    } );
 };
 
 /**
@@ -322,7 +365,7 @@ AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta
  * @param {Object} data the replacement data for the object (can be a String, Blob or File).
  * @param {AtmosRange} range the range of the object to update, pass null to replace the entire object.
  * @param {String} mimeType the mimeType for the object.  If null, the object will be assigned application/octet-stream.
- * @param {Object} state the user-defined state object passed to the callback
+ * @param {Object} state the user-defined state object passed to the callback as result.state
  * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
  * where result will be an AtmosResult object. The result of this call will only contain status information.
  * @param {function} progressCallback the (optional) callback for progress updates (i.e. status bar)
@@ -331,14 +374,97 @@ AtmosRest.prototype.updateObject = function( id, acl, meta, listableMeta, data, 
     var headers = new Object();
     var me = this;
 
-    this._processAcl( acl, headers );
-    this._processMeta( meta, headers, false );
-    this._processMeta( listableMeta, headers, true );
+    this._addAclHeaders( acl, headers );
+    this._addMetadataHeaders( meta, headers, false );
+    this._addMetadataHeaders( listableMeta, headers, true );
 
     this._restPut( this._getPath( id ), headers, data, range, mimeType, state, successCallback, function( xhr, state, callback ) {
-        me._genericHandler( xhr, state, callback );
+        callback( me._createResult( xhr, true, state ) );
     }, progressCallback );
+};
 
+/**
+ * Deletes an object from Atmos.
+ * @param {String} id an object identifier (either an object path or object id)
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success).
+ */
+AtmosRest.prototype.deleteObject = function( id, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._restDelete( this._getPath( id ), headers, state, callback, function( xhr, state, callback ) {
+        callback( me._createResult( xhr, true, state ) );
+    } );
+};
+
+/**
+ * Lists the versions of an object.
+ * @param {String} id the id of the object (either an object path or object id)
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success). On success, a list of object IDs will
+ * be in result.value
+ */
+AtmosRest.prototype.listVersions = function( id, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._restGet( this._getPath( id ) + "?versions", headers, null, state, callback, function( xhr, state, callback ) {
+        var result = me._createResult( xhr, true, state );
+        result.value = me._parseObjectVersions( xhr );
+        callback( result );
+    } );
+};
+
+/**
+ * Creates a new immutable version of an object.
+ * @param {String} id the id of the object to version (either an object path or object id)
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success). On success, the ID of the newly created
+ * version will be in result.value
+ */
+AtmosRest.prototype.versionObject = function( id, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._restPost( this._getPath( id ) + "?versions", headers, null, null, null, state, callback, function( xhr, state, callback ) {
+        me._createObjectHandler( xhr, state, callback );
+    } );
+};
+
+/**
+ * Restores a version of an object to the base version (i.e. "promote" an
+ * old version to the current version).
+ * @param {String} id Base object ID (target of the restore)
+ * @param {String} vId Version object ID to restore
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success).
+ */
+AtmosRest.prototype.restoreVersion = function( id, vId, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    // Version to promote
+    headers["x-emc-version-oid"] = vId;
+
+    this._restPut( this._getPath( id ) + "?versions", headers, null, null, null, state, callback, function( xhr, state, callback ) {
+        callback( me._createResult( xhr, true, state ) );
+    } );
+};
+
+/**
+ * Deletes a version of an object from the cloud.
+ * @param {String} vId the object ID of the version of the object to delete.
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success).
+ */
+AtmosRest.prototype.deleteVersion = function( vId, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._restDelete( this._getPath( vId ) + "?versions", headers, state, callback, function( xhr, state, callback ) {
+        callback( me._createResult( xhr, true, state ) );
+    } );
 };
 
 /**
@@ -350,7 +476,7 @@ AtmosRest.prototype.updateObject = function( id, acl, meta, listableMeta, data, 
  * overwritten.  Also note that overwrite operations on files are
  * not synchronous; a delay may be required before the object is
  * available at its destination.
- * @param {Object} state the user-defined state object passed to the callback
+ * @param {Object} state the user-defined state object passed to the callback as result.state
  * @param {function} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.rename = function( oldPath, newPath, force, state, callback ) {
@@ -358,60 +484,72 @@ AtmosRest.prototype.rename = function( oldPath, newPath, force, state, callback 
         throw "The path '" + path + "' is not valid";
     }
     var headers = new Object();
+    var me = this;
 
     headers["x-emc-path"] = newPath.substr( 1 );
-    if ( force ) {
-        headers["x-emc-force"] = "true";
-    }
+    if ( force ) headers["x-emc-force"] = "true";
 
-    var me = this;
     this._restPost( this._getPath( oldPath ) + "?rename", headers, null, null, null, state, callback, function( xhr, state, callback ) {
-        me._genericHandler( xhr, state, callback );
+        callback( me._createResult( xhr, true, state ) );
     } );
 };
 
+/**
+ * Creates a string to be used as the disposition string when creating a shareable URL with disposition (download link).
+ * Example code:<pre>
+ *     var futureDate = new Date(...); // date in future
+ *     var disposition = atmosRest.createAttachmentDisposition(); // fileName optional for namespace API (required for object API)
+ *     var url = atmosRest.getShareableUrl( "/my/object", futureDate, disposition ); // URL response will contain a Content-Disposition header
+ * </pre>
+ * NOTE: this feature is only supported on Atmos 2.0.1 + hotfix XXXX
+ * @param fileName
+ */
 AtmosRest.prototype.createAttachmentDisposition = function( fileName ) {
-    if ( fileName ) {
-        return "attachment; filename*=" + encodeURIComponent( "UTF-8''" + fileName );
-    } else {
-        return "attachment";
-    }
-}
+    if ( fileName ) return "attachment; filename*=" + encodeURIComponent( "UTF-8''" + fileName );
+    else return "attachment";
+};
 
 /**
  * Creates a shareable URL that anyone (globally) can access.
  *
- * @param id the object ID or path for which to generate the URL
- * @param expirationDate the expiration date of the URL (as
- * @param disposition the content-disposition that should be specified in the response header for the shareable URL
+ * @param {String} id the object ID or path for which to generate the URL
+ * @param {Date} expirationDate the expiration date of the URL (as
+ * @param {String} disposition the content-disposition that should be specified in the response header for the shareable
+ *        URL. NOTE: this feature is only supported on Atmos 2.0.1 + hotfix XXXX
  * @return a URL that can be used to share the object's content
  */
 AtmosRest.prototype.getShareableUrl = function( id, expirationDate, disposition ) {
-    if ( !expirationDate.getTime ) {
-        throw "expirationDate must be a Date object";
-    }
+    if ( !expirationDate.getTime ) throw "expirationDate must be a Date object";
 
-    var expires = Math.floor( expirationDate.getTime() / 1000 );
+    var method = "GET";
+    var path = this._getPath( id );
+    var expires = Math.floor( expirationDate.getTime() / 1000 ); // convert to seconds
 
-    var hash_string = "GET\n" + this._getPath( id ).toLowerCase() + "\n" + this.atmosConfig.uid + "\n" + expires;
+    // establish hash string for signing
+    var hashString = method + "\n" + path.toLowerCase() + "\n" + this.atmosConfig.uid + "\n" + expires;
+    if ( disposition ) hashString += "\n" + disposition;
+    this.info( "hash string:\n" + hashString );
 
-    if ( disposition ) hash_string += "\n" + disposition;
+    // sign hash string
+    var signature = this._doSignature( hashString, this.atmosConfig.secret );
 
-    var signature = this._doSignature( hash_string, this.atmosConfig.secret );
+    // generate query string
+    var query = "uid=" + encodeURIComponent( this.atmosConfig.uid );
+    query += "&expires=" + expires;
+    query += "&signature=" + encodeURIComponent( signature );
+    if ( disposition ) query += "&disposition=" + encodeURIComponent( disposition );
 
-    var query = "uid=" + encodeURIComponent( this.atmosConfig.uid ) + "&expires=" + expires + "&signature=" + encodeURIComponent( signature );
-
-    if ( disposition ) query += '&disposition=' + encodeURIComponent( disposition );
-
-    var port = '';
-    if ( window.location.protocol === "http" && window.location.port == 80 ) {
-    } else if ( window.location.protocol === "https" && window.location.port == 443 ) {
-    } else if ( !window.location.port ) {
+    var protocol, host;
+    if ( typeof(window) != 'undefined' ) {
+        protocol = window.location.protocol;
+        host = window.location.host;
     } else {
-        port = ':' + window.location.port;
+        protocol = this.atmosConfig.protocol;
+        host = this.atmosConfig.host;
     }
 
-    var url = window.location.protocol + "//" + window.location.host + port + this._encodeURI( this._getPath( id ) ) + "?" + query;
+    // compose URL
+    var url = protocol + "//" + host + this._encodeURI( path ) + "?" + query;
     this.info( "Shareable URL: " + url );
 
     return url;
@@ -419,55 +557,63 @@ AtmosRest.prototype.getShareableUrl = function( id, expirationDate, disposition 
 
 
 /**
- * Deletes an object from Atmos.
- * @param {String} id an object identifier (either an object path or object id)
- * @param {Object} state the user-defined state object passed to the callback
- * @param {function} callback the completion callback (both error and success).
- */
-AtmosRest.prototype.deleteObject = function( id, state, callback ) {
-    var headers = new Object();
-    var me = this;
-
-    this._restDelete( this._getPath( id ), headers, state, callback, function( xhr, state, callback ) {
-        me._genericHandler( xhr, state, callback );
-    } );
-};
-
-/**
- * Reads the contents of an object from Atmos
+ * Returns an object's ACL
  * @param {String} id the object identifier (either an object path or an object id)
- * @param {AtmosRange} range the range of the object to read, pass null to read the entire object.
- * @param {Object} state the user-defined state object passed to the callback
+ * @param {Object} state the user-defined state object passed to the callback as result.state
  * @param {function} callback the completion callback (both error and success).  Upon success,
- * the object's content will be returned in the data property of the result object.
+ * the object's ACL will be returned in the value property of the result object.
  */
-AtmosRest.prototype.readObject = function( id, range, state, callback ) {
-    var headers = new Object();
-    var me = this;
-
-    this._restGet( this._getPath( id ), headers, range, state, callback, function( xhr, state, callback ) {
-        me._readObjectHandler( xhr, state, callback );
-    } );
-
-};
-
 AtmosRest.prototype.getAcl = function( id, state, callback ) {
     var headers = new Object();
     var me = this;
 
     this._restGet( this._getPath( id ) + "?acl", headers, null, state, callback, function( xhr, state, callback ) {
-        me._handleGetAclResponse( xhr, state, callback );
+        var result = me._createResult( xhr, true, state );
+        var userAcls = me._parseAclEntries( xhr.getResponseHeader( "x-emc-useracl" ) );
+        var groupAcls = me._parseAclEntries( xhr.getResponseHeader( "x-emc-groupacl" ) );
+        result.value = new Acl( userAcls, groupAcls );
+        callback( result );
     } );
 };
 
+/**
+ * Sets (overwrites) the ACL on the object.
+ * @param {String} id the object identifier (either an object path or an object id)
+ * @param {Acl} acl the new ACL for the object.
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success).
+ */
 AtmosRest.prototype.setAcl = function( id, acl, state, callback ) {
     var headers = new Object();
     var me = this;
 
-    this._processAcl( acl, headers );
+    this._addAclHeaders( acl, headers );
 
     this._restPost( this._getPath( id ) + "?acl", headers, null, null, null, state, callback, function( xhr, state, callback ) {
-        me._genericHandler( xhr, state, callback );
+        callback( me._createResult( xhr, true, state ) );
+    } );
+};
+
+/**
+ * Returns the list of user metadata tags assigned to the object.
+ * @param {String} id the object identifier (either an Object ID or an Object Path)
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success).  Upon success,
+ * the object's non-listable tags will be in result.value.tags and the
+ * listable tags will be in result.value.listableTags
+ */
+AtmosRest.prototype.listUserMetadataTags = function( id, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._restGet( this._getPath( id ) + "?metadata/tags", headers, null, state, callback, function( xhr, state, callback ) {
+        var result = me._createResult( xhr, true, state );
+        result.value = {};
+        var tagHeader = xhr.getResponseHeader( "x-emc-tags" );
+        if ( tagHeader ) result.value.tags = me._headerValueToArray( tagHeader );
+        var lTagHeader = xhr.getResponseHeader( "x-emc-listable-tags" );
+        if ( lTagHeader ) result.value.listableTags = me._headerValueToArray( lTagHeader );
+        callback( result );
     } );
 };
 
@@ -475,63 +621,110 @@ AtmosRest.prototype.setAcl = function( id, acl, state, callback ) {
  * Reads the user metadata for an object.
  * @param {String} id the object identifier (either an Object ID or an Object Path)
  * @param {Array} filter if not null, an array of strings defining which metadata tags should be returned.
- * @param {Object} state the user-defined state object passed to the callback
+ * @param {Object} state the user-defined state object passed to the callback as result.state
  * @param {function} callback the completion callback (both error and success).  Upon success,
- * the object's metadata will be returned in the meta property of the result object and the
- * listable metadata will be returned in the listableMeta property.
+ * the object's metadata will be returned in result.value.meta and the
+ * listable metadata will be returned in result.value.listableMeta.
  */
 AtmosRest.prototype.getUserMetadata = function( id, filter, state, callback ) {
     var headers = new Object();
     var me = this;
 
-    if ( filter ) {
-        headers["x-emc-tags"] = filter.join( "," );
-    }
+    if ( filter ) headers["x-emc-tags"] = filter.join( "," );
 
-    this._restGet( this._getPath( id ) + "?metadata/user", headers, null, state, callback,
-        function( xhr, state, callback ) {
-            me._getUserMetadataHandler( xhr, state, callback );
-        } );
+    this._restGet( this._getPath( id ) + "?metadata/user", headers, null, state, callback, function( xhr, state, callback ) {
+        var result = me._createResult( xhr, true, state );
+        result.value = {};
+        result.value.meta = me._parseMetadata( xhr.getResponseHeader( "x-emc-meta" ) );
+        result.value.listableMeta = me._parseMetadata( xhr.getResponseHeader( "x-emc-listable-meta" ) );
+        callback( result );
+    } );
 };
 
 /**
  * Reads the system metadata for an object.
  * @param {String} id the object identifier (either an Object ID or an Object Path)
  * @param {Array} filter if not null, an array of strings defining which metadata tags should be returned.
- * @param {Object} state the user-defined state object passed to the callback
+ * @param {Object} state the user-defined state object passed to the callback as result.state
  * @param {function} callback the completion callback (both error and success).  Upon success,
- * the object's system metadata will be returned in the systemMeta property of the result object.
+ * the object's system metadata will be returned in result.value.systemMeta (the mime type will be in
+ * result.value.systemMeta.mimeType)
  */
 AtmosRest.prototype.getSystemMetadata = function( id, filter, state, callback ) {
     var headers = new Object();
     var me = this;
 
-    if ( filter ) {
-        headers["x-emc-tags"] = filter.join( "," );
-    }
+    if ( filter ) headers["x-emc-tags"] = filter.join( "," );
 
-    this._restGet( this._getPath( id ) + "?metadata/system", headers, null, state, callback,
-        function( xhr, state, callback ) {
-            me._getSystemMetadataHandler( xhr, state, callback );
-        } );
+    this._restGet( this._getPath( id ) + "?metadata/system", headers, null, state, callback, function( xhr, state, callback ) {
+        var result = me._createResult( xhr, true, state );
+        result.value = {};
+        result.value.systemMeta = me._parseMetadata( xhr.getResponseHeader( "x-emc-meta" ) );
+        result.value.systemMeta.mimeType = xhr.getResponseHeader( "Content-Type" );
+        callback( result );
+    } );
 };
+
+/**
+ * Returns all of an object's user metadata and its ACL in one call.
+ * @param {String} id the object identifier (either an Object ID or an Object Path)
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success).  Upon success,
+ * the object's user metadata will be returned in result.value.meta, listable metadata will be in
+ * result.value.listableMeta and its ACL will be in result.value.acl
+ * NOTE: System metadata is included with user metadata here even though they exist in different namespaces. If you need
+ *       to differentiate between the two, use getSystemMetadata and getUserMetadata
+ */
+AtmosRest.prototype.getAllMetadata = function( id, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._restHead( this._getPath( id ), headers, state, callback, function ( xhr, state, callback ) {
+        var result = me._createResult( xhr, true, state );
+        result.value = {};
+        result.value.meta = me._parseMetadata( xhr.getResponseHeader( "x-emc-meta" ) );
+        result.value.listableMeta = me._parseMetadata( xhr.getResponseHeader( "x-emc-listable-meta" ) );
+        var userAcls = me._parseAclEntries( xhr.getResponseHeader( "x-emc-useracl" ) );
+        var groupAcls = me._parseAclEntries( xhr.getResponseHeader( "x-emc-groupacl" ) );
+        result.value.acl = new Acl( userAcls, groupAcls );
+        callback( result );
+    } );
+};
+
+/**
+ * Get information about an object's state including
+ * replicas, expiration, and retention.
+ * @param {String} id the object identifier (either an Object ID or an Object Path)
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success).  Upon success,
+ * the object's info will be returned in result.value (as an ObjectInfo object).
+ */
+AtmosRest.prototype.getObjectInfo = function( id, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    this._restGet( this._getPath( id ) + "?info", headers, null, state, callback, function( xhr, state, callback ) {
+        me._handleObjectInfoResponse( xhr, state, callback );
+    } );
+};
+
 /**
  * Sets the user metadata for an object.
  * @param {String} id the object identifier (either an Object ID or an Object Path)
  * @param {Object} meta a map of regular Metadata for the object.  May be null or empty for no regular metadata.
  * @param {Object} listableMeta a map of listable Metadata for the object.  May be null or empty for no listable metadata.
- * @param {Object} state the user-defined state object passed to the callback
+ * @param {Object} state the user-defined state object passed to the callback as result.state
  * @param {function} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.setUserMetadata = function( id, meta, listableMeta, state, callback ) {
     var headers = new Object();
-
-    this._processMeta( meta, headers, false );
-    this._processMeta( listableMeta, headers, true );
-
     var me = this;
+
+    this._addMetadataHeaders( meta, headers, false );
+    this._addMetadataHeaders( listableMeta, headers, true );
+
     this._restPost( this._getPath( id ) + "?metadata/user", headers, null, null, null, state, callback, function( xhr, state, callback ) {
-        me._genericHandler( xhr, state, callback );
+        callback( me._createResult( xhr, true, state ) );
     } );
 };
 
@@ -539,17 +732,39 @@ AtmosRest.prototype.setUserMetadata = function( id, meta, listableMeta, state, c
  * Deletes metadata tags from an object.
  * @param {String} id the object identifier (either an Object ID or an Object Path)
  * @param {Array} tags a list of tags (metadata names) to delete from the object
- * @param {Object} state the user-defined state object passed to the callback
+ * @param {Object} state the user-defined state object passed to the callback as result.state
  * @param {function} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.deleteUserMetadata = function( id, tags, state, callback ) {
     var headers = new Object();
-
-    this._processTags( tags, headers );
-
     var me = this;
+
+    this._addTagHeader( tags, headers );
+
     this._restDelete( this._getPath( id ) + "?metadata/user", headers, state, callback, function( xhr, state, callback ) {
-        me._genericHandler( xhr, state, callback );
+        callback( me._createResult( xhr, true, state ) );
+    } );
+};
+
+/**
+ * Returns a list of the tags that are listable the current user's tennant.
+ * @param {String} tag optional.  If specified, the list will be limited to the tags
+ * under the specified tag.  If null, only top level tags will be returned.
+ * @param {Object} state the user-defined state object passed to the callback as result.state
+ * @param {function} callback the completion callback (both error and success). The list of tags returned will be in
+ * result.value
+ */
+AtmosRest.prototype.getListableTags = function( tag, state, callback ) {
+    var headers = new Object();
+    var me = this;
+
+    if ( tag ) headers["x-emc-tags"] = tag;
+
+    this._restGet( this.context + "/objects?listabletags", headers, null, state, callback, function( xhr, state, callback ) {
+        var result = me._createResult( xhr, true, state );
+        var tagHeader = xhr.getResponseHeader( "x-emc-listable-tags" );
+        if ( tagHeader ) result.value = me._headerValueToArray( tagHeader );
+        callback( result );
     } );
 };
 
@@ -559,27 +774,23 @@ AtmosRest.prototype.deleteUserMetadata = function( id, tags, state, callback ) {
  * @param {ListOptions} options for listing objects.  See the ListOptions class.
  * @param {Object} state the user-defined state object that will be passed to the callback
  * @param {function} callback the completion callback (both error and success).  Upon success,
- * the result's results property will be populated with an Array of ObjectResult objects.  Also
- * be sure to check the value of the token property.  If defined, you did not receive all results
+ * the result's value property will be populated with an Array of ObjectResult objects.  Also
+ * be sure to check the token property.  If defined, you did not receive all results
  * and should call this method again using the token inside a ListOptions object to continue
  * your listing.
  */
 AtmosRest.prototype.listObjects = function( tag, options, state, callback ) {
+    if ( !tag ) throw "Tag cannot be null";
     var headers = new Object();
     var me = this;
 
-    if ( !tag ) {
-        throw "Tag cannot be null";
-    }
-
     headers["x-emc-tags"] = tag;
 
-    this._addListOptions( headers, options );
+    this._addListOptionHeaders( headers, options );
 
-    this._restGet( this.context + "/objects", headers, null, state, callback,
-        function( xhr, state, callback ) {
-            me._handleListObjectsResponse( xhr, state, callback );
-        } );
+    this._restGet( this.context + "/objects", headers, null, state, callback, function( xhr, state, callback ) {
+        me._handleListObjectsResponse( xhr, state, callback );
+    } );
 };
 
 /**
@@ -589,28 +800,24 @@ AtmosRest.prototype.listObjects = function( tag, options, state, callback ) {
  * this call (Atmos 1.2)
  * @param {Object} state the user-defined state object that will be passed to the callback
  * @param {function} callback the completion callback (both error and success).  Upon success,
- * the result's results property will be populated with an Array of ObjectResult objects.  Also
- * be sure to check the value of the token property.  If defined, you did not receive all results
+ * the result's value property will be populated with an Array of ObjectResult objects.  Also
+ * be sure to check the token property.  If defined, you did not receive all results
  * and should call this method again using the token inside a ListOptions object to continue
  * your listing.
  */
 AtmosRest.prototype.listDirectory = function( directory, options, state, callback ) {
-    var headers = new Object();
-    var me = this;
-
-    if ( !directory ) {
-        throw "Directory cannot be null";
-    }
+    if ( !directory ) throw "Directory cannot be null";
     if ( directory.charAt( directory.length - 1 ) !== "/" ) {
         throw "Directory must end with a slash";
     }
+    var headers = new Object();
+    var me = this;
 
-    this._addListOptions( headers, options );
+    this._addListOptionHeaders( headers, options );
 
-    this._restGet( this.context + "/namespace" + directory, headers, null, state, callback,
-        function( xhr, state, callback ) {
-            me._handleListDirectoryResponse( directory, xhr, state, callback );
-        } );
+    this._restGet( this.context + "/namespace" + directory, headers, null, state, callback, function( xhr, state, callback ) {
+        me._handleListDirectoryResponse( directory, xhr, state, callback );
+    } );
 };
 
 /////////////////////
@@ -633,37 +840,30 @@ AtmosRest.prototype._getPath = function( id ) {
 };
 
 /**
- * Compile an Acl object into a String
+ * Adds Acl entries to the headers of a request
  * @param {Acl} acl
  */
-AtmosRest.prototype._processAcl = function( acl, headers ) {
-    if ( acl == null ) {
-        return;
-    }
-    headers["x-emc-useracl"] = this._processAclEntries( acl.userEntries );
-    headers["x-emc-groupacl"] = this._processAclEntries( acl.groupEntries );
+AtmosRest.prototype._addAclHeaders = function( acl, headers ) {
+    if ( acl == null ) return;
+
+    headers["x-emc-useracl"] = this._mapEntriesToString( acl.userEntries );
+    headers["x-emc-groupacl"] = this._mapEntriesToString( acl.groupEntries );
 };
 
 /**
- * Compile an Array of AclEntry objects into a String
+ * Serialize a list of map entries into a parameter string (entry1.key=entry1.value,entry2.key=entry2.value)
  */
-AtmosRest.prototype._processAclEntries = function( entries ) {
-    if ( entries == undefined || entries.length < 1 ) {
-        return null;
-    }
+AtmosRest.prototype._mapEntriesToString = function( entries ) {
+    if ( entries == undefined || entries.length < 1 ) return null;
 
-    var value = "";
-
+    var params = [];
     for ( var i = 0; i < entries.length; i++ ) {
-        if ( i > 0 ) {
-            value += ",";
-        }
-        value += entries[i].key + "=" + entries[i].value;
+        params.push( entries[i].key + "=" + entries[i].value );
     }
-    return value;
+    return params.join( "," );
 };
 
-AtmosRest.prototype._processTags = function( tags, headers ) {
+AtmosRest.prototype._addTagHeader = function( tags, headers ) {
     var value = "";
     for ( var i = 0; i < tags.length; i++ ) {
         if ( i > 0 ) value += ",";
@@ -675,33 +875,36 @@ AtmosRest.prototype._processTags = function( tags, headers ) {
 /**
  * Compiles a list of metadata into a header value
  */
-AtmosRest.prototype._processMeta = function( meta, headers, listable ) {
+AtmosRest.prototype._addMetadataHeaders = function( meta, headers, listable ) {
     if ( meta == null || Object.keys( meta ).length == 0 ) {
         return;
     }
     if ( listable ) {
-        headers["x-emc-listable-meta"] = this._processMetaList( meta );
+        headers["x-emc-listable-meta"] = this._mapToString( meta );
     } else {
-        headers["x-emc-meta"] = this._processMetaList( meta );
+        headers["x-emc-meta"] = this._mapToString( meta );
     }
 };
 
 /**
- * Processes the metadata list object and returns the header value
- * @param {Object} meta
- * @returns {String} the string formatted for the header value
+ * Serialize a map into a paremeter string (map.key1=map.value1,map.key2=map.value2)
  */
-AtmosRest.prototype._processMetaList = function( meta ) {
-    var value = "";
-    for ( prop in meta ) {
-        if ( !meta.hasOwnProperty( prop ) ) continue;
-        if ( value != "" ) {
-            value += ",";
-        }
-        value += prop + "=" + meta[prop];
+AtmosRest.prototype._mapToString = function( map ) {
+    var params = [], keys = Object.keys( map );
+    for ( var i = 0; i < keys.length; i++ ) {
+        params.push( keys[i] + "=" + map[keys[i]] );
     }
+    return params.join( "," );
+};
 
-    return value;
+AtmosRest.prototype._headerValueToArray = function( value ) {
+    if ( !value ) return null;
+    if ( value.trim().length == 0 ) return [];
+    var array = value.split( "," );
+    for ( var i = 0; i < array.length; i++ ) {
+        array[i] = array[i].trim();
+    }
+    return array;
 };
 
 /**
@@ -709,7 +912,7 @@ AtmosRest.prototype._processMetaList = function( meta ) {
  * @param headers {Array} the existing headers map
  * @param options {ListOptions} the desired list options
  */
-AtmosRest.prototype._addListOptions = function( headers, options ) {
+AtmosRest.prototype._addListOptionHeaders = function( headers, options ) {
     if ( options ) {
         if ( options.limit ) {
             headers["x-emc-limit"] = "" + options.limit;
@@ -742,33 +945,23 @@ AtmosRest.prototype._addListOptions = function( headers, options ) {
  * @param {function} progressCallback an optional function to track upload progress
  */
 AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, state, callback, handler, progressCallback ) {
-    headers["x-emc-date"] = new Date().toGMTString();
-    if ( mimeType == "" || mimeType == undefined ) {
-        mimeType = "text/plain; charset=UTF-8";
-    }
+    this._prepUploadHeaders( headers, mimeType, range );
+    this._signRequest( 'POST', headers, uri );
 
-    // The browser will append this on the way out.  Do it ourselves
-    // so it gets into our signature.
-    if ( mimeType.indexOf( "charset" ) == -1 ) {
-        mimeType += "; charset=UTF-8";
-    }
-
-    this._signRequest( 'POST', headers, mimeType, range, uri );
     var rest = this;
     this._ajax( {
+        type: "POST",
         url: this._encodeURI( uri ),
         data: data,
-        processData: false,
         mimeType: mimeType,
-        beforeSend: function( jqXHR, settings ) {
-            rest._setHeaders( jqXHR, headers, range );
+        beforeSend: function( xhr ) {
+            rest._setHeaders( xhr, headers );
         },
-        error: function( jqXHR ) {
-            rest._handleError( jqXHR, state, callback );
+        error: function( xhr ) {
+            callback( rest._createResult( xhr, false, state ) );
         },
-        type: "POST",
-        success: function( textStatus, jqXHR ) {
-            handler( jqXHR, state, callback );
+        success: function( xhr ) {
+            handler( xhr, state, callback );
         },
         progress: progressCallback
     } );
@@ -788,33 +981,23 @@ AtmosRest.prototype._restPost = function( uri, headers, data, range, mimeType, s
  * @param {function} progressCallback an optional function to track upload progress
  */
 AtmosRest.prototype._restPut = function( uri, headers, data, range, mimeType, state, callback, handler, progressCallback ) {
-    headers["x-emc-date"] = new Date().toGMTString();
-    if ( mimeType == "" || mimeType == undefined ) {
-        mimeType = "text/plain; charset=UTF-8";
-    }
+    this._prepUploadHeaders( headers, mimeType, range );
+    this._signRequest( 'PUT', headers, uri );
 
-    // The browser will append this on the way out.  Do it ourselves
-    // so it gets into our signature.
-    if ( mimeType.indexOf( "charset" ) == -1 ) {
-        mimeType += "; charset=UTF-8";
-    }
-
-    this._signRequest( 'PUT', headers, mimeType, range, uri );
     var rest = this;
     this._ajax( {
+        type: "PUT",
         url: this._encodeURI( uri ),
         data: data,
-        processData: false,
         mimeType: mimeType,
-        beforeSend: function( jqXHR, settings ) {
-            rest._setHeaders( jqXHR, headers, range );
+        beforeSend: function( xhr ) {
+            rest._setHeaders( xhr, headers );
         },
-        error: function( jqXHR ) {
-            rest._handleError( jqXHR, state, callback );
+        error: function( xhr ) {
+            callback( rest._createResult( xhr, false, state ) );
         },
-        type: "PUT",
-        success: function( textStatus, jqXHR ) {
-            handler( jqXHR, state, callback );
+        success: function( xhr ) {
+            handler( xhr, state, callback );
         },
         progress: progressCallback
     } );
@@ -830,21 +1013,21 @@ AtmosRest.prototype._restPut = function( uri, headers, data, range, mimeType, st
  * @param {function} handler the response processing function
  */
 AtmosRest.prototype._restDelete = function( uri, headers, state, callback, handler ) {
-    headers["x-emc-date"] = new Date().toGMTString();
+    this._prepHeaders( headers );
+    this._signRequest( 'DELETE', headers, uri );
 
-    this._signRequest( 'DELETE', headers, null, null, uri );
     var rest = this;
     this._ajax( {
         type: "DELETE",
         url: this._encodeURI( uri ),
-        beforeSend: function( jqXHR, settings ) {
-            rest._setHeaders( jqXHR, headers );
+        beforeSend: function( xhr ) {
+            rest._setHeaders( xhr, headers );
         },
-        error: function( jqXHR ) {
-            rest._handleError( jqXHR, state, callback );
+        error: function( xhr ) {
+            callback( rest._createResult( xhr, false, state ) );
         },
-        success: function( textStatus, jqXHR ) {
-            handler( jqXHR, state, callback );
+        success: function( xhr ) {
+            handler( xhr, state, callback );
         }
     } );
 
@@ -860,67 +1043,113 @@ AtmosRest.prototype._restDelete = function( uri, headers, state, callback, handl
  * @param {function} handler
  */
 AtmosRest.prototype._restGet = function( uri, headers, range, state, callback, handler ) {
-    headers["x-emc-date"] = new Date().toGMTString();
+    this._prepHeaders( headers, range );
 
-    this._signRequest( 'GET', headers, null, range, uri );
+    this._signRequest( 'GET', headers, uri );
+
     var rest = this;
     this._ajax( {
         type: "GET",
         url: this._encodeURI( uri ),
-        beforeSend: function( jqXHR, settings ) {
-            rest._setHeaders( jqXHR, headers, range );
+        beforeSend: function( xhr ) {
+            rest._setHeaders( xhr, headers );
         },
-        error: function( jqXHR ) {
-            rest._handleError( jqXHR, state, callback );
+        error: function( xhr ) {
+            callback( rest._createResult( xhr, false, state ) );
         },
-        success: function( textStatus, jqXHR ) {
-            handler( jqXHR, state, callback );
+        success: function( xhr ) {
+            handler( xhr, state, callback );
         }
     } );
 };
 
 /**
- * Simulates a jQuery ajax call
+ * Performs a REST HEAD operation
+ * @param {String} uri
+ * @param {Object} headers
+ * @param {Object} state
+ * @param {function} callback
+ * @param {function} handler
+ */
+AtmosRest.prototype._restHead = function( uri, headers, state, callback, handler ) {
+    this._prepHeaders( headers );
+    this._signRequest( 'HEAD', headers, uri );
+
+    var rest = this;
+    this._ajax( {
+        type: "HEAD",
+        url: this._encodeURI( uri ),
+        beforeSend: function( xhr ) {
+            rest._setHeaders( xhr, headers );
+        },
+        error: function( xhr ) {
+            callback( rest._createResult( xhr, false, state ) );
+        },
+        success: function( xhr ) {
+            handler( xhr, state, callback );
+        }
+    } );
+};
+
+AtmosRest.prototype._prepHeaders = function( headers, range ) {
+    headers["x-emc-date"] = new Date().toGMTString();
+    if ( range ) headers["Range"] = range.toString();
+};
+
+AtmosRest.prototype._prepUploadHeaders = function( headers, mimeType, range ) {
+    this._prepHeaders( headers, range );
+
+    if ( mimeType == "" || mimeType == undefined ) {
+        mimeType = "text/plain; charset=UTF-8";
+    }
+
+    // The browser will append this on the way out.  Do it ourselves
+    // so it gets into our signature.
+    if ( mimeType.indexOf( "charset" ) == -1 ) {
+        mimeType += "; charset=UTF-8";
+    }
+
+    headers["Content-Type"] = mimeType;
+};
+
+/**
+ * Abstracts an ajax call
  * @param {Object} options the options for the call
  */
 AtmosRest.prototype._ajax = function( options ) {
     options.url = this._resolveDots( options.url );
 
     // If a cross-domain request...
-    if ( this.atmosConfig.host && this.atmosConfig.protocol ) {
-        options.url = this.atmosConfig.protocol + "://" + this.atmosConfig.host + options.url;
+    if ( this.atmosConfig.host && this.atmosConfig.protocol && !/^https?:\/\//.test( options.url ) ) {
+        options.url = this.atmosConfig.protocol + "//" + this.atmosConfig.host + options.url;
     }
 
     var xhr = this._getXMLHttpRequest();
     var me = this;
+
     xhr.onreadystatechange = function( event ) {
         me._onreadystatechange( event, options, xhr );
     };
+
     try {
-        (xhr.upload || xhr).onprogress = function( event ) {
-            if ( !options.progress ) return;
-            if ( event.lengthComputable ) {
-                var progressPercent = Math.floor( (event.position || event.loaded) / (event.totalSize || event.total) * 100 );
-                options.progress( progressPercent );
-            }
-        };
+        if ( options.progress ) {
+            (xhr.upload || xhr).onprogress = function( event ) {
+                if ( event.lengthComputable ) {
+                    var progressPercent = Math.floor( (event.position || event.loaded) / (event.totalSize || event.total) * 100 );
+                    options.progress( progressPercent );
+                }
+            };
+        }
     } catch( e ) {
         // progress isn't supported
     }
+
     xhr.open( options.type, options.url, true );
-    if ( options.beforeSend ) {
-        options.beforeSend( xhr, options );
-    }
 
-    if ( options.mimeType ) {
-        xhr.setRequestHeader( "Content-Type", options.mimeType );
-    }
+    if ( options.beforeSend ) options.beforeSend( xhr, options );
 
-    if ( options.data ) {
-        xhr.send( options.data );
-    } else {
-        xhr.send();
-    }
+    if ( options.data ) xhr.send( options.data );
+    else xhr.send();
 };
 
 AtmosRest.prototype._getXMLHttpRequest = function() {
@@ -941,7 +1170,12 @@ AtmosRest.prototype._getXMLHttpRequest = function() {
     }
 };
 
+/**
+ * Resolves dot references in a path (parent/child/../ => parent/)
+ * @param path the path to resolve
+ */
 AtmosRest.prototype._resolveDots = function( path ) {
+    if ( !path ) return path;
     var segments = path.split( "/" );
     for ( var i = 0; i < segments.length; i++ ) {
         if ( segments[i] == ".." ) {
@@ -962,11 +1196,8 @@ AtmosRest.prototype._resolveDots = function( path ) {
  */
 AtmosRest.prototype._onreadystatechange = function( event, options, xhr ) {
     if ( xhr.readyState == 4 ) {
-        if ( xhr.status < 400 ) {
-            options.success( xhr.statusText, xhr );
-        } else {
-            options.error( xhr );
-        }
+        if ( xhr.status < 400 ) options.success( xhr );
+        else options.error( xhr );
     }
 };
 
@@ -975,12 +1206,11 @@ AtmosRest.prototype._onreadystatechange = function( event, options, xhr ) {
  * @param {XMLHttpRequest} xhr the XMLHttpRequest
  * @param {Object} headers the property hash containing the header values to set
  */
-AtmosRest.prototype._setHeaders = function( xhr, headers, range ) {
+AtmosRest.prototype._setHeaders = function( xhr, headers ) {
     for ( var prop in headers ) {
         if ( !headers.hasOwnProperty( prop ) ) continue;
         xhr.setRequestHeader( prop, headers[prop] );
     }
-    if ( range ) xhr.setRequestHeader( "Range", range.toString() );
 };
 
 /**
@@ -1012,24 +1242,31 @@ AtmosRest.prototype._encodeURI = function( uri ) {
     return outURI;
 };
 
-AtmosRest.prototype._getServiceInformationHandler = function( xhr, state, callback ) {
-    var result = new AtmosResult( true, state );
+AtmosRest.prototype._createResult = function( xhr, success, state ) {
+    var result = new AtmosResult( success, state );
     result.httpCode = xhr.status;
     result.httpMessage = xhr.statusText;
 
-    var doc = null;
-    if ( isNodejs ) {
-        // NodeJS doesn't have an XML parser yet; use the jsdom parser.
-        doc = jsdom.jsdom( xhr.responseText );
-    } else {
-        doc = xhr.responseXML;
+    if ( !success ) {
+        var doc = this._getXmlDoc( xhr );
+        var errorNodes = doc.getElementsByTagName( "Error" );
+        if ( errorNodes.length ) {
+            result.errorCode = this._getText( this._getChildByTagName( errorNodes[0], "Code" ) );
+            result.errorMessage = this._getText( this._getChildByTagName( errorNodes[0], "Message" ) );
+        }
     }
 
-    var versionNodes = doc.getElementsByTagName( "Version" );
-    if ( versionNodes.length )
-        result.atmosVersion = this._getText( this._getChildByTagName( versionNodes[0], "Atmos" ) );
+    return result;
+};
 
-    callback( result );
+AtmosRest.prototype._getXmlDoc = function( xhr ) {
+    if ( isNodejs ) {
+        // NodeJS doesn't have an XML parser yet; use the jsdom parser.
+        this.debug( "response:\n" + xhr.responseText );
+        return jsdom.jsdom( xhr.responseText );
+    } else {
+        return xhr.responseXML;
+    }
 };
 
 /**
@@ -1046,62 +1283,16 @@ AtmosRest.prototype._createObjectHandler = function( xhr, state, callback ) {
 
     var matches = location.match( AtmosRest.locationMatch );
     if ( matches == null ) {
-        var err = new AtmosResult( false, state );
+        var err = this._createResult( xhr, false, state );
         err.message = "Could not find location in " + location;
         callback( err );
+
+    } else {
+        var result = this._createResult( xhr, true, state );
+        result.value = matches[1];
+        this.debug( "Location: " + result.value );
+        callback( result );
     }
-
-    var result = new AtmosResult( true, state );
-    result.httpCode = xhr.status;
-    result.httpMessage = xhr.statusText;
-    result.objectId = matches[1];
-    this.debug( "Location: " + result.objectId );
-    callback( result );
-};
-
-/**
- * Processes the read object response and extracts the data.
- * @param {XMLHttpRequest} jqXHR the JQuery XHR object containing the response
- * @param {Object} state the user's state object
- * @param {function} callback the user's callback function
- */
-AtmosRest.prototype._readObjectHandler = function( jqXHR, state, callback ) {
-    var result = new AtmosResult( true, state );
-    result.httpCode = jqXHR.status;
-    result.httpMessage = jqXHR.statusText;
-    result.data = jqXHR.responseText;
-    callback( result );
-};
-
-/**
- * Handles the getUserMetadata response.  Parses the lists of metadata and listable metadata.
- * @param {XMLHttpRequest} jqXHR the JQuery XHR object
- * @param {Object} state the user's state object
- * @param {function} callback the user's callback function
- */
-AtmosRest.prototype._getUserMetadataHandler = function( jqXHR, state, callback ) {
-    var result = new AtmosResult( true, state );
-
-    result.meta = this._parseMetadata( jqXHR.getResponseHeader( "x-emc-meta" ) );
-    result.listableMeta = this._parseMetadata( jqXHR.getResponseHeader( "x-emc-listable-meta" ) );
-
-    callback( result );
-};
-
-/**
- * Handles the getSystemMetadata response.  Parses the list of system metadata.
- * @param {XMLHttpRequest} jqXHR the JQuery XHR object
- * @param {Object} state the user's state object
- * @param {function} callback the user's callback function
- */
-AtmosRest.prototype._getSystemMetadataHandler = function( jqXHR, state, callback ) {
-    var result = new AtmosResult( true, state );
-    result.httpCode = jqXHR.status;
-    result.httpMessage = jqXHR.statusText;
-    result.systemMeta = this._parseMetadata( jqXHR.getResponseHeader( "x-emc-meta" ) );
-    result.systemMeta.mimeType = jqXHR.getResponseHeader( "Content-Type" );
-
-    callback( result );
 };
 
 /**
@@ -1131,83 +1322,16 @@ AtmosRest.prototype._parseMetadata = function( value ) {
 };
 
 /**
- * Response handler for responses that no not require any specific
- * handling.
- */
-AtmosRest.prototype._genericHandler = function( jqXHR, state, callback ) {
-    var result = new AtmosResult( true, state );
-    result.httpCode = jqXHR.status;
-    result.httpMessage = jqXHR.statusText;
-
-    callback( result );
-};
-
-/**
- * Error handler.  Used by most functions.
- */
-AtmosRest.prototype._handleError = function( jqXHR, state, callback ) {
-    var result = new AtmosResult( false, state );
-    result.httpCode = jqXHR.status;
-    result.httpMessage = jqXHR.statusText;
-
-    var doc = null;
-    if ( isNodejs ) {
-        // NodeJS doesn't have an XML parser yet; use the jsdom parser.
-        doc = jsdom.jsdom( jqXHR.responseText );
-    } else {
-        doc = jqXHR.responseXML;
-    }
-
-    var errorNodes = doc.getElementsByTagName( "Error" );
-    if ( errorNodes.length ) {
-        result.errorCode = this._getText( this._getChildByTagName( errorNodes[0], "Code" ) );
-        result.errorMessage = this._getText( this._getChildByTagName( errorNodes[0], "Message" ) );
-    }
-
-    callback( result );
-};
-
-/**
- * Handles the ACL response.  Parses the lists of metadata and listable metadata.
- * @param {XMLHttpRequest} jqXHR the JQuery XHR object
- * @param {Object} state the user's state object
- * @param {function} callback the user's callback function
- */
-AtmosRest.prototype._handleGetAclResponse = function( jqXHR, state, callback ) {
-    var result = new AtmosResult( true, state );
-    result.httpCode = jqXHR.status;
-    result.httpMessage = jqXHR.statusText;
-
-    var userAcls = this._parseAclEntries( jqXHR.getResponseHeader( "x-emc-useracl" ) );
-    var groupAcls = this._parseAclEntries( jqXHR.getResponseHeader( "x-emc-groupacl" ) );
-    result.acl = new Acl( userAcls, groupAcls );
-
-    callback( result );
-};
-
-/**
  * Handles the response from the ListObjects method
  * @param {XMLHttpRequest} xhr the XHR object
  *
  */
 AtmosRest.prototype._handleListObjectsResponse = function( xhr, state, callback ) {
-    var result = new AtmosResult( true, state );
-    result.httpCode = xhr.status;
-    result.httpMessage = xhr.statusText;
+    var result = this._createResult( xhr, true, state );
     result.token = xhr.getResponseHeader( "x-emc-token" );
 
-    var doc = null;
+    var doc = this._getXmlDoc( xhr );
 
-    if ( isNodejs ) {
-        // NodeJS doesn't have an XML parser yet; use the jsdom parser.
-        doc = jsdom.jsdom( xhr.responseText );
-    } else {
-        doc = xhr.responseXML;
-    }
-
-    /**
-     * @type Array
-     */
     var objects = new Array();
 
     /**
@@ -1215,17 +1339,13 @@ AtmosRest.prototype._handleListObjectsResponse = function( xhr, state, callback 
      */
     var objlist = doc.getElementsByTagName( "Object" );
 
-//	this.debug( "Found " + objlist.length + " objects" );
-
     for ( var i = 0; i < objlist.length; i++ ) {
         var userMeta = null;
         var systemMeta = null;
         var userListableMeta = null;
 
         var node = objlist.item( i );
-//		this.debug( "node is " + node );
         var oidNode = this._getChildByTagName( node, "ObjectID" );
-//		this.debug( "oidNode is " + oidNode );
         var smNode = this._getChildByTagName( node, "SystemMetadataList" );
         var umNode = this._getChildByTagName( node, "UserMetadataList" );
 
@@ -1243,7 +1363,7 @@ AtmosRest.prototype._handleListObjectsResponse = function( xhr, state, callback 
         objects.push( obj );
     }
 
-    result.results = objects;
+    result.value = objects;
     callback( result );
 };
 
@@ -1253,23 +1373,11 @@ AtmosRest.prototype._handleListObjectsResponse = function( xhr, state, callback 
  *
  */
 AtmosRest.prototype._handleListDirectoryResponse = function( directoryPath, xhr, state, callback ) {
-    var result = new AtmosResult( true, state );
-    result.httpCode = xhr.status;
-    result.httpMessage = xhr.statusText;
+    var result = this._createResult( xhr, true, state );
     result.token = xhr.getResponseHeader( "x-emc-token" );
 
-    var doc = null;
+    var doc = this._getXmlDoc( xhr );
 
-    if ( isNodejs ) {
-        // NodeJS doesn't have an XML parser yet; use the jsdom parser.
-        doc = jsdom.jsdom( xhr.responseText );
-    } else {
-        doc = xhr.responseXML;
-    }
-
-    /**
-     * @type Array
-     */
     var entries = new Array();
 
     /**
@@ -1303,10 +1411,74 @@ AtmosRest.prototype._handleListDirectoryResponse = function( directoryPath, xhr,
         entries.push( entry );
     }
 
-    result.results = entries;
+    result.value = entries;
     callback( result );
 };
 
+/**
+ * Handles the response from the GetObjectInfo method
+ */
+AtmosRest.prototype._handleObjectInfoResponse = function( xhr, state, callback ) {
+    var result = this._createResult( xhr, true, state );
+
+    var doc = this._getXmlDoc( xhr );
+    var objectId = null, selection = null, replicas = [];
+    var expirationEnabled = false, expirationEndsAt = null, retentionEnabled = false, retentionEndsAt = null;
+
+    var nodes = doc.getElementsByTagName( "objectId" );
+    if ( nodes.length ) objectId = this._getText( nodes.item( 0 ) );
+
+    nodes = doc.getElementsByTagName( "selection" );
+    if ( nodes.length ) selection = this._getText( nodes.item( 0 ) );
+
+    nodes = doc.getElementsByTagName( "replicas" );
+    if ( nodes.length ) {
+        nodes = this._getChildrenByTagName( nodes.item( 0 ), 'replica' );
+        for ( var i = 0; i < nodes.length; i++ ) {
+            var node = nodes[i];
+            var id = this._getText( this._getChildByTagName( node, 'id' ) );
+            var location = this._getText( this._getChildByTagName( node, 'location' ) );
+            var replicaType = this._getText( this._getChildByTagName( node, 'type' ) );
+            var current = this._getText( this._getChildByTagName( node, 'current' ) );
+            var storageType = this._getText( this._getChildByTagName( node, 'storageType' ) );
+            replicas.push( new ObjectReplica( id, location, replicaType, current, storageType ) );
+        }
+    }
+
+    nodes = doc.getElementsByTagName( "expiration" );
+    if ( nodes.length ) {
+        node = nodes.item( 0 );
+        expirationEnabled = this._getText( this._getChildByTagName( node, 'enabled' ) );
+        expirationEndsAt = this._getText( this._getChildByTagName( node, 'endAt' ) );
+    }
+
+    nodes = doc.getElementsByTagName( "retention" );
+    if ( nodes.length ) {
+        node = nodes.item( 0 );
+        retentionEnabled = this._getText( this._getChildByTagName( node, 'enabled' ) );
+        retentionEndsAt = this._getText( this._getChildByTagName( node, 'endAt' ) );
+    }
+
+    result.value = new ObjectInfo( objectId, selection, replicas, expirationEnabled, expirationEndsAt, retentionEnabled, retentionEndsAt );
+    callback( result );
+};
+
+/**
+ * Parses the object versions list from a listVersions request
+ * @param xhr {XMLHttpRequest} xhr the XHR object
+ */
+AtmosRest.prototype._parseObjectVersions = function( xhr ) {
+    var objectIds = new Array();
+
+    var doc = this._getXmlDoc( xhr );
+
+    var versions = doc.getElementsByTagName( "Ver" );
+    for ( var i = 0; i < versions.length; i++ ) {
+        objectIds.push( this._getText( this._getChildByTagName( versions.item( i ), "OID" ) ) );
+    }
+
+    return objectIds;
+};
 
 /**
  * Parses ACL entries from a response header list from a get ACL request
@@ -1314,7 +1486,7 @@ AtmosRest.prototype._handleListDirectoryResponse = function( directoryPath, xhr,
  */
 AtmosRest.prototype._parseAclEntries = function( header ) {
     var aclEntries = new Array();
-    var grants = header.split( "," );
+    var grants = this._headerValueToArray( header );
     for ( var i = 0; i < grants.length; i++ ) {
         var nvpair = grants[i].split( "=", 2 );
         var grantee = nvpair[0];
@@ -1325,7 +1497,7 @@ AtmosRest.prototype._parseAclEntries = function( header ) {
         // Currently, the server returns "FULL" instead of "FULL_CONTROL".
         // For consistency, change this to value use in the request
         if ( "FULL" === permission ) {
-            permission = ACL_PERMISSIONS.FULL_CONTROL;
+            permission = AclEntry.ACL_PERMISSIONS.FULL_CONTROL;
         }
 
         aclEntries[i] = new AclEntry( grantee, permission );
@@ -1366,20 +1538,32 @@ AtmosRest.prototype._parseResponseMeta = function( nodeList, regMeta, listableMe
  * @return {Node} the found node or null if not found.
  */
 AtmosRest.prototype._getChildByTagName = function( node, tagName ) {
+    var children = this._getChildrenByTagName( node, tagName );
+    if ( children.length ) return children[0];
+    return null;
+};
+
+/**
+ * Searches a node for all first-level children with the given tag name.  If
+ * not found, an empty array will be returned.
+ * @param {Node} node the node to search
+ * @param {String} tagName the tag name to look for
+ * @return {Array} the found child nodes or an empty array if not found.
+ */
+AtmosRest.prototype._getChildrenByTagName = function( node, tagName ) {
     var reg = new RegExp( tagName, "i" ); // jsnode uses HTML uppercase names, so do insensitive
     var children = node.childNodes;
-//	this.debug( "found " + children.length + " child nodes" );
+    var nodes = [];
     for ( var i = 0; i < children.length; i++ ) {
         var child = children.item( i );
         if ( child.nodeType != 1 ) {
             continue; // not an element
         }
-//		this.debug( "child " + child.tagName );
         if ( reg.test( child.nodeName ) ) {
-            return child;
+            nodes.push( child );
         }
     }
-    return null;
+    return nodes;
 };
 
 /**
@@ -1404,15 +1588,16 @@ AtmosRest.prototype._getText = function( node ) {
  * Signs the REST request
  * @param {String} method the HTTP method (GET, PUT, DELETE, POST, HEAD)
  * @param {Object} headers the object containing the HTTP headers as properties
- * @param {String} content_type the MIME type of the request body
- * @param {AtmosRange} range the range, if requested
+ *        !!IMPORTANT!! this method assumes Content-Type and Range are already set!
  * @param {String} uri the path to the request
  */
-AtmosRest.prototype._signRequest = function( method, headers, content_type, range, uri ) {
+AtmosRest.prototype._signRequest = function( method, headers, uri ) {
     this.debug( this.atmosConfig.uid );
     this.debug( this.atmosConfig.secret );
 
     uri = this._resolveDots( uri );
+    var mimeType = headers["Content-Type"];
+    var range = headers["Range"];
 
     var emcheaders;
     if ( headers == "" ) {
@@ -1422,14 +1607,13 @@ AtmosRest.prototype._signRequest = function( method, headers, content_type, rang
     }
 
     emcheaders["x-emc-uid"] = this.atmosConfig.uid;
-    var hash_string = this._buildHashString( method, content_type, range,
-        headers["Date"], uri, emcheaders );
 
+    var hash_string = this._buildHashString( method, mimeType, range, headers["Date"], uri, emcheaders );
     this.debug( "HashString:\n" + hash_string );
 
-    signature = this._doSignature( hash_string, this.atmosConfig.secret );
-
+    var signature = this._doSignature( hash_string, this.atmosConfig.secret );
     this.debug( "Signature: " + signature );
+
     emcheaders["x-emc-signature"] = signature;
 
     return signature;
@@ -1485,7 +1669,7 @@ AtmosRest.prototype._buildHashString = function( method, content_type, range, da
         emcheaders[key] = value;
     }
 
-    var keys = this._getKeys( emcheaders );
+    var keys = Object.keys( emcheaders );
     this.debug( "keys " + keys );
 
     keys.sort().forEach( function ( k ) {
@@ -1504,20 +1688,6 @@ AtmosRest.prototype._normalizeWS = function( str ) {
     if ( str == null ) return null;
     str = str.replace( /\n/, " " );
     return str.replace( /\s+/, " " );
-};
-
-/**
- * Lists the keys in an object
- * @param {Object} obj the object to enumerate
- * @returns {Array} the list of keys in the object
- */
-AtmosRest.prototype._getKeys = function( obj ) {
-    var keys = new Array();
-    for ( var prop in obj ) {
-        if ( !obj.hasOwnProperty( prop ) ) continue;
-        keys.push( prop );
-    }
-    return keys;
 };
 
 /**
@@ -1601,4 +1771,5 @@ if ( typeof(exports) != 'undefined' ) {
     exports.ListOptions = ListOptions;
     exports.ObjectResult = ObjectResult;
     exports.DirectoryEntry = DirectoryEntry;
+    exports.dumpObject = dumpObject;
 }

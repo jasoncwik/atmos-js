@@ -20,38 +20,39 @@
  */
 
 if ( typeof(exports) != 'undefined' ) {
-    console.log( "Loading modules" );
     // We're running inside node.js
-    //require( 'tests/atmos-config.js' );
+    AtmosJS = require( '../atmos.js' );
+    AtmosRest = AtmosJS.AtmosRest;
+    ListOptions = AtmosJS.ListOptions;
+    AtmosRange = AtmosJS.AtmosRange;
+    dumpObject = AtmosJS.dumpObject;
+    AclEntry = AtmosJS.AclEntry;
+    Acl = AtmosJS.Acl;
 
-    var AtmosJS = require( 'atmos.js' );
-    var AtmosRest = AtmosJS.AtmosRest;
-    var ListOptions = AtmosJS.ListOptions;
-    require( 'tests/atmos-config.js' );
-    global.atmos = new AtmosRest( atmosConfig );
-
+    require( './atmos-config.js' );
+    atmos = new AtmosRest( atmosConfig );
 }
 
 
 cleanup = [];
 
-fileChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=+*,!#%$&()";
-innerChars = this.fileChars + " ";
+fileChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=+*,!#$&()"; // % removed
+innerChars = fileChars + " ";
 
 randomFilename = function( name, ext ) {
     var fn = "";
     for ( var i = 0; i < name; i++ ) {
         if ( i == 0 ) {
-            fn += this.fileChars.charAt( Math.floor( Math.random() * (this.fileChars.length - 1) ) );
+            fn += fileChars.charAt( Math.floor( Math.random() * (fileChars.length - 1) ) );
         } else {
-            fn += this.innerChars.charAt( Math.floor( Math.random() * (this.innerChars.length - 1) ) );
+            fn += innerChars.charAt( Math.floor( Math.random() * (innerChars.length - 1) ) );
         }
     }
 
     if ( ext && ext > 0 ) {
         fn += ".";
         for ( var j = 0; j < ext; j++ ) {
-            fn += this.fileChars.charAt( Math.floor( Math.random() * (this.fileChars.length - 1) ) );
+            fn += fileChars.charAt( Math.floor( Math.random() * (fileChars.length - 1) ) );
         }
     }
 
@@ -62,7 +63,7 @@ var directoryName = randomFilename( 8, 0 );
 var specialCharacterName = ",:&=+$#";
 // NOTE: percent (%) for some reason causes signature errors on the server side. I still haven't found a way to avoid this.
 
-this.atmosApi = {
+atmosApi = {
 
     'testEncodeUri' : function( test ) {
         atmos.info( "atmosApi.testEncodeUri" );
@@ -77,21 +78,21 @@ this.atmosApi = {
 
     // Basic Create object with some content.
     'testCreateObject' : function( test ) {
-        this.atmos.info( "atmosApi.testCreateObject" );
+        atmos.info( "atmosApi.testCreateObject" );
 
         test.expect( 6 );
         atmos.createObject( null, null, null, "Hello World!", "text/plain", null,
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // Read the object back and verify content
-                atmos.readObject( result.objectId, null, null, function( result2 ) {
+                atmos.readObject( result.value, null, null, function( result2 ) {
                     test.ok( result2.success, "Request successful" );
                     test.equal( result2.httpCode, 200, "HttpCode correct" );
                     test.equal( result2.data, "Hello World!", "Data correct" );
@@ -108,9 +109,9 @@ this.atmosApi = {
 
         atmos.createObject( null, null, null, "Hello World!", null, null, function( result ) {
             test.ok( result.success, "Request successful" );
-            test.ok( result.objectId != null, "Object ID not null" );
+            test.ok( result.value != null, "Object ID not null" );
 
-            atmos.deleteObject( result.objectId, null, function( result2 ) {
+            atmos.deleteObject( result.value, null, function( result2 ) {
                 test.ok( result2.success, "Delete successful" );
                 test.equal( result2.httpCode, 204, "HttpCode correct" );
 
@@ -124,18 +125,18 @@ this.atmosApi = {
 
         test.expect( 6 );
 
-        var filename = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+        var filename = "/" + directoryName + "/" + randomFilename( 8, 3 );
         atmos.debug( "Filename: " + filename );
 
         atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", null,
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + filename + ")" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // Read the object back and verify content
                 atmos.readObject( filename, null, null, function( result2 ) {
@@ -154,18 +155,18 @@ this.atmosApi = {
         test.expect( 9 );
 
         var subdirectory = "/" + directoryName + "/test/../";
-        var filename = this.randomFilename( 8, 3 );
+        var filename = randomFilename( 8, 3 );
         var path = subdirectory + filename;
 
         atmos.createObjectOnPath( path, null, null, null, "Hello World!", "text/plain", null,
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + path + ")" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // Read the object back and verify content
                 atmos.readObject( path, null, null, function( result2 ) {
@@ -177,7 +178,7 @@ this.atmosApi = {
                     atmos.listDirectory( subdirectory, null, null, function( result3 ) {
                         test.ok( result3.success, "List successful" );
                         test.equal( result3.httpCode, 200, "HttpCode correct" );
-                        test.ok( result3.results.length > 0, "List not empty" );
+                        test.ok( result3.value.length > 0, "List not empty" );
                         test.done();
                     } )
                 } );
@@ -190,14 +191,14 @@ this.atmosApi = {
 
         test.expect( 5 );
 
-        var filename = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+        var filename = "/" + directoryName + "/" + randomFilename( 8, 3 );
         atmos.debug( "Filename: " + filename );
 
         atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", null,
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + filename + ")" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 atmos.deleteObject( filename, null, function( result2 ) {
@@ -206,7 +207,7 @@ this.atmosApi = {
 
                     if ( !result2.success ) {
                         // Delete failed, so make sure object is cleaned up
-                        this.cleanup.push( result.objectId );
+                        cleanup.push( result.value );
                     }
 
                     test.done();
@@ -224,25 +225,25 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // Read the object metadata back and verify content
-                atmos.getUserMetadata( result.objectId, ["foo", "listable"], null, function( result2 ) {
+                atmos.getUserMetadata( result.value, ["foo", "listable"], null, function( result2 ) {
                     test.ok( result2.success, "Request successful" );
-                    test.equal( result2.meta["foo"], "bar", "Metadata value: " + result2.meta["foo"] );
-                    test.equal( result2.listableMeta["listable"], "", "Listable metadata" );
-                    test.equal( result2.meta["foo2"], null, "Metadata filtering" );
+                    test.equal( result2.value.meta["foo"], "bar", "Metadata value: " + result2.value.meta["foo"] );
+                    test.equal( result2.value.listableMeta["listable"], "", "Listable metadata" );
+                    test.equal( result2.value.meta["foo2"], null, "Metadata filtering" );
                     test.done();
                 } );
             } );
     },
 
     'testUpdateObject' : function( test ) {
-        this.atmos.info( "atmosApi.testCreateObject" );
+        atmos.info( "atmosApi.testCreateObject" );
 
         test.expect( 21 );
         var data = "Hello World!";
@@ -250,36 +251,36 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Create successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // Read the object back and verify content
-                atmos.readObject( result.objectId, null, null, function( result2 ) {
+                atmos.readObject( result.value, null, null, function( result2 ) {
                     test.ok( result2.success, "Read successful" );
                     test.equal( result2.httpCode, 200, "HttpCode correct" );
                     test.equal( result2.data, data, "Data correct" );
 
                     // Update object range
                     var range = new AtmosRange( 6, 5 );
-                    atmos.updateObject( result.objectId, null, null, null, "Timmy", range, "text/plain", null, function( result3 ) {
+                    atmos.updateObject( result.value, null, null, null, "Timmy", range, "text/plain", null, function( result3 ) {
                         test.ok( result3.success, "Update range successful" );
                         test.equal( result3.httpCode, 200, "HttpCode correct" );
 
-                        atmos.readObject( result.objectId, null, null, function( result4 ) {
+                        atmos.readObject( result.value, null, null, function( result4 ) {
                             test.ok( result4.success, "Request successful" );
                             test.equal( result4.httpCode, 200, "HttpCode correct" );
                             test.equal( result4.data, "Hello Timmy!", "Update range confirmed" );
 
                             // Update entire object
                             data = "Timmy was here.";
-                            atmos.updateObject( result.objectId, null, null, null, data, null, "text/plain", null, function( result5 ) {
+                            atmos.updateObject( result.value, null, null, null, data, null, "text/plain", null, function( result5 ) {
                                 test.ok( result5.success, "Update whole successful" );
                                 test.equal( result5.httpCode, 200, "HttpCode correct" );
 
-                                atmos.readObject( result.objectId, null, null, function( result6 ) {
+                                atmos.readObject( result.value, null, null, function( result6 ) {
                                     test.ok( result6.success, "Request successful" );
                                     test.equal( result6.httpCode, 200, "HttpCode correct" );
                                     test.equal( result6.data, data, "Update whole confirmed" );
@@ -287,11 +288,11 @@ this.atmosApi = {
                                     // Append to object
                                     var appended = " And so was Stu.";
                                     range = new AtmosRange( data.length, appended.length );
-                                    atmos.updateObject( result.objectId, null, null, null, appended, range, "text/plain", null, function( result7 ) {
+                                    atmos.updateObject( result.value, null, null, null, appended, range, "text/plain", null, function( result7 ) {
                                         test.ok( result7.success, "Append successful" );
                                         test.equal( result7.httpCode, 200, "HttpCode correct" );
 
-                                        atmos.readObject( result.objectId, null, null, function( result8 ) {
+                                        atmos.readObject( result.value, null, null, function( result8 ) {
                                             test.ok( result8.success, "Request successful" );
                                             test.equal( result8.httpCode, 200, "HttpCode correct" );
                                             test.equal( result8.data, data + appended, "Append confirmed" );
@@ -308,6 +309,30 @@ this.atmosApi = {
 
     },
 
+    'testGetListableTags' : function( test ) {
+        atmos.info( "atmosApi.testGetListableTags" );
+
+        test.expect( 6 );
+        var listableMeta = {'listable4/listable5':""};
+        atmos.createObject( null, null, listableMeta, "Hello World!", "text/plain", null,
+            function( result ) {
+
+                test.ok( result.success, "Creation successful" );
+                test.ok( result.value != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                cleanup.push( result.value );
+
+                atmos.getListableTags( "listable4", null, function( result2 ) {
+                    test.ok( result2.success, "Request successful" );
+                    test.equal( result2.value.length, 1, "One result returned" );
+                    test.equal( result2.value[0], "listable5", "Correct data returned" );
+                    test.done();
+                } );
+            } );
+    },
+
     'testListObjects' : function( test ) {
         atmos.info( "atmosApi.testListObjects" );
 
@@ -318,11 +343,11 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Creation successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 var options = new ListOptions( 0, null, true, null, null );
                 atmos.listObjects( "listable3", options, null, function( result2 ) {
@@ -332,11 +357,11 @@ this.atmosApi = {
                         return;
                     }
                     // Iterate through the results and make sure our OID is present
-                    for ( var i = 0; i < result2.results.length; i++ ) {
+                    for ( var i = 0; i < result2.value.length; i++ ) {
                         // @type ObjectResult
-                        var obj = result2.results[i];
-                        if ( obj.objectId == result.objectId ) {
-                            test.equal( obj.objectId, result.objectId, "Object ID equal" );
+                        var obj = result2.value[i];
+                        if ( obj.objectId == result.value ) {
+                            test.equal( obj.objectId, result.value, "Object ID equal" );
                             test.equal( obj.userMeta["foo"], "bar", "Object metadata" );
                             test.equal( obj.listableUserMeta["listable3"], "", "Listable object metadata" );
                             test.equal( obj.systemMeta["size"], "12", "System metadata" );
@@ -345,7 +370,7 @@ this.atmosApi = {
                         }
                     }
 
-                    test.ok( false, "Could not find oid " + result.objectId + " in object list" );
+                    test.ok( false, "Could not find oid " + result.value + " in object list" );
                     test.done();
                 } );
             } );
@@ -357,7 +382,7 @@ this.atmosApi = {
         test.expect( 10 );
 
         var directory = "/" + directoryName + "/";
-        var filename = this.randomFilename( 8, 3 );
+        var filename = randomFilename( 8, 3 );
         var fullPath = directory + filename;
         var listableMeta = {listable3:""};
         var userMeta = {foo:"bar"};
@@ -367,11 +392,11 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Creation successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 var options = new ListOptions( 0, null, true, null, null );
                 atmos.listDirectory( directory, options, null, function( result2 ) {
@@ -381,14 +406,14 @@ this.atmosApi = {
                         return;
                     }
                     // Iterate through the results and make sure our OID is present
-                    for ( var i = 0; i < result2.results.length; i++ ) {
+                    for ( var i = 0; i < result2.value.length; i++ ) {
                         // @type DirectoryEntry
-                        var entry = result2.results[i];
+                        var entry = result2.value[i];
                         atmos.debug( "entry: " + dumpObject( entry ) );
-                        if ( entry.objectId == result.objectId ) {
+                        if ( entry.objectId == result.value ) {
                             test.equal( entry.path, fullPath, "Path equal" );
                             test.equal( entry.name, filename, "Filename equal" );
-                            test.equal( entry.objectId, result.objectId, "Object ID equal" );
+                            test.equal( entry.objectId, result.value, "Object ID equal" );
                             test.equal( entry.userMeta["foo"], "bar", "Object metadata" );
                             test.equal( entry.listableUserMeta["listable3"], "", "Listable object metadata" );
                             test.equal( entry.systemMeta["size"], "12", "System metadata" );
@@ -397,14 +422,14 @@ this.atmosApi = {
                         }
                     }
 
-                    test.ok( false, "Could not find oid " + result.objectId + " in object list" );
+                    test.ok( false, "Could not find oid " + result.value + " in object list" );
                     test.done();
                 } );
             } );
     },
 
     'testGetShareableUrl' : function( test ) {
-        this.atmos.info( "atmosApi.testGetShareableUrl" );
+        atmos.info( "atmosApi.testGetShareableUrl" );
         var text = "Hello World!";
 
         test.expect( 4 );
@@ -412,25 +437,26 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 var expires = new Date();
                 expires.setMinutes( expires.getMinutes() + 5 );
-                var url = atmos.getShareableUrl( result.objectId, expires );
+                var url = atmos.getShareableUrl( result.value, expires );
 
                 atmos._ajax( {
                     type: "GET",
                     url: url,
-                    error: function( jqXHR, textStatus, errorThrown ) {
-                        test.ok( false, textStatus );
+                    error: function( xhr ) {
+                        test.ok( false, xhr.responseText );
+                        atmos.info( xhr.responseText );
                         test.done();
                     },
-                    success: function( textStatus, jqXHR ) {
-                        test.ok( jqXHR.responseText == text, "Correct content returned" );
+                    success: function( xhr ) {
+                        test.ok( xhr.responseText == text, "Correct content returned" );
                         test.done();
                     }
                 } );
@@ -444,7 +470,7 @@ this.atmosApi = {
 
         var text = "Hello World!";
         var directory = "/" + directoryName + "/";
-        var filename = this.randomFilename( 8, 3 );
+        var filename = randomFilename( 8, 3 );
         var fullPath = directory + filename;
         atmos.debug( "Full Path: " + fullPath );
 
@@ -452,11 +478,11 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Creation successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 var expires = new Date();
                 expires.setMinutes( expires.getMinutes() + 5 );
@@ -465,12 +491,13 @@ this.atmosApi = {
                 atmos._ajax( {
                     type: "GET",
                     url: url,
-                    error: function( jqXHR, textStatus, errorThrown ) {
-                        test.ok( false, textStatus );
+                    error: function( xhr ) {
+                        test.ok( false, xhr.responseText );
+                        atmos.info( xhr.responseText );
                         test.done();
                     },
-                    success: function( textStatus, jqXHR ) {
-                        test.ok( jqXHR.responseText == text, "Correct content returned" );
+                    success: function( xhr ) {
+                        test.ok( xhr.responseText == text, "Correct content returned" );
                         test.done();
                     }
                 } );
@@ -489,11 +516,11 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + filename + ")" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // Read the object back and verify content
                 atmos.readObject( filename, null, null, function( result2 ) {
@@ -512,17 +539,17 @@ this.atmosApi = {
         test.expect( 4 );
 
         var text = "Hello World!";
-        var fullPath = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+        var fullPath = "/" + directoryName + "/" + randomFilename( 8, 3 );
 
         atmos.createObjectOnPath( fullPath, null, null, null, text, "text/plain", null,
             function( result ) {
 
                 test.ok( result.success, "Creation successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 var expires = new Date();
                 expires.setMinutes( expires.getMinutes() + 5 );
@@ -532,12 +559,13 @@ this.atmosApi = {
                 atmos._ajax( {
                     type: "GET",
                     url: url,
-                    error: function( jqXHR, textStatus, errorThrown ) {
-                        test.ok( false, textStatus );
+                    error: function( xhr ) {
+                        test.ok( false, xhr.responseText );
+                        atmos.info( xhr.responseText );
                         test.done();
                     },
-                    success: function( textStatus, jqXHR ) {
-                        test.ok( jqXHR.responseText == text, "Correct content returned" );
+                    success: function( xhr ) {
+                        test.ok( xhr.responseText == text, "Correct content returned" );
                         test.done();
                     }
                 } );
@@ -550,17 +578,17 @@ this.atmosApi = {
         test.expect( 4 );
 
         var text = "Hello World!";
-        var fullPath = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+        var fullPath = "/" + directoryName + "/" + randomFilename( 8, 3 );
 
         atmos.createObjectOnPath( fullPath, null, null, null, text, "text/plain", null,
             function( result ) {
 
                 test.ok( result.success, "Creation successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 var expires = new Date();
                 expires.setMinutes( expires.getMinutes() + 5 );
@@ -570,12 +598,13 @@ this.atmosApi = {
                 atmos._ajax( {
                     type: "GET",
                     url: url,
-                    error: function( jqXHR, textStatus, errorThrown ) {
-                        test.ok( false, textStatus );
+                    error: function( xhr ) {
+                        test.ok( false, xhr.responseText );
+                        atmos.info( xhr.responseText );
                         test.done();
                     },
-                    success: function( textStatus, jqXHR ) {
-                        test.ok( jqXHR.responseText == text, "Correct content returned" );
+                    success: function( xhr ) {
+                        test.ok( xhr.responseText == text, "Correct content returned" );
                         test.done();
                     }
                 } );
@@ -594,11 +623,11 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + filename + ")" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 var expires = new Date();
                 expires.setMinutes( expires.getMinutes() + 5 );
@@ -607,12 +636,13 @@ this.atmosApi = {
                 atmos._ajax( {
                     type: "GET",
                     url: url,
-                    error: function( jqXHR, textStatus, errorThrown ) {
-                        test.ok( false, textStatus );
+                    error: function( xhr ) {
+                        test.ok( false, xhr.responseText );
+                        atmos.info( xhr.responseText );
                         test.done();
                     },
-                    success: function( textStatus, jqXHR ) {
-                        test.ok( jqXHR.responseText == "Hello World!", "Correct content returned" );
+                    success: function( xhr ) {
+                        test.ok( xhr.responseText == "Hello World!", "Correct content returned" );
                         test.done();
                     }
                 } );
@@ -632,17 +662,17 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // Read the ACL back and verify
-                atmos.getAcl( result.objectId, null, function( result2 ) {
+                atmos.getAcl( result.value, null, function( result2 ) {
                     test.ok( result2.success, "Request successful" );
                     test.equal( result2.httpCode, 200, "HttpCode correct" );
-                    test.equal( dumpObject( result2.acl ), dumpObject( acl ) );
+                    test.equal( dumpObject( result2.value ), dumpObject( acl ) );
                     test.done();
                 } );
 
@@ -663,22 +693,22 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // Set ACL
-                atmos.setAcl( result.objectId, acl, null, function( result2 ) {
+                atmos.setAcl( result.value, acl, null, function( result2 ) {
                     test.ok( result2.success, "Request successful" );
                     test.equal( result2.httpCode, 200, "HttpCode correct" );
 
                     // Read the ACL back and verify
-                    atmos.getAcl( result.objectId, null, function( result3 ) {
+                    atmos.getAcl( result.value, null, function( result3 ) {
                         test.ok( result3.success, "Request successful" );
                         test.equal( result3.httpCode, 200, "HttpCode correct" );
-                        test.equal( dumpObject( result3.acl ), dumpObject( acl ) );
+                        test.equal( dumpObject( result3.value ), dumpObject( acl ) );
                         test.done();
                     } );
                 } );
@@ -686,25 +716,25 @@ this.atmosApi = {
     },
 
     'testGetSystemMetadata' : function( test ) {
-        this.atmos.info( "atmosApi.testGetSystemMetadata" );
+        atmos.info( "atmosApi.testGetSystemMetadata" );
 
         test.expect( 7 );
         atmos.createObject( null, null, null, "Hello World!", "text/plain", null,
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // Read the system metadata and verify content
-                atmos.getSystemMetadata( result.objectId, null, null, function( result2 ) {
+                atmos.getSystemMetadata( result.value, null, null, function( result2 ) {
                     test.ok( result2.success, "Request successful" );
                     test.equal( result2.httpCode, 200, "HttpCode correct" );
-                    test.equal( result2.systemMeta["size"], 12, "Size correct" );
-                    test.equal( result2.systemMeta["type"], "regular", "Type correct" );
+                    test.equal( result2.value.systemMeta["size"], 12, "Size correct" );
+                    test.equal( result2.value.systemMeta["type"], "regular", "Type correct" );
                     test.done();
                 } );
 
@@ -720,32 +750,32 @@ this.atmosApi = {
             function( result ) {
 
                 test.ok( result.success, "Request successful" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // add metadata
                 var meta = {foo:"bar", foo2:"baz"};
                 var listableMeta = {listable:""};
-                atmos.setUserMetadata( result.objectId, meta, listableMeta, null, function( result2 ) {
+                atmos.setUserMetadata( result.value, meta, listableMeta, null, function( result2 ) {
                     test.ok( result2.success, "Add metadata request successful" );
                     // Read back and verify content
-                    atmos.getUserMetadata( result.objectId, null, null, function( result3 ) {
+                    atmos.getUserMetadata( result.value, null, null, function( result3 ) {
                         test.ok( result3.success, "Get metadata request successful" );
-                        test.equal( result3.meta["foo"], "bar", "Add metadata" );
-                        test.equal( result3.meta["foo2"], "baz", "Add metadata" );
-                        test.equal( result3.listableMeta["listable"], "", "Add metadata" );
+                        test.equal( result3.value.meta["foo"], "bar", "Add metadata" );
+                        test.equal( result3.value.meta["foo2"], "baz", "Add metadata" );
+                        test.equal( result3.value.listableMeta["listable"], "", "Add metadata" );
 
                         // update metadata
                         meta.foo2 = "bazbaz";
-                        atmos.setUserMetadata( result.objectId, meta, listableMeta, null, function( result4 ) {
+                        atmos.setUserMetadata( result.value, meta, listableMeta, null, function( result4 ) {
                             test.ok( result4.success, "Update metadata request successful" );
                             // Read back and verify content
-                            atmos.getUserMetadata( result.objectId, null, null, function( result5 ) {
+                            atmos.getUserMetadata( result.value, null, null, function( result5 ) {
                                 test.ok( result5.success, "Get metadata request successful" );
-                                test.ok( result5.meta["foo2"], "bazbaz", "Metadata update" );
+                                test.ok( result5.value.meta["foo2"], "bazbaz", "Metadata update" );
                                 test.done();
                             } );
                         } );
@@ -763,30 +793,30 @@ this.atmosApi = {
         var listableMeta = {listable:""};
         atmos.createObject( null, meta, listableMeta, "Hello World!", "text/plain", null, function( result ) {
             test.ok( result.success, "Request successful" );
-            test.ok( result.objectId != null, "Object ID not null" );
+            test.ok( result.value != null, "Object ID not null" );
             test.equal( result.httpCode, 201, "HttpCode correct" );
 
             // Enqueue for cleanup
-            this.cleanup.push( result.objectId );
+            cleanup.push( result.value );
 
             // Read the object metadata back and verify content
-            atmos.getUserMetadata( result.objectId, null, null, function( result2 ) {
+            atmos.getUserMetadata( result.value, null, null, function( result2 ) {
                 test.ok( result2.success, "Request successful" );
-                test.equal( result2.meta["foo"], "bar", "Metadata" );
-                test.equal( result2.meta["foo2"], "baz", "Metadata" );
-                test.equal( result2.listableMeta["listable"], "", "Listable metadata" );
+                test.equal( result2.value.meta["foo"], "bar", "Metadata" );
+                test.equal( result2.value.meta["foo2"], "baz", "Metadata" );
+                test.equal( result2.value.listableMeta["listable"], "", "Listable metadata" );
 
                 // delete metadata
                 var tags = ["foo2","listable"];
-                atmos.deleteUserMetadata( result.objectId, tags, null, function( result3 ) {
+                atmos.deleteUserMetadata( result.value, tags, null, function( result3 ) {
                     test.ok( result3.success, "Delete metadata request successful" );
 
                     // Read back and verify content
-                    atmos.getUserMetadata( result.objectId, null, null, function( result4 ) {
+                    atmos.getUserMetadata( result.value, null, null, function( result4 ) {
                         test.ok( result4.success, "Get metadata request successful" );
-                        test.equal( result4.meta["foo"], "bar", "Metadata" );
-                        test.equal( result4.meta["foo2"], null, "Metadata" );
-                        test.equal( result4.listableMeta, null, "Metadata" );
+                        test.equal( result4.value.meta["foo"], "bar", "Metadata" );
+                        test.equal( result4.value.meta["foo2"], null, "Metadata" );
+                        test.equal( result4.value.listableMeta, null, "Metadata" );
                         test.done();
                     } );
                 } );
@@ -799,21 +829,21 @@ this.atmosApi = {
 
         test.expect( 8 );
 
-        var filename = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+        var filename = "/" + directoryName + "/" + randomFilename( 8, 3 );
         atmos.debug( "Filename: " + filename );
 
         atmos.createObjectOnPath( filename, null, null, null, "Hello World!", "text/plain", null,
             function( result ) {
 
                 test.ok( result.success, "Request successful (" + filename + ")" );
-                test.ok( result.objectId != null, "Object ID not null" );
+                test.ok( result.value != null, "Object ID not null" );
                 test.equal( result.httpCode, 201, "HttpCode correct" );
 
                 // Enqueue for cleanup
-                this.cleanup.push( result.objectId );
+                cleanup.push( result.value );
 
                 // rename the object
-                var newName = "/" + directoryName + "/" + this.randomFilename( 8, 3 );
+                var newName = "/" + directoryName + "/" + randomFilename( 8, 3 );
                 atmos.rename( filename, newName, false, null, function( result2 ) {
                     test.ok( result2.success, "Request successful" );
                     test.equal( result2.httpCode, 200, "HttpCode correct" );
@@ -827,24 +857,255 @@ this.atmosApi = {
                     } );
                 } );
             } );
-    }
+    },
 
+    'testGetAllMetadata' : function( test ) {
+        atmos.info( "atmosApi.testGetAllMetadata" );
+
+        test.expect( 9 );
+
+        var myAccess = new AclEntry( 'stu', AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
+        var groupAccess = new AclEntry( AclEntry.GROUPS.OTHER, AclEntry.ACL_PERMISSIONS.READ );
+        var acl = new Acl( [myAccess], [groupAccess] );
+        var meta = {foo:"bar", foo2:"baz"};
+        var listableMeta = {listable:""};
+        atmos.createObject( acl, meta, listableMeta, "Hello World!", "text/plain", null,
+            function( result ) {
+
+                test.ok( result.success, "Request successful" );
+                test.ok( result.value != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                cleanup.push( result.value );
+
+                // Read the system metadata and verify content
+                atmos.getAllMetadata( result.value, null, function( result2 ) {
+                    test.ok( result2.success, "Request successful" );
+                    test.equal( result2.httpCode, 200, "HttpCode correct" );
+                    // user meta and system meta are not differentiated in this call, so we can't do an object comparison
+                    test.equal( result2.value.meta.foo, meta.foo, "Metadata equal" );
+                    test.equal( result2.value.meta.foo2, meta.foo2, "Metadata equal" );
+                    test.equal( dumpObject( result2.value.listableMeta ), dumpObject( listableMeta ), "Listable metadata equal" );
+                    test.equal( dumpObject( result2.value.acl ), dumpObject( acl ), "ACL equal" );
+                    test.done();
+                } );
+
+            } );
+    },
+
+    'testlistUserMetadataTags' : function( test ) {
+        atmos.info( "atmosApi.testlistUserMetadataTags" );
+
+        test.expect( 7 );
+
+        var meta = {foo:"bar", foo2:"baz"};
+        var listableMeta = {listable:""};
+        atmos.createObject( null, meta, listableMeta, "Hello World!", "text/plain", null,
+            function( result ) {
+
+                test.ok( result.success, "Request successful" );
+                test.ok( result.value != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                cleanup.push( result.value );
+
+                // Read the system metadata and verify content
+                atmos.listUserMetadataTags( result.value, null, function( result2 ) {
+                    test.ok( result2.success, "Request successful" );
+                    test.equal( result2.httpCode, 200, "HttpCode correct" );
+                    test.equal( dumpObject( result2.value.tags ), dumpObject( Object.keys( meta ) ), "Non-listable tags equal" );
+                    test.equal( dumpObject( result2.value.listableTags ), dumpObject( Object.keys( listableMeta ) ), "Listable tags equal" );
+                    test.done();
+                } );
+
+            } );
+    },
+
+    'testGetObjectInfo' : function( test ) {
+        atmos.info( "atmosApi.testGetObjectInfo" );
+
+        test.expect( 6 );
+
+        atmos.createObject( null, null, null, "Hello World!", "text/plain", null,
+            function( result ) {
+
+                test.ok( result.success, "Request successful" );
+                test.ok( result.value != null, "Object ID not null" );
+                test.equal( result.httpCode, 201, "HttpCode correct" );
+
+                // Enqueue for cleanup
+                cleanup.push( result.value );
+
+                // Read the object info and verify content
+                atmos.getObjectInfo( result.value, null, function( result2 ) {
+                    test.ok( result2.success, "Request successful" );
+                    test.equal( result2.httpCode, 200, "HttpCode correct" );
+                    test.equal( result2.value.objectId, result.value, "object IDs equal" );
+                    test.done();
+                } );
+
+            } );
+    },
+
+    'testVersionObject' : function( test ) {
+        atmos.info( "atmosApi.testVersionObject" );
+
+        test.expect( 12 );
+
+        atmos.createObject( null, null, null, "Hello World!", "text/plain", null, function( result ) {
+            test.ok( result.success, "Request successful" );
+            test.ok( result.value != null, "Object ID not null" );
+            test.equal( result.httpCode, 201, "HttpCode correct" );
+
+            // Enqueue for cleanup
+            cleanup.push( result.value );
+
+            // create version
+            atmos.versionObject( result.value, null, function( result2 ) {
+                test.ok( result2.success, "Request successful" );
+                test.ok( result2.value != null, "Object ID not null" );
+                test.equal( result2.httpCode, 201, "HttpCode correct" );
+
+                // modify base object
+                atmos.updateObject( result.value, null, null, null, "Goodbye World!", null, "text/plain", null, function( result3 ) {
+                    test.ok( result3.success, "Request successful" );
+                    test.equal( result3.httpCode, 200, "HttpCode correct" );
+
+                    // read base object
+                    atmos.readObject( result.value, null, null, function( result4 ) {
+                        test.ok( result4.success, "Request successful" );
+                        test.equal( result4.data, "Goodbye World!" );
+
+                        // read version
+                        atmos.readObject( result2.value, null, null, function( result5 ) {
+                            test.ok( result5.success, "Request successful" );
+                            test.equal( result5.data, "Hello World!" );
+                            test.done();
+                        } );
+                    } );
+                } );
+            } );
+        } );
+    },
+
+    'testListVersions' : function( test ) {
+        atmos.info( "atmosApi.testListVersions" );
+
+        test.expect( 9 );
+
+        atmos.createObject( null, null, null, "Hello World!", "text/plain", null, function( result ) {
+            test.ok( result.success, "Request successful" );
+            test.ok( result.value != null, "Object ID not null" );
+            test.equal( result.httpCode, 201, "HttpCode correct" );
+
+            // Enqueue for cleanup
+            cleanup.push( result.value );
+
+            // create version
+            atmos.versionObject( result.value, null, function( result2 ) {
+                test.ok( result2.success, "Request successful" );
+                test.ok( result2.value != null, "Object ID not null" );
+                test.equal( result2.httpCode, 201, "HttpCode correct" );
+
+                // list versions
+                atmos.listVersions( result.value, null, function( result3 ) {
+                    test.ok( result3.success, "Request successful" );
+                    test.equal( result3.httpCode, 200, "HttpCode correct" );
+                    test.equal( result3.value.length, 1 );
+                    test.done();
+                } );
+            } );
+        } );
+    },
+
+    'testRestoreVersion' : function( test ) {
+        atmos.info( "atmosApi.testRestoreVersion" );
+
+        test.expect( 13 );
+
+        atmos.createObject( null, null, null, "Hello World!", "text/plain", null, function( result ) {
+            test.ok( result.success, "Request successful" );
+            test.ok( result.value != null, "Object ID not null" );
+            test.equal( result.httpCode, 201, "HttpCode correct" );
+
+            // Enqueue for cleanup
+            cleanup.push( result.value );
+
+            // create version
+            atmos.versionObject( result.value, null, function( result2 ) {
+                test.ok( result2.success, "Request successful" );
+                test.ok( result2.value != null, "Object ID not null" );
+                test.equal( result2.httpCode, 201, "HttpCode correct" );
+
+                // modify base object
+                atmos.updateObject( result.value, null, null, null, "Goodbye World!", null, "text/plain", null, function( result3 ) {
+                    test.ok( result3.success, "Request successful" );
+                    test.equal( result3.httpCode, 200, "HttpCode correct" );
+
+                    // restore version
+                    atmos.restoreVersion( result.value, result2.value, null, function( result4 ) {
+                        test.ok( result4.success, "Request successful" );
+                        test.equal( result4.httpCode, 200, "HttpCode correct" );
+
+                        // read base object
+                        atmos.readObject( result.value, null, null, function( result5 ) {
+                            test.ok( result5.success, "Request successful" );
+                            test.equal( result5.httpCode, 200, "HttpCode correct" );
+                            test.equal( result5.data, "Hello World!" );
+                            test.done();
+                        } );
+                    } );
+                } );
+            } );
+        } );
+    },
+
+    'testDeleteVersion' : function( test ) {
+        atmos.info( "atmosApi.testDeleteVersion" );
+
+        test.expect( 8 );
+
+        atmos.createObject( null, null, null, "Hello World!", "text/plain", null, function( result ) {
+            test.ok( result.success, "Request successful" );
+            test.ok( result.value != null, "Object ID not null" );
+            test.equal( result.httpCode, 201, "HttpCode correct" );
+
+            // Enqueue for cleanup
+            cleanup.push( result.value );
+
+            // create version
+            atmos.versionObject( result.value, null, function( result2 ) {
+                test.ok( result2.success, "Request successful" );
+                test.ok( result2.value != null, "Object ID not null" );
+                test.equal( result2.httpCode, 201, "HttpCode correct" );
+
+                // delete version
+                atmos.deleteVersion( result2.value, null, function( result3 ) {
+                    test.ok( result3.success, "Request successful" );
+                    test.equal( result3.httpCode, 204, "HttpCode correct" );
+                    test.done();
+                } );
+            } );
+        } );
+    }
 };
 
 cleanupTest = {
 
     'testCleanup' : function( test ) {
         atmos.info( "cleanupTest.testCleanup" );
-        this.cleanupCount = 0;
+        cleanupCount = 0;
 
-        this.cleanup.push( "/" + specialCharacterName );
-        this.cleanup.push( "/" + directoryName );
+        cleanup.push( "/" + specialCharacterName );
+        cleanup.push( "/" + directoryName );
 
-        test.expect( this.cleanup.length );
+        test.expect( cleanup.length );
 
-        atmos.info( this.cleanup.length + " objects to cleanup" );
-        for ( var i = 0; i < this.cleanup.length; i++ ) {
-            this.doCleanup( i, this.cleanup[i], test );
+        atmos.info( cleanup.length + " objects to cleanup" );
+        for ( var i = 0; i < cleanup.length; i++ ) {
+            doCleanup( i, cleanup[i], test );
         }
     }/*,
 
@@ -853,13 +1114,13 @@ cleanupTest = {
      atmos.info("cleaning up all Hello World files and directories");
      atmos.listDirectory("/", null, null, function(result) {
      if (result.success) {
-     var rootEntries = result.results;
+     var rootEntries = result.value;
      for (var i = 0; i < rootEntries.length; i++) {
      var entry = rootEntries[i];
      if (entry.name.length == 8 && entry.type == 'directory') {
      (function(path) {
      atmos.listDirectory(path + "/", new ListOptions(0, null, true, null, null), null, function(result2) {
-     var subEntries = result2.results;
+     var subEntries = result2.value;
      if (result2.success) {
      if (subEntries.length == 1 && subEntries[0].name.length == 12 && subEntries[0].type == 'regular' && subEntries[0].systemMeta.size == 12) {
      atmos.deleteObject(subEntries[0].path, null, function(result3) {
@@ -889,11 +1150,11 @@ cleanupTest = {
 
 doCleanup = function( i, oid, test ) {
     var current = i;
-    atmos.deleteObject( this.cleanup[i], null, function( result ) {
-        atmos.debug( "Deleted " + current + ": " + this.cleanup[current] );
+    atmos.deleteObject( cleanup[i], null, function( result ) {
+        atmos.debug( "Deleted " + current + ": " + cleanup[current] );
         test.ok( result.success, "Request successful" );
-        this.cleanupCount++;
-        if ( this.cleanupCount == this.cleanup.length ) {
+        cleanupCount++;
+        if ( cleanupCount == cleanup.length ) {
             test.done();
         }
     } );

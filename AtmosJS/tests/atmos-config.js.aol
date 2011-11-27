@@ -28,7 +28,7 @@ var atmosConfig = {
 if( typeof(global) != 'undefined' ) {
 	// We're running inside node.js
 	atmosConfig.host = 'accesspoint.emccis.com';
-	atmosConfig.protocol = 'http';
+	atmosConfig.protocol = 'http:';
 	
 	global.atmosConfig = atmosConfig;
 }
