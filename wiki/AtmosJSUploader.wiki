@@ -2,7 +2,7 @@
 
 = Introduction =
 
-One of the easiest ways to use JavaScript communication with Atmos is to run the HTML application within the storage itself.  The AtmosJSUploader utility will read your HTML (or any configured text files), look for links that exist relative to the base file and upload them as shareable URLs.  The links will then be rewritten and the new HTML uploaded.  This process is recursive, so CSS url() references are covered.  At the end of the process, you will be given a shareable URL to access your application with.  By default, all of the links will be good for 40 years.
+One of the easiest ways to use JavaScript communication with Atmos is to run the HTML application within the storage itself.  The AtmosJSUploader utility will read your HTML (or any configured text file), look for links that exist relative to the base file and upload them as shareable URLs.  The links will then be rewritten and the new HTML uploaded.  This process is recursive, so CSS url() references are covered.  At the end of the process, you will be given a shareable URL to access your application with.  By default, all of the links will be good for 40 years.
 
 = Details =
 
