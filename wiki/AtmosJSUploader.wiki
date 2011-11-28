@@ -2,7 +2,7 @@
 
 = Introduction =
 
-One of the easiest ways to use JavaScript communication with Atmos is to run the HTML application within the storage itself.  The AtmosJSUploader utility will read your HTML, look for CSS and JS that exist relative to the HTML and upload them as shareable URLs.  The links will then be rewritten and the new HTML uploaded.  At the end of the process, you will be given a shareable URL to access your application with.  By default, all of the links will be good for 40 years.
+One of the easiest ways to use JavaScript communication with Atmos is to run the HTML application within the storage itself.  The AtmosJSUploader utility will read your HTML (or any configured text files), look for links that exist relative to the base file and upload them as shareable URLs.  The links will then be rewritten and the new HTML uploaded.  This process is recursive, so CSS url() references are covered.  At the end of the process, you will be given a shareable URL to access your application with.  By default, all of the links will be good for 40 years.
 
 = Details =
 
@@ -39,3 +39,7 @@ Rewritten HTML in /var/folders/-Q/-Qj1+OlnFZSXVjRE72CGi++++TI/-Tmp-/tmp437610545
 Uploading testcases.html to /atmosjs/testcases.html
 Access your file at: http://lciga070.lss.emc.com/rest/namespace/atmosjs/testcases.html?uid=bb1d64e2c2be41a9a33106a6a2b36723%2Fatmosjs&expires=2571596468&signature=a4dAyWWpyyv6qrqECjodZ6PPpGg%3D
 }}}
+
+= upload.sh =
+
+a script is included to make life a little easier for you.  It assumes JSUpload.jar has already been compiled (via the ant script) and exists in the current directory.
