@@ -42,7 +42,7 @@ Access your file at: http://lciga070.lss.emc.com/rest/namespace/atmosjs/testcase
 
 = upload.sh =
 
-a script exists in the source repository to make life a little easier for you.  It assumes JSUpload.jar is in the current directory.
+a [http://atmos-js.googlecode.com/svn/tags/1.0.0/AtmosJSUploader/upload.sh script] exists in the source repository to make life a little easier for you.  It assumes JSUpload.jar is in the current directory.
 
 {{{
 upload.sh my_app.html /remote/path
