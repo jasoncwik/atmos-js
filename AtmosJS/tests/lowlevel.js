@@ -114,8 +114,13 @@ atmosLowLevel = {
             // inside NodeJS
             doc = jsdom.jsdom( xml );
         } else {
-            var parser = new DOMParser();
-            doc = parser.parseFromString( xml, "text/xml" );
+            if ( window.DOMParser ) {
+                var parser = new DOMParser();
+                doc = parser.parseFromString( xml, "text/xml" );
+            } else if ( typeof ActiveXObject != 'undefined' ) {
+                doc = new ActiveXObject( "MSXML.DomDocument" );
+                doc.loadXML( xml );
+            }
         }
         var children = atmos._getChildrenByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
         var child = atmos._getChildByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
