@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project default="create_run_jar" name="Create Runnable Jar for Project AtmosJSUploader">
-    <property name="atmos.project.dir" value="${user.home}/Projects/atmos-java"/>
+    <property name="atmos.project.dir" value="../atmos-java"/>
 
     <path id="main.path">
         <fileset dir="." includes="*.jar"/>
@@ -28,5 +28,6 @@
             <zipfileset excludes="META-INF/*.SF" src="${atmos.project.dir}/lib/security-1.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="commons-cli-1.2.jar"/>
         </jar>
+        <delete dir="bin" includeemptydirs="true"/>
     </target>
 </project>
