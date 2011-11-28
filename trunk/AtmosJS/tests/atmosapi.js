@@ -448,8 +448,8 @@ atmosApi = {
                 var url = atmos.getShareableUrl( result.value, expires );
 
                 atmos._ajax( {
-                    type: "GET",
-                    url: url,
+                    method: "GET",
+                    uri: url,
                     error: function( xhr ) {
                         test.ok( false, xhr.responseText );
                         atmos.info( xhr.responseText );
@@ -489,8 +489,8 @@ atmosApi = {
                 var url = atmos.getShareableUrl( fullPath, expires );
 
                 atmos._ajax( {
-                    type: "GET",
-                    url: url,
+                    method: "GET",
+                    uri: url,
                     error: function( xhr ) {
                         test.ok( false, xhr.responseText );
                         atmos.info( xhr.responseText );
@@ -557,8 +557,8 @@ atmosApi = {
                 var url = atmos.getShareableUrl( fullPath, expires, disposition );
 
                 atmos._ajax( {
-                    type: "GET",
-                    url: url,
+                    method: "GET",
+                    uri: url,
                     error: function( xhr ) {
                         test.ok( false, xhr.responseText );
                         atmos.info( xhr.responseText );
@@ -596,8 +596,8 @@ atmosApi = {
                 var url = atmos.getShareableUrl( fullPath, expires, disposition );
 
                 atmos._ajax( {
-                    type: "GET",
-                    url: url,
+                    method: "GET",
+                    uri: url,
                     error: function( xhr ) {
                         test.ok( false, xhr.responseText );
                         atmos.info( xhr.responseText );
@@ -634,8 +634,8 @@ atmosApi = {
                 var url = atmos.getShareableUrl( filename, expires );
 
                 atmos._ajax( {
-                    type: "GET",
-                    url: url,
+                    method: "GET",
+                    uri: url,
                     error: function( xhr ) {
                         test.ok( false, xhr.responseText );
                         atmos.info( xhr.responseText );
