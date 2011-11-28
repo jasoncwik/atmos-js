@@ -1,23 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="atmos-js" default="doc">
-	<property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
-	
-	<path id="jsdoc_classpath">
-		<fileset dir="${jsdoc_home}">
-			<include name="*.jar"/>
-		</fileset>
-		<fileset dir="${jsdoc_home}/java/classes">
-			<include name="js.jar"/>
-		</fileset>
-	</path>
-	
-    <taskdef name="jsdoctoolkit" classname="uk.co.darrenhurley.ant.tasks.JsDocToolkit" 
-    	classpathref="jsdoc_classpath"/>
+    <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
 
-	
+    <path id="jsdoc_classpath">
+        <fileset dir="${jsdoc_home}">
+            <include name="*.jar"/>
+        </fileset>
+        <fileset dir="${jsdoc_home}/java/classes">
+            <include name="js.jar"/>
+        </fileset>
+    </path>
+
+    <taskdef name="jsdoctoolkit" classname="uk.co.darrenhurley.ant.tasks.JsDocToolkit"
+             classpathref="jsdoc_classpath"/>
+
+
     <target name="doc" description="uses jsdoc to generate the documentation">
-    	<jsdoctoolkit jsdochome="${jsdoc_home}/" template="jsdoc" 
-    		outputdir="doc" inputdir="." />
+        <jsdoctoolkit jsdochome="${jsdoc_home}/" template="jsdoc"
+                      outputdir="doc">
+            <source file="atmos.js"/>
+        </jsdoctoolkit>
     </target>
 
 

@@ -922,8 +922,8 @@ AtmosRest.prototype.listObjects = function( tag, options, state, callback ) {
 /**
  * Lists objects from the server within a directory (path).
  * @param {String} directory the directory (path) in which to list objects (must exist!)
- * @param {ListOptions} options for listing objects.  See the ListOptions class. NOTE: metadata cannot be returned in
- * this call (Atmos 1.2)
+ * @param {ListOptions} options for listing objects.  See the ListOptions class. NOTE: metadata can only be returned in
+ * Atmos >1.3
  * @param {Object} state the user-defined state object that will be passed to the callback
  * @param {function} callback the completion callback (both error and success).  Upon success,
  * the result's value property will be populated with an Array of ObjectResult objects.  Also
