@@ -6,4 +6,4 @@
 || cross-domain || N || N || N || N || N || N || N || N ||
 
 
-* IE caches all AJAX GET requests by default, so it will not be fully supported until the Atmos REST API includes an Expires header in its response (a patch is currently being developed to address this).
+`*` IE caches all AJAX GET requests by default, so it will not be fully supported until the Atmos REST API includes an Expires header in its response (a patch is currently being developed to address this).
