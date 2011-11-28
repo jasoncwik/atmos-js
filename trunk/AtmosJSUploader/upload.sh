@@ -1,13 +1,27 @@
 #!/bin/sh
+if [ -z "$2" ]
+then
+  echo usage: "$0 <local_html_file> /remote_path"
+  exit 1
+fi
 
-# usage: ./upload.sh local.file /remote/path
+# set jar location here
+UPLOAD_JAR=./JSUpload.jar
 
-# specify location of jar here
-export UPLOAD_JAR=~/Projects/AtmosJSUploader/JSUpload.jar
+echo "Atmos hostname: \c"
+read HOST
 
-#specify your service credentials here
-export HOST=lciga090.lss.emc.com
-export xUID=0bc871f97086456db2e803ccc172ccec/stu
-export SECRET=
+echo "Atmos port [80]: \c"
+read PORT
+if [ -z "$PORT" ]
+then
+  PORT=80
+fi
 
-java -jar $UPLOAD_JAR -h $HOST -u $xUID -s $SECRET -f $1 -r $2
+echo "Atmos UID: \c"
+read xUID
+
+echo "Atmos secret: \c"
+read SECRET
+
+java -jar $UPLOAD_JAR -h $HOST -p $PORT -u $xUID -s $SECRET -f $1 -r $2

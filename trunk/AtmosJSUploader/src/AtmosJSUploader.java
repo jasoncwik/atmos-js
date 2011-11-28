@@ -33,12 +33,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
 public class AtmosJSUploader {
 
-    /**
-     * @param args
-     */
     public static void main( String[] args ) {
         Options options = new Options();
         Option o = new Option( "h", "host", true, "Atmos Access Point Host" );
@@ -118,8 +114,9 @@ public class AtmosJSUploader {
         }
         if ( !remoteDir.endsWith( "/" ) ) remoteDir += "/";
         File localBaseDir = f.getParentFile();
+        FileType fileType = FileType.fromExtension( getExtension( f ) );
 
-        if ( isBinary( f ) ) return uploadFile( f, remoteDir + f.getName() );
+        if ( fileType.isBinary() ) return uploadFile( f, remoteDir + f.getName() );
         else {
 
             // Read through the file and look for local file references to upload and then update the links
@@ -128,22 +125,23 @@ public class AtmosJSUploader {
             BufferedReader br = new BufferedReader( new FileReader( f ) );
             PrintWriter pw = new PrintWriter( new FileWriter( outFile ) );
 
-            Pattern pattern = Pattern.compile( "(.* href=\"|.* src=\"|.*: *url\\( *\"?)([^\")]+)(\".*|\"? *\\).*)" );
-
-            String line = null;
+            String line;
             Matcher matcher;
             while ( (line = br.readLine()) != null ) {
-                matcher = pattern.matcher( line );
-                if ( matcher.matches() ) {
-                    System.out.println( "Match: " + matcher );
-                    String prefix = matcher.group( 1 ), linkPath = matcher.group( 2 ), suffix = matcher.group( 3 );
-                    linkPath = processLinkedFile( localBaseDir, linkPath, remoteDir );
+                if ( fileType.getLinkPatterns() != null ) {
+                    for ( Pattern pattern : fileType.getLinkPatterns() ) {
+                        matcher = pattern.matcher( line );
+                        if ( matcher.matches() ) {
+                            System.out.println( "Match: " + matcher );
+                            String prefix = matcher.group( 1 ), linkPath = matcher.group( 2 ), suffix = matcher.group( 3 );
+                            linkPath = processLinkedFile( localBaseDir, linkPath, remoteDir );
 
-                    // Print out new URL
-                    pw.println( prefix + linkPath + suffix );
-                } else {
-                    pw.println( line );
+                            // new URL
+                            line = prefix + linkPath + suffix;
+                        }
+                    }
                 }
+                pw.println( line );
             }
 
             pw.close();
@@ -170,7 +168,7 @@ public class AtmosJSUploader {
             }
 
             // calculate new remote path
-            remotePath = new File( remotePath + linkPath ).getParentFile().getPath();
+            remotePath = convertPathDelimiters( new File( remotePath + linkPath ).getParentFile().getPath() );
 
             URL u = processFile( f.getPath(), remotePath );
 
@@ -182,12 +180,13 @@ public class AtmosJSUploader {
         if ( !f.exists() ) {
             throw new RuntimeException( "The file " + f + " does not exist" );
         }
+        FileType fileType = FileType.fromExtension( getExtension( f ) );
 
         remotePath = removeDots( remotePath );
 
         System.out.println( "Uploading " + f.getPath() + " to " + remotePath );
         UploadHelper uh = new UploadHelper( esu );
-        uh.setMimeType( findMimeType( f ) );
+        uh.setMimeType( fileType.getMimeType() );
         ObjectPath objectPath = new ObjectPath( remotePath );
 
         try {
@@ -223,16 +222,6 @@ public class AtmosJSUploader {
         return null;
     }
 
-    private String findMimeType( File f ) {
-        FileType fileType = FileType.fromExtension( getExtension( f ) );
-        return (fileType == null) ? "application/octet-stream" : fileType.getMimeType(); // default is application/octet-stream
-    }
-
-    private boolean isBinary( File f ) {
-        FileType fileType = FileType.fromExtension( getExtension( f ) );
-        return fileType == null || fileType.isBinary(); // assume binary if extension is unknown
-    }
-
     private String removeDots( String path ) {
         List<String> segments = new ArrayList<String>();
         segments.addAll( Arrays.asList( path.split( "/" ) ) );
@@ -249,5 +238,9 @@ public class AtmosJSUploader {
             path += segment + "/";
         }
         return path.substring( 0, path.length() - 1 );
+    }
+
+    private String convertPathDelimiters( String path ) {
+        return path.replaceAll( "\\\\", "/" );
     }
 }
