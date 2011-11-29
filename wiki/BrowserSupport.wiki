@@ -1,7 +1,7 @@
 #summary Browser Support for AtmosJS
 
 
-|| type || IE6 || IE7 || IE8 || IE9 || Safari5 || MobileSafari-iOS4 || Firefox 3.6 || Firefox 4.0 || Chrome 12 || 
+|| type || IE6 || IE7 || IE8 || IE9 || Safari5+ || MobileSafari-iOS4 || Firefox 3.6+ || Chrome 12+ || 
 || local || Y`*` || Y`*` || Y`*` || Y`*` || Y || Y || Y || Y || Y ||
 || cross-domain || N || N || N || N || N || N || N || N ||
 
