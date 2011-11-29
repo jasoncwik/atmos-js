@@ -1,9 +1,9 @@
 #summary Browser Support for AtmosJS
 
 
-|| type || IE6+ || Safari5+ || MobileSafari-OS4+ || Firefox 3.6+ || Chrome 12+ || 
-|| local || Y`*` || Y || Y || Y || Y ||
-|| cross-domain || N || N || N || N || N ||
+|| type || IE6+ || Safari5+ || MobileSafari-OS4+ || Firefox 3.6+ || Chrome 12+ || node.js 0.4.11+ ||
+|| local || Y`*` || Y || Y || Y || Y || Y ||
+|| cross-domain || N || N || N || N || N || Y ||
 
 
 `*` IE caches all AJAX GET requests by default, so it will not be fully supported until the Atmos REST API includes an Expires header in its response (a patch is currently being developed to address this).
