@@ -12,15 +12,13 @@ function AtmosBrowser( options, pageElements, $parent ) {
         jQuery.extend( this.settings, options );
     }
 
-    if ( this.settings.subtenant && this.settings.user ) this.settings.uid = this.settings.subtenant + '/' + this.settings.user;
-
     // get credentials if necessary
     if ( !this.settings.uid || !this.settings.secret ) {
         var browser = this;
         new LoginPage( browser.settings, browser.templates, function( uid, secret ) {
             browser.settings.uid = uid;
             browser.settings.secret = secret;
-            browser._init();
+            browser._init( $parent );
         } );
     } else this._init( $parent );
 }
@@ -34,7 +32,7 @@ AtmosBrowser.prototype._init = function( $parent ) {
 
     // write main template
     if ( $parent ) $parent.append( $main );
-    else $( 'body' ).append( $main );
+    else jQuery( 'body' ).append( $main );
 
     // wire up buttons
     var $goButton = $main.find( '.atmosGoButton' );
@@ -122,7 +120,7 @@ AtmosBrowser.prototype._init = function( $parent ) {
     // selecting files triggers an upload
     var $uploadField = $main.find( 'input.atmosUploadField' );
     if ( $uploadField.length > 0 ) atmosBind( $uploadField[0], 'change', function( event ) {
-        browser.uploadFiles( event.target.files );
+        browser.uploadFiles( event.target.files || [event.target.value] );
     } );
 
     // drag-n-drop upload
@@ -143,12 +141,15 @@ AtmosBrowser.prototype._init = function( $parent ) {
     };
     $dropTarget[0].ondrop = function( event ) {
         $dropTarget.removeClass( 'targetActive' );
-        browser.uploadFiles( event.dataTransfer.files );
+        if ( event.dataTransfer.files ) browser.uploadFiles( event.dataTransfer.files );
     };
 
     var $statusMessage = $main.find( '.atmosStatusMessage' );
     this.util = new AtmosUtil( this.settings.uid, this.settings.secret, this.templates, $statusMessage );
     this.listDirectory( this.settings.location );
+    this.util.getAtmosVersion( function( atmosVersion ) {
+        browser.atmosVersion = atmosVersion;
+    } )
 };
 
 AtmosBrowser.prototype.createDirectory = function() {
@@ -195,7 +196,15 @@ AtmosBrowser.prototype.refresh = function() {
     this.listDirectory( this.currentLocation );
 };
 AtmosBrowser.prototype.openFile = function( path ) {
-    window.open( this.util.getShareableUrl( path, this.util.futureDate( 1, 'hours' ) ) );
+    window.open( this.util.getShareableUrl( path, this.util.futureDate( 1, 'hours' ), false ) );
+};
+AtmosBrowser.prototype.downloadFile = function( path, index ) {
+    var iframe = $( 'iframe#atmosIframe' + index );
+    if ( iframe.length == 0 ) {
+        iframe = $( '<iframe id="atmosIframe' + index + '" style="display: none;" />' );
+        $( 'body' ).append( iframe );
+    }
+    iframe.attr( 'src', this.util.getShareableUrl( path, this.util.futureDate( 1, 'hours' ), true ) );
 };
 AtmosBrowser.prototype.openSelectedItems = function() {
     var selectedRows = this.getSelectedRows();
@@ -203,19 +212,23 @@ AtmosBrowser.prototype.openSelectedItems = function() {
     if ( selectedRows.length == 1 && this.util.isDirectory( selectedRows[0].entry ) ) {
         this.listDirectory( selectedRows[0].entry.path );
     } else {
-        for ( var i = 0; i < selectedRows.length; i++ ) {
-            if ( this.util.isDirectory( selectedRows[i].entry ) ) {
-                this.util.error( this.templates.get( 'selectionContainsDirectoryError' ).render() );
-                return;
-            }
-        }
+        if ( !this._checkNoDirectories( selectedRows ) ) return;
         for ( i = 0; i < selectedRows.length; i++ ) {
             this.openFile( selectedRows[i].entry.path );
         }
     }
 };
 AtmosBrowser.prototype.downloadSelectedItems = function() {
-    this.util.error( this.templates.get( 'functionNotSupportedError' ).render() );
+    if ( this.atmosVersion < '2.0.1' ) {
+        alert( 'This feature requires Atmos version 2.0.1 or later.\nYour Atmos version is ' + this.atmosVersion );
+        return;
+    }
+    var selectedRows = this.getSelectedRows();
+    if ( selectedRows.length == 0 ) this.util.error( this.templates.get( 'nothingSelectedError' ).render() );
+    if ( !this._checkNoDirectories( selectedRows ) ) return;
+    for ( i = 0; i < selectedRows.length; i++ ) {
+        this.downloadFile( selectedRows[i].entry.path, i );
+    }
 };
 AtmosBrowser.prototype.showProperties = function( entry ) {
     var browser = this;
@@ -324,15 +337,36 @@ AtmosBrowser.prototype.deleteSelectedItems = function() {
     if ( selectedRows.length == 0 ) this.util.error( this.templates.get( 'nothingSelectedError' ).render() );
     else {
         if ( this.settings.deletePrompt && !confirm( this.templates.get( 'deleteItemsPrompt' ).render() ) ) return;
-        var browser = this;
         for ( var i = 0; i < selectedRows.length; i++ ) {
-            if ( this.util.isDirectory( selectedRows[i].entry ) && !confirm( browser.templates.get( 'deleteDirectoryPrompt' ).render( {path: selectedRows[i].entry.path} ) ) ) continue;
-            (function( fileRow ) {
-                browser.util.deleteObject( fileRow.entry.path, function() {
-                    browser.removeRow( fileRow.entry.path );
-                } );
-            })( selectedRows[i] ); // create scope for loop variables in closure
+            this._deleteEntry( selectedRows[i].entry );
         }
+    }
+};
+AtmosBrowser.prototype._deleteEntry = function( entry, callback ) {
+    var browser = this;
+    var deleteF = function( entry ) {
+        browser.util.deleteObject( entry.path, function() {
+            browser.removeRow( entry.path );
+            if ( callback ) callback();
+        } );
+    };
+    if ( browser.util.isDirectory( entry ) ) {
+        browser.util.listDirectory( browser.util.endWithSlash( entry.path ), false, function( entries ) {
+            if ( entries && entries.length > 0 ) { // non-empty directory
+                if ( callback || confirm( browser.templates.get( 'deleteNonEmptyDirectoryPrompt' ).render( {path: entry.path} ) ) ) {
+                    var count = entries.length;
+                    for ( var i = 0; i < entries.length; i++ ) {
+                        browser._deleteEntry( entries[i], function() {
+                            if ( --count == 0 ) deleteF( entry );
+                        } );
+                    }
+                }
+            } else { // empty directory
+                deleteF( entry );
+            }
+        } );
+    } else { // file
+        deleteF( entry );
     }
 };
 AtmosBrowser.prototype.renameEntry = function( entry ) {
@@ -386,6 +420,15 @@ AtmosBrowser.prototype.unselectAll = function() {
     for ( var i = 0; i < this.fileRows.length; i++ ) {
         this.fileRows[i].unselect();
     }
+};
+AtmosBrowser.prototype._checkNoDirectories = function( selectedRows ) {
+    for ( var i = 0; i < selectedRows.length; i++ ) {
+        if ( this.util.isDirectory( selectedRows[i].entry ) ) {
+            this.util.error( this.templates.get( 'selectionContainsDirectoryError' ).render() );
+            return false;
+        }
+    }
+    return true;
 };
 
 function FileRow( browser, entry ) {
@@ -443,6 +486,7 @@ function FileRow( browser, entry ) {
         } );
     }
 }
+
 FileRow.prototype.updateEntry = function( entry ) {
     this.size = entry.size || '';
     if ( !this.browser.util.isDirectory( entry ) && entry.systemMeta ) this.size = entry.systemMeta.size || 'n/a';
@@ -560,6 +604,7 @@ function ContextMenu( entry, browser ) {
         menu.$root.remove();
     }
 }
+
 jQuery( window ).mousedown( function( event ) {
     if ( !jQuery( event.target ).hasClass( 'ATMOS_contextMenuOption' ) ) jQuery( '.ATMOS_contextMenu' ).remove();
 } );
@@ -591,6 +636,7 @@ function ModalWindow( title, $content, templateEngine, width ) {
     this.$window.width( width );
     this.$window.css( {top: '50%', left: '50%', margin: ('-' + (this.$window.height() / 2 + 50) + 'px 0 0 -' + (width / 2) + 'px')} );
 }
+
 ModalWindow.prototype.hideCloseButton = function() {
     this.$closeButton.hide();
 };
@@ -651,6 +697,7 @@ function PropertiesPage( entry, util, templateEngine ) {
         page.modalWindow.remove();
     };
 }
+
 PropertiesPage.prototype.addTag = function( $table, name, value, editable ) {
     var $propertyRow;
     if ( editable ) $propertyRow = jQuery( this.templates.get( 'editablePropertyRow' ).render( {name: name, value: value}, ['.atmosPropertyName', 'input.atmosPropertyValue', '.atmosDeleteButton'] ) );
@@ -706,8 +753,9 @@ PropertiesPage.prototype.save = function() {
 PropertiesPage.prototype._getProperties = function( $table ) {
     var properties = new Object();
     $table.children().each( function() {
-        var prop = jQuery( this ).find( '.atmosPropertyName' ).text();
-        var $val = jQuery( this ).find( '.atmosPropertyValue' );
+        var $this = jQuery( this );
+        var prop = $this.find( '.atmosPropertyName' ).text();
+        var $val = $this.find( '.atmosPropertyValue' );
         var val = $val.is( 'input' ) ? $val.val() : $val.text();
         if ( prop ) properties[prop] = val;
     } );
@@ -734,30 +782,58 @@ PropertiesPage.prototype._validTag = function( tag ) {
 function AclPage( entry, util, templateEngine ) {
     this.util = util;
     this.templates = templateEngine;
-    this.$root = jQuery( templateEngine.get( 'aclPage' ).render( {}, ['.atmosUserAclTable', '.atmosGroupAclTable'] ) );
+    this.$root = jQuery( templateEngine.get( 'aclPage' ).render( {}, ['.atmosUserAclTable', '.atmosGroupAclTable', '.atmosAddUserAclButton', '.atmosSaveButton', '.atmosCancelButton'] ) );
     this.$userAclTable = this.$root.find( '.atmosUserAclTable' ).empty();
-    this.$groupAclTable = this.$root.find( '.atmosGroupAclTable' ).empty();
+    this.$groupAclTable = this.$root.find( '.atmosGroupAclTable' );
 
     var userEntries = entry.acl.userEntries,
         groupEntries = entry.acl.groupEntries,
         i;
     for ( i = 0; i < userEntries.length; i++ ) {
-        this.addUserAcl( userEntries[i].key, userEntries[i].value );
+        this.addAclEntry( this.$userAclTable, userEntries[i].key, userEntries[i].value );
     }
-    for ( i = 0; i < groupEntries.length; i++ ) {
-        this.addGroupAcl( groupEntries[i].key, groupEntries[i].value );
+    if ( groupEntries.length > 0 ) {
+        var access = groupEntries[0].value;
+        this.$groupAclTable.find( 'input[value="' + access + '"]' ).attr( 'checked', 'checked' );
     }
-    new ModalWindow( templateEngine.get( 'aclPageTitle' ).render( {name: entry.name} ), this.$root, templateEngine );
+
+    var modalWindow = new ModalWindow( templateEngine.get( 'aclPageTitle' ).render( {name: entry.name} ), this.$root, templateEngine );
+
+    var page = this;
+    this.$root.find( '.atmosAddUserAclButton' )[0].onclick = function() {
+        var name = page.util.prompt( 'userAclNamePrompt', {}, page.util.validName, 'validNameError' );
+        page.addAclEntry( page.$userAclTable, name );
+    };
+    this.$root.find( '.atmosSaveButton' )[0].onclick = function() {
+        entry.acl.userEntries = page.getAclEntries( page.$userAclTable );
+        entry.acl.groupEntries = page.getAclEntries( page.$groupAclTable );
+        page.util.setAcl( entry.path, entry.acl, function() {
+            modalWindow.remove();
+        } );
+    };
+    this.$root.find( '.atmosCancelButton' )[0].onclick = function() {
+        modalWindow.remove();
+    };
 }
-AclPage.prototype.addUserAcl = function( name, access ) {
-    var $row = jQuery( this.templates.get( 'aclUserRow' ).render( {name: name} ) );
-    $row.find( 'input[value="' + access + '"]' ).attr( 'checked', true );
-    this.$userAclTable.append( $row );
+
+AclPage.prototype.addAclEntry = function( $table, name, access ) {
+    if ( !access ) access = 'NONE';
+    var $row = jQuery( this.templates.get( 'aclRow' ).render( {name: name} ) );
+    $row.find( '.atmosDeleteButton' )[0].onclick = function() {
+        $row.remove();
+    };
+    $row.find( 'input[value="' + access + '"]' ).attr( 'checked', 'checked' );
+    $table.append( $row );
 };
-AclPage.prototype.addGroupAcl = function( name, access ) {
-    var $row = jQuery( this.templates.get( 'aclGroupRow' ).render( {name: name} ) );
-    $row.find( 'input[value="' + access + '"]' ).attr( 'checked', true );
-    this.$groupAclTable.append( $row );
+AclPage.prototype.getAclEntries = function( $table ) {
+    var entries = new Array();
+    $table.children().each( function() {
+        var $this = jQuery( this );
+        var name = $this.find( '.atmosAclName' ).text();
+        var access = $this.find( '.atmosAclValue:checked' ).val();
+        entries.push( new AclEntry( name, access ) );
+    } );
+    return entries;
 };
 
 function DirectoryPage( util, startPath, templateEngine, callback ) {
@@ -830,7 +906,7 @@ DirectoryPage.prototype.addDirectory = function( name ) {
     var $nextItem = null;
     this.$list.children().each( function() {
         if ( $nextItem ) return;
-        var $this = $( this );
+        var $this = jQuery( this );
         var nextName = $this.find( '.atmosDirectoryItem' ).text() || $this.text();
         if ( nextName > name ) $nextItem = this;
     } );
@@ -840,23 +916,22 @@ DirectoryPage.prototype.addDirectory = function( name ) {
 
 function LoginPage( options, templateEngine, callback ) {
     var requiredSelectors = [
-        'input.atmosSubtenantField',
-        'input.atmosUserField',
+        'input.atmosUidField',
         'input.atmosSecretField',
         '.atmosLoginButton'
     ];
     this.$root = jQuery( templateEngine.get( 'loginPage' ).render( {}, requiredSelectors ) );
-    var $subtenant = this.$root.find( '.atmosSubtenantField' ).val( options.subtenant );
-    var $user = this.$root.find( '.atmosUserField' ).val( options.user );
+    var $uid = this.$root.find( '.atmosUidField' ).val( options.uid );
     var $secret = this.$root.find( '.atmosSecretField' ).val( options.secret );
     var $loginButton = this.$root.find( '.atmosLoginButton' );
-    var modalWindow = new ModalWindow( templateEngine.get( 'loginPageTitle' ).render(), this.$root, templateEngine, 400 );
+    var modalWindow = new ModalWindow( templateEngine.get( 'loginPageTitle' ).render(), this.$root, templateEngine );
     modalWindow.hideCloseButton();
 
     $loginButton.click( function() {
-        var uid = $subtenant.val() + '/' + $user.val();
-        callback( uid, $secret.val() );
-        modalWindow.remove();
+        new AtmosUtil( $uid.val(), $secret.val(), templateEngine ).getAtmosVersion( function( version ) {
+            callback( $uid.val(), $secret.val() );
+            modalWindow.remove();
+        } );
     } );
 }
 
@@ -885,6 +960,16 @@ AtmosUtil.prototype.prompt = function( templateName, model, validatorFunction, v
     }
     if ( value == null || value.length == 0 ) return null;
     return value;
+};
+AtmosUtil.prototype.getAtmosVersion = function( callback ) {
+    var util = this;
+    this.atmos.getServiceInformation( null, function( result ) {
+        if ( result.success ) {
+            callback( result.value )
+        } else {
+            util.atmosError( result );
+        }
+    } );
 };
 AtmosUtil.prototype.createDirectory = function( parentDirectory, callback ) {
     var name = this.prompt( 'newDirectoryNamePrompt', {}, this.validName, 'validNameError' );
@@ -936,7 +1021,12 @@ AtmosUtil.prototype.error = function( message ) {
     alert( message );
 };
 AtmosUtil.prototype.atmosError = function( result ) {
-    this.error( dumpObject( result ) );
+    this.debug( dumpObject( result ) );
+    try {
+        this.error( this.templates.get( 'atmosError.' + (result.errorCode || result.httpCode ) ).render( {message: (result.errorMessage || result.httpMessage)} ) );
+    } catch ( error ) {
+        this.error( result.errorMessage || result.httpMessage ); // if we don't have a template for the error, use the plain message
+    }
 };
 AtmosUtil.prototype.futureDate = function( howMany, ofWhat ) {
     try {
@@ -985,9 +1075,9 @@ AtmosUtil.prototype.listDirectory = function( path, includeMetadata, callback ) 
         util.hideStatus( 'Listing directory...' );
         if ( result.success ) {
             var entries = [];
-            for ( var i = 0; i < result.results.length; i++ ) {
-                if ( path === '/' && result.results[i].name === 'apache' ) continue;
-                entries.push( result.results[i] );
+            for ( var i = 0; i < result.value.length; i++ ) {
+                if ( path === '/' && result.value[i].name === 'apache' ) continue;
+                entries.push( result.value[i] );
             }
             callback( entries );
         } else {
@@ -1002,7 +1092,19 @@ AtmosUtil.prototype.getAcl = function( path, callback ) {
     this.atmos.getAcl( path, null, function( result ) {
         util.hideStatus( 'Retrieving ACL...' );
         if ( result.success ) {
-            callback( result.acl );
+            callback( result.value );
+        } else {
+            util.atmosError( result );
+        }
+    } );
+};
+AtmosUtil.prototype.setAcl = function( path, acl, callback ) {
+    var util = this;
+    this.showStatus( 'Setting ACL...' );
+    this.atmos.setAcl( path, acl, null, function( result ) {
+        util.hideStatus( 'Setting ACL...' );
+        if ( result.success ) {
+            callback();
         } else {
             util.atmosError( result );
         }
@@ -1014,7 +1116,7 @@ AtmosUtil.prototype.getSystemMetadata = function( path, callback ) {
     this.atmos.getSystemMetadata( path, null, null, function( result ) {
         util.hideStatus( 'Retrieving system metadata...' );
         if ( result.success ) {
-            callback( result.systemMeta );
+            callback( result.value );
         } else if ( result.httpCode == 404 ) { // execute callback passing null if object doesn't exist
             callback( null );
         } else {
@@ -1028,8 +1130,8 @@ AtmosUtil.prototype.getUserMetadata = function( entry, callback ) {
     this.atmos.getUserMetadata( entry.path, null, null, function( result ) {
         util.hideStatus( 'Retrieving metadata...' );
         if ( result.success ) {
-            entry.userMeta = result.meta;
-            entry.listableUserMeta = result.listableMeta;
+            entry.userMeta = result.value.meta;
+            entry.listableUserMeta = result.value.listableMeta;
             callback();
         } else {
             util.atmosError( result );
@@ -1093,7 +1195,7 @@ AtmosUtil.prototype.renameObject = function( existingPath, newPath, callback ) {
         util.hideStatus( 'Checking for existing object...' );
         var overwrite = false;
         if ( result.success ) {
-            if ( result.systemMeta.type == ENTRY_TYPE.DIRECTORY ) {
+            if ( result.value.systemMeta.type == ENTRY_TYPE.DIRECTORY ) {
                 alert( util.templates.get( 'directoryExistsError' ).render( {name: newPath} ) );
                 return;
             }
@@ -1123,8 +1225,8 @@ AtmosUtil.prototype.deleteObject = function( path, callback ) {
         }
     } );
 };
-AtmosUtil.prototype.getShareableUrl = function( path, date ) {
-    return this.atmos.getShareableUrl( path, date );
+AtmosUtil.prototype.getShareableUrl = function( path, date, asAttachment ) {
+    return this.atmos.getShareableUrl( path, date, (asAttachment ? 'attachment' : false) );
 };
 AtmosUtil.prototype.sort = function( $table, subSelector, inverse ) {
 
@@ -1161,6 +1263,9 @@ function atmosBind( element, eventName, eventFunction ) {
         };
         if ( !event.pageX ) event.pageX = event.x + document.scrollLeft;
         if ( !event.pageY ) event.pageY = event.y + document.scrollTop;
+        if ( !event.which && event.button ) { // translate IE's mouse button
+            event.which = (event.button < 2) ? 1 : (event.button == 4) ? 2 : 3; // 1 => 1, 4 => 2, * => 3
+        }
         eventFunction( event );
     };
 }

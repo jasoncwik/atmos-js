@@ -1,5 +1,10 @@
+input.longField {
+    width: 350px;
+}
+
 .atmosBrowser {
     position: relative;
+    height: 100%;
     background-color: #e8e8e8;
     border-collapse: collapse;
     font: 10pt arial, sans-serif;
@@ -41,15 +46,17 @@
     position: relative;
     display: inline-block;
     overflow: hidden;
+    vertical-align: top;
 }
 
 .atmosUploadField {
     cursor: pointer;
     position: absolute;
-    left: 0;
+    right: 0;
     top: 0;
     opacity: 0.0;
-    filter: 'alpha(opacity = 0)'
+    filter: alpha(opacity = 0);
+    z-index: 1000;
 }
 
 .atmosLabel {
@@ -327,8 +334,8 @@ input.atmosPropertyValue {
     width: 98%;
 }
 
-.atmosModalWindow .table .row .atmosPropertyButton {
-    width: 10%;
+.atmosModalWindow .table .row .atmosButtonCell {
+    width: 55px;
     background-color: #e8e8e8;
     border: none;
     padding: 0;
