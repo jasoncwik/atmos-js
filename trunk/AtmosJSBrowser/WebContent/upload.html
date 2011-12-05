@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!--
+
+ Copyright (c) 2011, EMC Corporation
+
+ All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * Neither the name of the EMC Corporation nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-->
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- Atmos REST API -->
+    <script type="text/javascript" src="js/crypto-min.js"></script>
+    <!-- Atmos REST API -->
+    <script type="text/javascript" src="js/hmac-min.js"></script>
+    <!-- Atmos REST API -->
+    <script type="text/javascript" src="js/sha1-min.js"></script>
+    <!-- Atmos REST API -->
+    <script type="text/javascript" src="js/atmos-min.js"></script>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+    <script type="text/javascript">
+        function getName( path ) {
+            var slashIndex = path.lastIndexOf( "/" );
+            var backIndex = path.lastIndexOf( "\\" );
+            var index = Math.max( slashIndex, backIndex );
+            if ( index > 0 ) return path.substr( index + 1 );
+            else return path;
+        }
+
+        function upload() {
+            var uploadForm = $( '#uploadForm' );
+            var uploadField = $( 'input[name="uploadField"]' );
+            var mimeType = $( 'input[name="Content-Type"]', uploadForm );
+            var emcDate = $( 'input[name="x-emc-date"]', uploadForm );
+            var emcUid = $( 'input[name="x-emc-uid"]', uploadForm );
+            var emcSignature = $( 'input[name="x-emc-signature"]', uploadForm );
+            var uri = uploadForm[0].action;
+            var fileName = getName( uploadField.val() );
+            uri += fileName;
+            uploadForm[0].action = uri;
+
+            var headers = {};
+            atmos._prepBaseHeaders( headers );
+            atmos._prepUploadHeaders( headers );
+            atmos._signRequest( "POST", headers, uri );
+            mimeType.val( headers["Content-Type"] );
+            emcDate.val( headers["x-emc-date"] );
+            emcUid.val( headers["x-emc-uid"] );
+            emcSignature.val( headers["x-emc-signature"] );
+
+            uploadForm.submit();
+        }
+    </script>
+    <script type="text/javascript">
+        var atmos = new AtmosRest( {uid: "0bc871f97086456db2e803ccc172ccec/stu", secret: "1ofJI8FYceLBTGvflJutDvc4uwc="} );
+    </script>
+</head>
+<body>
+
+<form action="/rest/namespace/stu/test/" id="uploadForm" target="uploadTarget" method="POST">
+    <input type="hidden" name="Content-Type" value=""/>
+    <input type="hidden" name="x-emc-date" value=""/>
+    <input type="hidden" name="x-emc-uid" value=""/>
+    <input type="hidden" name="x-emc-signature" value=""/>
+    <input type="file" name="uploadField"/>
+    <input type="button" value="Upload" onclick="upload()"/>
+</form>
+
+<iframe id="uploadTarget" width="600" height="600"></iframe>
+
+</body>
+</html>

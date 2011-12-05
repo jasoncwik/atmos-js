@@ -59,11 +59,17 @@ Redistribution and use in source and binary forms, with or without modification,
     <!-- Atmos REST API -->
     <script type="text/javascript" src="js/sha1-min.js"></script>
     <!-- Atmos REST API -->
-    <script type="text/javascript" src="js/atmos.js"></script>
+    <script type="text/javascript" src="js/atmos-min.js"></script>
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
     <script type="text/javascript" src="js/atmos-browser.js"></script>
     <script type="text/javascript" src="js/atmos-templates.js"></script>
     <script type="text/javascript">
+        function getHashParameterByName( name ) {
+            var match = new RegExp( '[#&]' + name + '=([^&]*)' ).exec( window.location.hash );
+            return match && decodeURIComponent( match[1].replace( /\+/g, ' ' ) );
+
+        }
+
         $( document ).ready( function() {
 
             // crop upload field to size of upload button
@@ -73,11 +79,20 @@ Redistribution and use in source and binary forms, with or without modification,
             // account for the scrollbar (must be dynamic to support Lion's overlay scrollbars)
             $( '.atmosFileList .head' ).css( 'margin-right', jQuery.scrollbarWidth() + 'px' );
 
+            // pull credentials from hash string if present (hash string is *not* sent over the wire)
+            var uid = getHashParameterByName( "uid" );
+            var secret = getHashParameterByName( "secret" );
+            if ( !uid && !secret ) {
+                uid = "0bc871f97086456db2e803ccc172ccec/stu";
+                secret = "";
+            }
+            //uid: "ab105326496a4228add95d20306030fd/CONNEAABCF7F31DDF0F7",
+            //secret: "",
+
             var browser = new AtmosBrowser( {
-                        subtenant: "0bc871f97086456db2e803ccc172ccec",
-                        user: "stu",
-                        secret: "1ofJI8FYceLBTGvflJutDvc4uwc=",
-                        location: "/stu/test"
+                        uid: uid,
+                        secret: secret,
+                        location: "/"
                     }, {
                         // in-line templates (optional; replaces default templates)
                         modalBackground: $( '.atmosModalBackground' ),
@@ -94,8 +109,7 @@ Redistribution and use in source and binary forms, with or without modification,
                         readonlyPropertyRow: $( '.atmosSystemMetadataTable .row' ),
                         sharePage: $( '.atmosSharePage' ),
                         aclPage: $( '.atmosAclPage' ),
-                        aclUserRow: $( '.atmosUserAclTable .row' ),
-                        aclGroupRow: $( '.atmosGroupAclTable .row' ),
+                        aclRow: $( '.atmosUserAclTable .row' ),
                         directoryPage: $( '.atmosDirectoryPage' ),
                         directoryItem: $( '.atmosDirectoryPage .atmosDirectoryItem' )
                     },
@@ -145,7 +159,7 @@ Redistribution and use in source and binary forms, with or without modification,
             <div class="body atmosDropTarget">
                 <div class="table atmosFileListTable">
                     <div class="loading">Please wait...</div>
-                    <div class="row" draggable="true">
+                    <div class="row" draggable="true" unselectable="on">
                         <div class="atmosIcon cell"><span class="atmosFileIcon icon"></span></div>
                         <div class="atmosFileName cell"></div>
                         <div class="atmosFileSize cell">
@@ -193,16 +207,12 @@ Redistribution and use in source and binary forms, with or without modification,
 <div unselectable="on" class="atmosLoginPage">
     <div class="table">
         <div class="row">
-            <div class="atmosLabel cell">Subtenant ID:</div>
-            <div class="cell"><input type="text" class="atmosSubtenantField"/></div>
-        </div>
-        <div class="row">
-            <div class="atmosLabel cell">User:</div>
-            <div class="cell"><input type="text" class="atmosUserField"/></div>
+            <div class="atmosLabel cell">UID:</div>
+            <div class="cell"><input type="text" class="longField atmosUidField"/></div>
         </div>
         <div class="row">
             <div class="atmosLabel cell">Secret:</div>
-            <div class="cell"><input type="text" class="atmosSecretField"/></div>
+            <div class="cell"><input type="text" class="longField atmosSecretField"/></div>
         </div>
     </div>
     <div class="atmosButtonBar">
@@ -242,7 +252,7 @@ Redistribution and use in source and binary forms, with or without modification,
             <div class="row">
                 <div class="cell atmosPropertyName">%{name}</div>
                 <div class="cell"><input type="text" class="atmosPropertyValue" value="%{value}"/></div>
-                <div class="atmosPropertyButton cell">
+                <div class="atmosButtonCell cell">
                     <div class="atmosButton atmosDeleteButton" title="Delete this tag">Delete</div>
                 </div>
             </div>
@@ -282,15 +292,13 @@ Redistribution and use in source and binary forms, with or without modification,
 </div>
 
 <div class="atmosAclPage">
-    <!--
     <div unselectable="on" class="atmosButtonBar">
         <div class="atmosButton atmosSaveButton" title="Save">Save</div>
         <div class="atmosButton atmosCancelButton" title="Cancel">Cancel</div>
     </div>
-    -->
     <div class="atmosTableWrapper">
         <div class="atmosTableTitle">User ACLs</div>
-        <!--<div class="atmosButton atmosAddUserAclButton" title="Give a user access">Add</div>-->
+        <div class="atmosButton atmosAddUserAclButton" title="Give a user access">Add</div>
         <div class="table">
             <div class="row">
                 <h4 class="cell atmosAclName atmosAclNameHeader">User Name</h4>
@@ -298,29 +306,35 @@ Redistribution and use in source and binary forms, with or without modification,
                 <h4 class="cell atmosAclWRITE atmosAclWRITENameHeader">Write</h4>
                 <h4 class="cell atmosAclREAD atmosAclREADNameHeader">Read</h4>
                 <h4 class="cell atmosAclNONE atmosAclNONENameHeader">None</h4>
+
+                <div class="atmosButtonCell cell"></div>
             </div>
         </div>
-        <div class="table atmosAclTable atmosUserAclTable">
-            <div class="row">
-                <div class="cell atmosAclName">%{name}</div>
-                <div class="cell atmosAclFC">
-                    <input type="radio" name="user_%{name}" value="FULL_CONTROL" class="atmosAclValue"/>
-                </div>
-                <div class="cell atmosAclWRITE">
-                    <input type="radio" name="user_%{name}" value="WRITE" class="atmosAclValue"/>
-                </div>
-                <div class="cell atmosAclREAD">
-                    <input type="radio" name="user_%{name}" value="READ" class="atmosAclValue"/>
-                </div>
-                <div class="cell atmosAclNONE">
-                    <input type="radio" name="user_%{name}" value="NONE" class="atmosAclValue"/>
+        <form>
+            <div class="table atmosAclTable atmosUserAclTable">
+                <div class="row">
+                    <div class="cell atmosAclName">%{name}</div>
+                    <div class="cell atmosAclFC">
+                        <input type="radio" name="%{name}" value="FULL_CONTROL" class="atmosAclValue"/>
+                    </div>
+                    <div class="cell atmosAclWRITE">
+                        <input type="radio" name="%{name}" value="WRITE" class="atmosAclValue"/>
+                    </div>
+                    <div class="cell atmosAclREAD">
+                        <input type="radio" name="%{name}" value="READ" class="atmosAclValue"/>
+                    </div>
+                    <div class="cell atmosAclNONE">
+                        <input type="radio" name="%{name}" value="NONE" class="atmosAclValue"/>
+                    </div>
+                    <div class="atmosButtonCell cell">
+                        <div class="atmosButton atmosDeleteButton" title="Delete this entry">Delete</div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
     <div class="atmosTableWrapper">
         <div class="atmosTableTitle">Group ACLs</div>
-        <!--<div class="atmosButton atmosAddGroupAclButton" title="Give a group access">Add</div>-->
         <div class="table">
             <div class="row">
                 <h4 class="cell atmosAclName atmosAclNameHeader">Group Name</h4>
@@ -328,34 +342,33 @@ Redistribution and use in source and binary forms, with or without modification,
                 <h4 class="cell atmosAclWRITE atmosAclWRITENameHeader">Write</h4>
                 <h4 class="cell atmosAclREAD atmosAclREADNameHeader">Read</h4>
                 <h4 class="cell atmosAclNONE atmosAclNONENameHeader">None</h4>
+
+                <div class="atmosButtonCell cell"></div>
             </div>
         </div>
-        <div class="table atmosAclTable atmosGroupAclTable">
-            <div class="row">
-                <div class="cell atmosAclName">%{name}</div>
-                <div class="cell atmosAclFC">
-                    <input type="radio" name="group_%{name}" value="FULL_CONTROL" class="atmosAclValue"/>
-                </div>
-                <div class="cell atmosAclWRITE">
-                    <input type="radio" name="group_%{name}" value="WRITE" class="atmosAclValue"/>
-                </div>
-                <div class="cell atmosAclREAD">
-                    <input type="radio" name="group_%{name}" value="READ" class="atmosAclValue"/>
-                </div>
-                <div class="cell atmosAclNONE">
-                    <input type="radio" name="group_%{name}" value="NONE" class="atmosAclValue"/>
+        <form>
+            <div class="table atmosAclTable atmosGroupAclTable">
+                <div class="row">
+                    <div class="cell atmosAclName">other</div>
+                    <div class="cell atmosAclFC">
+                        <input type="radio" name="group" value="FULL_CONTROL" class="atmosAclValue"/>
+                    </div>
+                    <div class="cell atmosAclWRITE">
+                        <input type="radio" name="group" value="WRITE" class="atmosAclValue"/>
+                    </div>
+                    <div class="cell atmosAclREAD">
+                        <input type="radio" name="group" value="READ" class="atmosAclValue"/>
+                    </div>
+                    <div class="cell atmosAclNONE">
+                        <input type="radio" name="group" value="NONE" class="atmosAclValue"/>
+                    </div>
+                    <div class="atmosButtonCell cell">
+                    </div>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
-
-<!-- disable ACL edit -->
-<script type="text/javascript">
-    $( '.atmosAclTable .atmosAclValue' ).each( function() {
-        this.disabled = 'disabled';
-    } );
-</script>
 
 </body>
 </html>
