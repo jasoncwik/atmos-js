@@ -29,78 +29,80 @@ AtmosBrowser.prototype._init = function( $parent ) {
     var $main = jQuery( this.templates.get( 'main' ).render( {}, ['input.atmosLocationField', '.atmosFileListTable'] ) );
     this.$locationField = $main.find( 'input.atmosLocationField' );
     this.$fileTable = $main.find( '.atmosFileListTable' );
+    this.$goButton = $main.find( '.atmosGoButton' );
+    this.$upButton = $main.find( '.atmosUpButton' );
+    this.$createButton = $main.find( '.atmosCreateButton' );
+    this.$openButton = $main.find( '.atmosOpenButton' );
+    this.$downloadButton = $main.find( '.atmosDownloadButton' );
+    this.$deleteButton = $main.find( '.atmosDeleteButton' );
+    this.$renameButton = $main.find( '.atmosRenameButton' );
+    this.$moveButton = $main.find( '.atmosMoveButton' );
+    this.$shareButton = $main.find( '.atmosShareButton' );
+    this.$propertiesButton = $main.find( '.atmosPropertiesButton' );
+    this.$aclButton = $main.find( '.atmosAclButton' );
 
     // write main template
     if ( $parent ) $parent.append( $main );
     else jQuery( 'body' ).append( $main );
 
     // wire up buttons
-    var $goButton = $main.find( '.atmosGoButton' );
-    var $upButton = $main.find( '.atmosUpButton' );
-    var $createButton = $main.find( '.atmosCreateButton' );
-    var $openButton = $main.find( '.atmosOpenButton' );
-    var $downloadButton = $main.find( '.atmosDownloadButton' );
-    var $deleteButton = $main.find( '.atmosDeleteButton' );
-    var $renameButton = $main.find( '.atmosRenameButton' );
-    var $moveButton = $main.find( '.atmosMoveButton' );
-    var $shareButton = $main.find( '.atmosShareButton' );
-    var $propertiesButton = $main.find( '.atmosPropertiesButton' );
-    var $aclButton = $main.find( '.atmosAclButton' );
-
     var browser = this, fileRow = null;
-    if ( $goButton.length > 0 ) $goButton[0].onclick = function() {
-        browser.listDirectory( browser.$locationField.val() );
+    if ( this.$goButton.length > 0 ) this.$goButton[0].onclick = function() {
+        browser.list( browser.$locationField.val() );
     };
-    if ( $upButton.length > 0 ) $upButton[0].onclick = function() {
-        browser.listDirectory( browser.util.parentDirectory( browser.currentLocation ) );
+    if ( this.$upButton.length > 0 ) this.$upButton[0].onclick = function() {
+        browser.list( browser.util.parentDirectory( browser.currentLocation ) );
     };
-    if ( $createButton.length > 0 ) $createButton[0].onclick = function() {
+    if ( this.$createButton.length > 0 ) this.$createButton[0].onclick = function() {
         browser.createDirectory();
     };
-    if ( $openButton.length > 0 ) $openButton[0].onclick = function() {
+    if ( this.$openButton.length > 0 ) this.$openButton[0].onclick = function() {
         browser.openSelectedItems();
     };
-    if ( $downloadButton.length > 0 ) $downloadButton[0].onclick = function() {
+    if ( this.$downloadButton.length > 0 ) this.$downloadButton[0].onclick = function() {
         browser.downloadSelectedItems();
     };
-    if ( $deleteButton.length > 0 ) $deleteButton[0].onclick = function() {
+    if ( this.$deleteButton.length > 0 ) this.$deleteButton[0].onclick = function() {
         browser.deleteSelectedItems();
     };
-    if ( $renameButton.length > 0 ) $renameButton[0].onclick = function() {
+    if ( this.$renameButton.length > 0 ) this.$renameButton[0].onclick = function() {
         fileRow = browser.singleSelectedRow();
         if ( fileRow ) browser.renameEntry( fileRow.entry );
     };
-    if ( $moveButton.length > 0 ) $moveButton[0].onclick = function() {
+    if ( this.$moveButton.length > 0 ) this.$moveButton[0].onclick = function() {
         browser.moveSelectedItems();
     };
-    if ( $shareButton.length > 0 ) $shareButton[0].onclick = function() {
+    if ( this.$shareButton.length > 0 ) this.$shareButton[0].onclick = function() {
         fileRow = browser.singleSelectedRow();
         if ( fileRow ) browser.shareEntry( fileRow.entry );
     };
-    if ( $propertiesButton.length > 0 ) $propertiesButton[0].onclick = function() {
+    if ( this.$propertiesButton.length > 0 ) this.$propertiesButton[0].onclick = function() {
         fileRow = browser.singleSelectedRow();
         if ( fileRow ) browser.showProperties( fileRow.entry );
     };
-    if ( $aclButton.length > 0 ) $aclButton[0].onclick = function() {
+    if ( this.$aclButton.length > 0 ) this.$aclButton[0].onclick = function() {
         fileRow = browser.singleSelectedRow();
         if ( fileRow ) browser.showAcl( fileRow.entry );
     };
+
+    this.namespaceOnlyButtons = [
+        this.$createButton,
+        this.$renameButton,
+        this.$moveButton
+    ];
 
     // handle enter in location field
     atmosBind( this.$locationField[0], 'keypress', function( event ) {
         if ( event.which == 13 ) {
             event.stopPropagation();
             event.preventDefault();
-            $goButton.click();
+            browser.$goButton.click();
         }
     } );
 
     // clicking out of the location field resets it to the current path
-    this.$locationField[0].onblur = function() {
-        browser.$locationField.val( browser.currentLocation );
-    };
     jQuery( window ).mousedown( function( event ) {
-        if ( event.source !== browser.$locationField[0] ) browser.$locationField.val( browser.currentLocation );
+        if ( event.target != browser.$locationField[0] && event.target != browser.$goButton[0] ) browser.$locationField.val( browser.currentLocation );
     } );
 
     // sortable columns
@@ -146,7 +148,7 @@ AtmosBrowser.prototype._init = function( $parent ) {
 
     var $statusMessage = $main.find( '.atmosStatusMessage' );
     this.util = new AtmosUtil( this.settings.uid, this.settings.secret, this.templates, $statusMessage );
-    this.listDirectory( this.settings.location );
+    this.list( this.settings.location );
     this.util.getAtmosVersion( function( atmosVersion ) {
         browser.atmosVersion = atmosVersion;
     } )
@@ -156,25 +158,25 @@ AtmosBrowser.prototype.createDirectory = function() {
     var browser = this;
     this.util.createDirectory( this.currentLocation, function( name ) {
         var path = browser.util.endWithSlash( browser.currentLocation + name );
-        var fileRow = browser.addRow( {name: name, path: path, type: ENTRY_TYPE.DIRECTORY} );
+        var fileRow = browser.addRow( {id: path, name: name, type: ENTRY_TYPE.DIRECTORY} );
         browser.$fileTable.append( fileRow.$root );
     } );
 };
-AtmosBrowser.prototype.listDirectory = function( path ) {
-    if ( !path || path === '' ) path = '/';
-    if ( !this.util.validPath( path ) ) {
-        this.error( this.templates.get( 'validPathError' ).render( {path: path} ) );
+AtmosBrowser.prototype.list = function( id ) {
+    if ( !id || id === '' ) id = '/';
+    if ( this.util.useNamespace && !this.util.validPath( id ) ) {
+        this.util.error( this.templates.get( 'validPathError' ).render( {path: id} ) );
         return;
     }
-    path = this.util.endWithSlash( path );
+    id = this.util.endWithSlash( id );
     this.$fileTable.html( this.templates.get( 'fileRowLoading' ).render() );
 
     var browser = this;
-    this.util.listDirectory( path, true, function( entries ) {
+    this.util.list( id, true, function( entries ) {
         if ( entries ) {
-            browser.currentLocation = path;
+            browser.currentLocation = id;
             browser.fileRows = [];
-            browser.$locationField.val( path );
+            browser.$locationField.val( id );
             browser.$fileTable.empty();
             for ( var i = 0; i < entries.length; i++ ) {
                 var fileRow = browser.addRow( entries[i] );
@@ -193,28 +195,28 @@ AtmosBrowser.prototype.listDirectory = function( path ) {
     } );
 };
 AtmosBrowser.prototype.refresh = function() {
-    this.listDirectory( this.currentLocation );
+    this.list( this.currentLocation );
 };
-AtmosBrowser.prototype.openFile = function( path ) {
-    window.open( this.util.getShareableUrl( path, this.util.futureDate( 1, 'hours' ), false ) );
+AtmosBrowser.prototype.openFile = function( id ) {
+    window.open( this.util.getShareableUrl( id, this.util.futureDate( 1, 'hours' ), false ) );
 };
-AtmosBrowser.prototype.downloadFile = function( path, index ) {
+AtmosBrowser.prototype.downloadFile = function( id, index ) {
     var iframe = $( 'iframe#atmosIframe' + index );
     if ( iframe.length == 0 ) {
         iframe = $( '<iframe id="atmosIframe' + index + '" style="display: none;" />' );
         $( 'body' ).append( iframe );
     }
-    iframe.attr( 'src', this.util.getShareableUrl( path, this.util.futureDate( 1, 'hours' ), true ) );
+    iframe.attr( 'src', this.util.getShareableUrl( id, this.util.futureDate( 1, 'hours' ), true ) );
 };
 AtmosBrowser.prototype.openSelectedItems = function() {
     var selectedRows = this.getSelectedRows();
     if ( selectedRows.length == 0 ) this.util.error( this.templates.get( 'nothingSelectedError' ).render() );
-    if ( selectedRows.length == 1 && this.util.isDirectory( selectedRows[0].entry ) ) {
-        this.listDirectory( selectedRows[0].entry.path );
+    if ( selectedRows.length == 1 && this.util.isListable( selectedRows[0].entry.type ) ) {
+        this.list( selectedRows[0].entry.id );
     } else {
         if ( !this._checkNoDirectories( selectedRows ) ) return;
         for ( i = 0; i < selectedRows.length; i++ ) {
-            this.openFile( selectedRows[i].entry.path );
+            this.openFile( selectedRows[i].entry.id );
         }
     }
 };
@@ -227,23 +229,35 @@ AtmosBrowser.prototype.downloadSelectedItems = function() {
     if ( selectedRows.length == 0 ) this.util.error( this.templates.get( 'nothingSelectedError' ).render() );
     if ( !this._checkNoDirectories( selectedRows ) ) return;
     for ( i = 0; i < selectedRows.length; i++ ) {
-        this.downloadFile( selectedRows[i].entry.path, i );
+        this.downloadFile( selectedRows[i].entry.id, i );
     }
 };
 AtmosBrowser.prototype.showProperties = function( entry ) {
+    if ( this.util.isTag( entry.type ) ) {
+        this.util.error( this.templates.get( 'directoryNotAllowedError' ).render() );
+        return;
+    }
     var browser = this;
     this.util.getUserMetadata( entry, function() {
         new PropertiesPage( entry, browser.util, browser.templates );
     } );
 };
 AtmosBrowser.prototype.showAcl = function( entry ) {
+    if ( this.util.isTag( entry.type ) ) {
+        this.util.error( this.templates.get( 'directoryNotAllowedError' ).render() );
+        return;
+    }
     var browser = this;
-    this.util.getAcl( entry.path, function( acl ) {
-        entry.acl = acl;
-        new AclPage( entry, browser.util, browser.templates );
+    this.util.getAcl( entry.id, function( acl ) {
+        new AclPage( entry, acl, browser.util, browser.templates );
     } );
 };
 AtmosBrowser.prototype.shareEntry = function( entry ) {
+    if ( this.util.isListable( entry.type ) ) {
+        this.util.error( this.templates.get( 'directoryNotAllowedError' ).render() );
+        return;
+    }
+
     var requiredSelectors = ['input.atmosExpirationCount','select.atmosExpirationUnit','.atmosShareUrl','.atmosGenerateButton'];
     var $sharePage = jQuery( this.templates.get( 'sharePage' ).render( {}, requiredSelectors ) );
     var $expirationCount = $sharePage.find( 'input.atmosExpirationCount' );
@@ -254,11 +268,11 @@ AtmosBrowser.prototype.shareEntry = function( entry ) {
     var browser = this;
     $generateButton[0].onclick = function() {
         var date = browser.util.futureDate( $expirationCount.val(), $expirationUnit.val() );
-        $shareUrl.text( browser.util.getShareableUrl( entry.path, date ) );
+        $shareUrl.text( browser.util.getShareableUrl( entry.id, date ) );
         $shareUrl.selectText();
     };
 
-    new ModalWindow( this.templates.get( 'sharePageTitle' ).render( {name: entry.name} ), $sharePage, this.templates );
+    new ModalWindow( this.templates.get( 'sharePageTitle' ).render( {name: entry.name || entry.id} ), $sharePage, this.templates );
 };
 AtmosBrowser.prototype.moveSelectedItems = function() {
     var fileRows = this.getSelectedRows();
@@ -267,8 +281,8 @@ AtmosBrowser.prototype.moveSelectedItems = function() {
         if ( !path || path == browser.currentLocation ) return;
         for ( var i = 0; i < fileRows.length; i++ ) {
             (function( fileRow ) {
-                browser.util.renameObject( fileRow.entry.path, path + fileRow.entry.name, function() {
-                    browser.removeRow( fileRow.entry.path );
+                browser.util.renameObject( fileRow.entry.id, path + fileRow.entry.name, function() {
+                    browser.removeRow( fileRow.entry.id );
                 } );
             })( fileRows[i] ); // create scope for loop variables in closure
         }
@@ -276,66 +290,76 @@ AtmosBrowser.prototype.moveSelectedItems = function() {
 };
 AtmosBrowser.prototype.uploadFiles = function( files ) { // FileList (HTML5 File API)
     for ( var i = 0; i < files.length; i++ ) {
-        var file = files[i];
-        var path = this.currentLocation + file.name;
+        var browser = this, file = files[i];
 
-        // upload file (in webkit and mozilla browsers, we can call xhr.send(file) directly without processing it (major time saver!)
-        var browser = this;
-        (function( path, file ) {
+        if ( this.util.useNamespace ) {
 
             // first check if the file exists
-            browser.util.getSystemMetadata( path, function( systemMeta ) {
-                var overwrite = false;
-                if ( systemMeta ) {
-                    if ( systemMeta.type == ENTRY_TYPE.DIRECTORY ) {
+            (function( file ) {
+                browser.util.getSystemMetadata( browser.currentLocation + file.name, function( systemMeta ) {
+                    var overwrite = false;
+                    if ( systemMeta ) {
+                        if ( browser.util.isDirectory( systemMeta.type ) ) {
 
-                        // can't overwrite directories
-                        alert( browser.templates.get( 'directoryExistsError' ).render( {name: file.name} ) );
-                        return;
+                            // can't overwrite directories
+                            alert( browser.templates.get( 'directoryExistsError' ).render( {name: file.name} ) );
+                            return;
+                        }
+
+                        // prompt to see if the users wishes to overwrite
+                        overwrite = confirm( browser.templates.get( 'itemExistsPrompt' ).render( {name: file.name} ) );
+                        if ( !overwrite ) return;
                     }
+                    browser.uploadFile( file, overwrite );
+                } );
+            })( file );
+        } else {
+            this.uploadFile( file, false );
+        }
+    }
+};
+AtmosBrowser.prototype.uploadFile = function( file, updating ) {
+    var browser = this;
+    var id = this.util.useNamespace ? this.currentLocation + file.name : false;
 
-                    // prompt to see if the users wishes to overwrite
-                    overwrite = confirm( browser.templates.get( 'itemExistsPrompt' ).render( {name: file.name} ) );
-                    if ( !overwrite ) return;
-                }
+    // grab the file row or create one
+    var fileRow = browser.findRow( id );
+    if ( !fileRow ) {
+        fileRow = browser.addRow( {id: id, name: file.name, size: file.size, type: ENTRY_TYPE.REGULAR} );
+        browser.$fileTable.append( fileRow.$root );
+    }
+    fileRow.showStatus();
+    fileRow.setStatus( 0 );
+    var completeF = function( returnValue ) {
+        if ( returnValue ) {
+            id = id || returnValue;
 
-                // grab the file row or create one
-                var fileRow = browser.findRow( path );
-                if ( !fileRow ) {
-                    fileRow = browser.addRow( {name: file.name, path: path, size: file.size, type: ENTRY_TYPE.REGULAR} );
-                    browser.$fileTable.append( fileRow.$root );
-                }
-                fileRow.showStatus();
-                fileRow.setStatus( 0 );
-                var completeF = function( success ) {
-                    if ( success ) {
-
-                        // refresh local metadata
-                        browser.util.getSystemMetadata( path, function( systemMeta ) {
-                            fileRow.updateEntry( {name: file.name, path: path, systemMeta: systemMeta, type: ENTRY_TYPE.REGULAR} );
-                            fileRow.hideStatus();
-                        } );
-                    } else {
-                        if ( !overwrite ) browser.removeRow( path );
-                        else fileRow.hideStatus();
-                    }
-                };
-                var progressF = function( status ) {
-                    fileRow.setStatus( status );
-                };
-                if ( overwrite ) {
-                    browser.util.overwriteObject( path, file, (file.type || 'application/octet-stream'), completeF, progressF );
-                } else {
-                    browser.util.createObject( path, file, (file.type || 'application/octet-stream'), completeF, progressF );
-                }
+            // refresh local metadata
+            browser.util.getSystemMetadata( id, function( systemMeta ) {
+                fileRow.updateEntry( {id: id, name: (browser.util.useNamespace ? file.name : id), systemMeta: systemMeta} );
+                fileRow.hideStatus();
             } );
-        })( path, file ); // create scope for loop variables in closure
+        } else {
+            if ( !updating ) browser.removeRow( fileRow );
+            else fileRow.hideStatus();
+        }
+    };
+    var progressF = function( status ) {
+        fileRow.setStatus( status );
+    };
+
+    // upload file (in webkit and mozilla browsers, we can call xhr.send(file) directly without processing it (major time saver!)
+    if ( updating ) {
+        browser.util.overwriteObject( id, file, (file.type || 'application/octet-stream'), completeF, progressF );
+    } else {
+        browser.util.createObject( id, file, (file.type || 'application/octet-stream'), completeF, progressF, browser.currentLocation );
     }
 };
 AtmosBrowser.prototype.deleteSelectedItems = function() {
     var selectedRows = this.getSelectedRows();
     if ( selectedRows.length == 0 ) this.util.error( this.templates.get( 'nothingSelectedError' ).render() );
     else {
+        if ( !this._checkNoTags( selectedRows ) ) return;
         if ( this.settings.deletePrompt && !confirm( this.templates.get( 'deleteItemsPrompt' ).render() ) ) return;
         for ( var i = 0; i < selectedRows.length; i++ ) {
             this._deleteEntry( selectedRows[i].entry );
@@ -345,15 +369,15 @@ AtmosBrowser.prototype.deleteSelectedItems = function() {
 AtmosBrowser.prototype._deleteEntry = function( entry, callback ) {
     var browser = this;
     var deleteF = function( entry ) {
-        browser.util.deleteObject( entry.path, function() {
-            browser.removeRow( entry.path );
+        browser.util.deleteObject( entry.id, function() {
+            browser.removeRow( entry.id );
             if ( callback ) callback();
         } );
     };
-    if ( browser.util.isDirectory( entry ) ) {
-        browser.util.listDirectory( browser.util.endWithSlash( entry.path ), false, function( entries ) {
+    if ( browser.util.isDirectory( entry.type ) ) {
+        browser.util.list( browser.util.endWithSlash( entry.id ), false, function( entries ) {
             if ( entries && entries.length > 0 ) { // non-empty directory
-                if ( callback || confirm( browser.templates.get( 'deleteNonEmptyDirectoryPrompt' ).render( {path: entry.path} ) ) ) {
+                if ( callback || confirm( browser.templates.get( 'deleteNonEmptyDirectoryPrompt' ).render( {path: entry.id} ) ) ) {
                     var count = entries.length;
                     for ( var i = 0; i < entries.length; i++ ) {
                         browser._deleteEntry( entries[i], function() {
@@ -374,28 +398,27 @@ AtmosBrowser.prototype.renameEntry = function( entry ) {
     if ( name == null || name.length == 0 ) return;
     var path = this.currentLocation + name;
     var browser = this;
-    this.util.renameObject( entry.path, path, function() {
-        entry.path = path;
-        entry.name = name;
-        browser.findRow( path ).updateEntry( entry );
+    this.util.renameObject( entry.id, path, function() {
+        entry.name = name, entry.path = path;
+        browser.findRow( entry.id ).updateEntry( entry );
     } );
 };
-AtmosBrowser.prototype.findRow = function( path ) {
+AtmosBrowser.prototype.findRow = function( id ) {
     for ( var i = 0; i < this.fileRows.length; i++ ) {
         var fileRow = this.fileRows[i];
-        if ( fileRow.entry.path == path ) return fileRow;
+        if ( fileRow.entry.id == id ) return fileRow;
     }
     return null;
 };
 AtmosBrowser.prototype.addRow = function( entry ) {
-    var fileRow = new FileRow( this, entry );
+    var fileRow = new FileRow( entry, this );
     this.fileRows.push( fileRow );
     this.$fileTable.append( fileRow.$root );
     return fileRow;
 };
-AtmosBrowser.prototype.removeRow = function( path ) {
+AtmosBrowser.prototype.removeRow = function( id ) {
     for ( var i = 0; i < this.fileRows.length; i++ ) {
-        if ( this.fileRows[i].entry.path == path ) {
+        if ( this.fileRows[i].entry.id == id || this.fileRows[i] === id ) {
             this.fileRows[i].remove();
             this.fileRows.splice( i, 1 );
             return;
@@ -421,9 +444,36 @@ AtmosBrowser.prototype.unselectAll = function() {
         this.fileRows[i].unselect();
     }
 };
+AtmosBrowser.prototype.useNamespaceApi = function() {
+    if ( this.util.useNamespace ) return;
+    this.objectLocation = this.currentLocation;
+    this.util.useNamespace = true;
+    this.list( this.namespaceLocation );
+    for ( var i = 0; i < this.namespaceOnlyButtons.length; i++ ) {
+        this.namespaceOnlyButtons[i].show();
+    }
+};
+AtmosBrowser.prototype.useObjectApi = function() {
+    if ( !this.util.useNamespace ) return;
+    this.namespaceLocation = this.currentLocation;
+    this.util.useNamespace = false;
+    this.list( this.objectLocation );
+    for ( var i = 0; i < this.namespaceOnlyButtons.length; i++ ) {
+        this.namespaceOnlyButtons[i].hide();
+    }
+};
 AtmosBrowser.prototype._checkNoDirectories = function( selectedRows ) {
     for ( var i = 0; i < selectedRows.length; i++ ) {
-        if ( this.util.isDirectory( selectedRows[i].entry ) ) {
+        if ( this.util.isListable( selectedRows[i].entry.type ) ) {
+            this.util.error( this.templates.get( 'selectionContainsDirectoryError' ).render() );
+            return false;
+        }
+    }
+    return true;
+};
+AtmosBrowser.prototype._checkNoTags = function( selectedRows ) {
+    for ( var i = 0; i < selectedRows.length; i++ ) {
+        if ( this.util.isTag( selectedRows[i].entry.type ) ) {
             this.util.error( this.templates.get( 'selectionContainsDirectoryError' ).render() );
             return false;
         }
@@ -431,7 +481,7 @@ AtmosBrowser.prototype._checkNoDirectories = function( selectedRows ) {
     return true;
 };
 
-function FileRow( browser, entry ) {
+function FileRow( entry, browser ) {
     var requiredSelectors = [
         '.atmosFileIcon',
         '.atmosFileName',
@@ -466,7 +516,7 @@ function FileRow( browser, entry ) {
         if ( fileRow.interactive ) {
             event.stopPropagation();
             event.preventDefault();
-            var contextMenu = new ContextMenu( entry, browser );
+            var contextMenu = new ContextMenu( fileRow.entry, browser );
             contextMenu.moveTo( event.pageX, event.pageY );
         }
     } );
@@ -475,12 +525,12 @@ function FileRow( browser, entry ) {
         event.stopPropagation();
         event.preventDefault();
         if ( fileRow.interactive ) {
-            if ( browser.util.isDirectory( entry ) ) browser.listDirectory( entry.path );
-            else browser.openFile( entry.path );
+            if ( browser.util.isListable( fileRow.entry.type ) ) browser.list( fileRow.entry.id );
+            else browser.openFile( fileRow.entry.id );
         }
     } );
     // drag-off behavior (drag-and-drop to local filesystem - HTML5)
-    if ( !browser.util.isDirectory( entry ) ) {
+    if ( !browser.util.isListable( fileRow.entry.type ) ) {
         atmosBind( this.$root[0], 'dragstart', function( event ) {
             fileRow.dragStart( event );
         } );
@@ -488,25 +538,27 @@ function FileRow( browser, entry ) {
 }
 
 FileRow.prototype.updateEntry = function( entry ) {
+    this.entry = entry;
     this.size = entry.size || '';
-    if ( !this.browser.util.isDirectory( entry ) && entry.systemMeta ) this.size = entry.systemMeta.size || 'n/a';
+    if ( !this.browser.util.isListable( entry.type ) && entry.systemMeta ) this.size = entry.systemMeta.size || 'n/a';
 
     // classify icon for ease of styling
     this.$icon.addClass( entry.type );
-    var ext = this._getExtension( entry.name );
-    if ( /^[a-zA-Z0-9]+$/.test( ext ) ) this.$icon.addClass( ext );
+    if ( entry.name ) {
+        var ext = this._getExtension( entry.name );
+        if ( /^[a-zA-Z0-9]+$/.test( ext ) ) this.$icon.addClass( ext );
+    }
 
-    this.$name.text( entry.name );
+    this.$name.text( entry.name || entry.id );
     this.$size.text( this.size );
     this.$type.text( entry.type );
-    this.entry = entry;
 };
 FileRow.prototype.dragStart = function( event ) {
     if ( this.entry.systemMeta ) {
         this.setDragData( event );
     } else {
         var fileRow = this;
-        this.browser.util.getSystemMetadata( this.entry.path, function( systemMeta ) {
+        this.browser.util.getSystemMetadata( this.id, function( systemMeta ) {
             fileRow.entry.systemMeta = systemMeta;
             fileRow.setDragData( event );
         } );
@@ -514,7 +566,7 @@ FileRow.prototype.dragStart = function( event ) {
 };
 FileRow.prototype.setDragData = function( event ) {
     if ( this.$root[0].dataset && event.dataTransfer && this.entry.systemMeta ) {
-        var fileInfo = this.entry.systemMeta.mimeType + ':' + this.entry.name + ':' + this.browser.util.getShareableUrl( this.entry.path, this.browser.util.futureDate( 1, 'hours' ) );
+        var fileInfo = this.entry.systemMeta.mimeType + ':' + (this.entry.name || this.entry.id) + ':' + this.browser.util.getShareableUrl( this.entry.id, this.browser.util.futureDate( 1, 'hours' ) );
         event.dataTransfer.setData( "DownloadURL", fileInfo );
     }
 };
@@ -554,11 +606,8 @@ FileRow.prototype._getExtension = function( fileName ) {
 };
 
 function ContextMenu( entry, browser ) {
-    if ( browser.util.isDirectory( entry ) ) {
-        this.$root = jQuery( browser.templates.get( 'directoryContextMenu' ).render() ).addClass( 'ATMOS_contextMenu' ); // flag for removal
-    } else {
-        this.$root = jQuery( browser.templates.get( 'fileContextMenu' ).render() ).addClass( 'ATMOS_contextMenu' ); // flag for removal
-    }
+    var templateName = browser.util.isTag( entry.type ) ? 'tagContextMenu' : browser.util.isDirectory( entry.type ) ? 'directoryContextManu' : 'fileContextMenu';
+    this.$root = jQuery( browser.templates.get( templateName ).render() ).addClass( 'ATMOS_contextMenu' ); // flag for removal
     jQuery( 'body' ).append( this.$root );
 
     var menu = this;
@@ -681,7 +730,7 @@ function PropertiesPage( entry, util, templateEngine ) {
         this.addTag( $systemMetaTable, prop, entry.systemMeta[prop], false );
     }
 
-    this.modalWindow = new ModalWindow( templateEngine.get( 'propertiesPageTitle' ).render( {name: entry.name} ), this.$root, templateEngine );
+    this.modalWindow = new ModalWindow( templateEngine.get( 'propertiesPageTitle' ).render( {name: entry.name || entry.id} ), this.$root, templateEngine );
 
     var page = this;
     $addUserMetaButton[0].onclick = function() {
@@ -737,13 +786,13 @@ PropertiesPage.prototype.save = function() {
         if ( metaSaved && metaDeleted ) page.modalWindow.remove();
     };
     if ( allTags.length > 0 ) {
-        page.util.setUserMetadata( page.entry.path, meta, listableMeta, function() {
+        page.util.setUserMetadata( page.entry.id, meta, listableMeta, function() {
             metaSaved = true;
             callComplete();
         } );
     } else metaSaved = true;
     if ( deletedTags.length > 0 ) {
-        page.util.deleteUserMetadata( page.entry.path, deletedTags, function() {
+        page.util.deleteUserMetadata( page.entry.id, deletedTags, function() {
             metaDeleted = true;
             callComplete();
         } );
@@ -772,23 +821,21 @@ PropertiesPage.prototype._validTag = function( tag ) {
         alert( this.templates.get( 'tagExists' ).render( {tag: tag} ) );
         return false;
     }
-    if ( !this.util.validName( tag ) ) {
+    if ( !this.util.validTag( tag ) ) {
         alert( this.templates.get( 'validNameError' ).render( {name: tag} ) );
         return false;
     }
     return true;
 };
 
-function AclPage( entry, util, templateEngine ) {
+function AclPage( entry, acl, util, templateEngine ) {
     this.util = util;
     this.templates = templateEngine;
     this.$root = jQuery( templateEngine.get( 'aclPage' ).render( {}, ['.atmosUserAclTable', '.atmosGroupAclTable', '.atmosAddUserAclButton', '.atmosSaveButton', '.atmosCancelButton'] ) );
     this.$userAclTable = this.$root.find( '.atmosUserAclTable' ).empty();
     this.$groupAclTable = this.$root.find( '.atmosGroupAclTable' );
 
-    var userEntries = entry.acl.userEntries,
-        groupEntries = entry.acl.groupEntries,
-        i;
+    var userEntries = acl.userEntries, groupEntries = acl.groupEntries, i;
     for ( i = 0; i < userEntries.length; i++ ) {
         this.addAclEntry( this.$userAclTable, userEntries[i].key, userEntries[i].value );
     }
@@ -797,7 +844,7 @@ function AclPage( entry, util, templateEngine ) {
         this.$groupAclTable.find( 'input[value="' + access + '"]' ).attr( 'checked', 'checked' );
     }
 
-    var modalWindow = new ModalWindow( templateEngine.get( 'aclPageTitle' ).render( {name: entry.name} ), this.$root, templateEngine );
+    var modalWindow = new ModalWindow( templateEngine.get( 'aclPageTitle' ).render( {name: entry.name || entry.id} ), this.$root, templateEngine );
 
     var page = this;
     this.$root.find( '.atmosAddUserAclButton' )[0].onclick = function() {
@@ -805,9 +852,9 @@ function AclPage( entry, util, templateEngine ) {
         page.addAclEntry( page.$userAclTable, name );
     };
     this.$root.find( '.atmosSaveButton' )[0].onclick = function() {
-        entry.acl.userEntries = page.getAclEntries( page.$userAclTable );
-        entry.acl.groupEntries = page.getAclEntries( page.$groupAclTable );
-        page.util.setAcl( entry.path, entry.acl, function() {
+        acl.userEntries = page.getAclEntries( page.$userAclTable );
+        acl.groupEntries = page.getAclEntries( page.$groupAclTable );
+        page.util.setAcl( entry.id, acl, function() {
             modalWindow.remove();
         } );
     };
@@ -876,11 +923,11 @@ function DirectoryPage( util, startPath, templateEngine, callback ) {
 DirectoryPage.prototype.goTo = function( path ) {
     path = this.util.endWithSlash( path );
     var page = this;
-    this.util.listDirectory( path, false, function( contents ) {
+    this.util.list( path, false, function( contents ) {
         page.$list.empty();
         for ( var i = 0; i < contents.length; i++ ) {
             var item = contents[i];
-            if ( page.util.isDirectory( item ) ) {
+            if ( page.util.isDirectory( item.type ) ) {
                 page.addDirectory( item.name );
             }
         }
@@ -938,6 +985,7 @@ function LoginPage( options, templateEngine, callback ) {
 function AtmosUtil( uid, secret, templateEngine, $statusMessage ) {
     this.atmos = new AtmosRest( {uid: uid, secret: secret} );
     this.templates = templateEngine;
+    this.useNamespace = true;
     this.$statusMessage = $statusMessage;
 }
 
@@ -1041,55 +1089,115 @@ AtmosUtil.prototype.futureDate = function( howMany, ofWhat ) {
     func.call( date, currentNumber + howMany );
     return date;
 };
+AtmosUtil.prototype.validTag = function( tag ) {
+    // cannot be null or empty, cannot contain ? or @, cannot start or end with a slash
+    return !(!tag || tag.trim().length == 0 || /[?@]/.test( tag ) || /^\//.test( tag ) || /\/$/.test( tag ));
+};
 AtmosUtil.prototype.validPath = function( path ) {
+    // cannot be null or empty, cannot contain ? or @, must start with a slash
     return !(!path || path.trim().length == 0 || /[?@]/.test( path ) || !/^\//.test( path ));
 };
 AtmosUtil.prototype.validName = function( name ) {
+    // cannot be null or empty, cannot contain ? or @ or /
     return !(!name || name.trim().length == 0 || /[?@/]/.test( name ));
-
 };
 AtmosUtil.prototype.endWithSlash = function( path ) {
     path = path.trim();
     if ( path[path.length - 1] !== '/' ) path += '/';
     return path;
 };
-AtmosUtil.prototype.isDirectory = function( entry ) {
-    return entry.type == ENTRY_TYPE.DIRECTORY;
+AtmosUtil.prototype.noSlashes = function( path ) {
+    if ( !path || path.length == 0 ) return path;
+    if ( path[0] == '/' ) path = path.substr( 1 );
+    if ( path[path.length - 1] == '/' ) path = path.substr( 0, path.length - 1 );
+    return path;
+};
+AtmosUtil.prototype.isListable = function( entryType ) {
+    return this.isDirectory( entryType ) || this.isTag( entryType );
+};
+AtmosUtil.prototype.isDirectory = function( entryType ) {
+    return entryType == ENTRY_TYPE.DIRECTORY;
+};
+AtmosUtil.prototype.isTag = function( entryType ) {
+    return entryType == ENTRY_TYPE.TAG;
 };
 AtmosUtil.prototype.parentDirectory = function( path ) {
-    if ( !this.validPath( path ) ) {
-        throw path + " is not a valid path";
-    }
-
     path = path.substr( 0, path.length - 1 ); // remove last character in case it's a slash
 
     var lastSlashIndex = path.lastIndexOf( '/' );
     if ( lastSlashIndex === 0 ) return '/';
     else return path.substr( 0, lastSlashIndex );
 };
-AtmosUtil.prototype.listDirectory = function( path, includeMetadata, callback ) {
+AtmosUtil.prototype.list = function( path, includeMetadata, callback ) {
     var util = this;
     var options = new ListOptions( 0, null, true, null, null );
     this.showStatus( 'Listing directory...' );
-    this.atmos.listDirectory( path, options, null, function( result ) {
-        util.hideStatus( 'Listing directory...' );
-        if ( result.success ) {
-            var entries = [];
-            for ( var i = 0; i < result.value.length; i++ ) {
-                if ( path === '/' && result.value[i].name === 'apache' ) continue;
-                entries.push( result.value[i] );
+    if ( this.useNamespace ) {
+        this.atmos.listDirectory( path, options, null, function( result ) {
+            util.hideStatus( 'Listing directory...' );
+            if ( result.success ) {
+                var entries = [];
+                for ( var i = 0; i < result.value.length; i++ ) {
+                    if ( path === '/' && result.value[i].name === 'apache' ) continue;
+                    entries.push( result.value[i] );
+                }
+                callback( entries );
+            } else {
+                util.atmosError( result );
+                callback( null );
             }
-            callback( entries );
-        } else {
-            util.atmosError( result );
-            callback( null );
-        }
-    } );
+        } );
+    } else { // object API
+        this.atmos.getListableTags( this.noSlashes( path ), null, function( result ) {
+            if ( result.success ) {
+                var entries = [];
+                if ( result.value ) {
+                    for ( var i = 0; i < result.value.length; i++ ) {
+                        entries.push( {id: path + result.value[i], name: result.value[i], type: ENTRY_TYPE.TAG} );
+                    }
+                }
+                if ( path != '/' ) {
+                    util.atmos.listObjects( util.noSlashes( path ), options, null, function( result2 ) {
+                        util.hideStatus( 'Listing directory...' );
+                        if ( result2.success ) {
+                            for ( var i = 0; i < result2.value.length; i++ ) {
+                                result2.value[i].type = ENTRY_TYPE.REGULAR;
+                                entries.push( result2.value[i] );
+                            }
+                            callback( entries );
+                        } else {
+                            util.atmosError( result2 );
+                            callback( null );
+                        }
+                    } );
+                } else {
+                    util.hideStatus( 'Listing directory...' );
+                    callback( entries );
+                }
+            } else if ( result.httpCode == 404 ) { // try object id
+                util.atmos.getSystemMetadata( util.noSlashes( path ), null, null, function( result2 ) {
+                    util.hideStatus( 'Listing directory...' );
+                    if ( result2.success ) {
+                        callback( [
+                            {id: result2.value.systemMeta.objectid, size: result2.value.systemMeta.size, type: ENTRY_TYPE.REGULAR, systemMeta: result2.value.systemMeta}
+                        ] );
+                    } else {
+                        util.atmosError( result2 );
+                        callback( null );
+                    }
+                } );
+            } else {
+                util.hideStatus( 'Listing directory...' );
+                util.atmosError( result );
+                callback( null );
+            }
+        } );
+    }
 };
-AtmosUtil.prototype.getAcl = function( path, callback ) {
+AtmosUtil.prototype.getAcl = function( id, callback ) {
     var util = this;
     this.showStatus( 'Retrieving ACL...' );
-    this.atmos.getAcl( path, null, function( result ) {
+    this.atmos.getAcl( id, null, function( result ) {
         util.hideStatus( 'Retrieving ACL...' );
         if ( result.success ) {
             callback( result.value );
@@ -1098,10 +1206,10 @@ AtmosUtil.prototype.getAcl = function( path, callback ) {
         }
     } );
 };
-AtmosUtil.prototype.setAcl = function( path, acl, callback ) {
+AtmosUtil.prototype.setAcl = function( id, acl, callback ) {
     var util = this;
     this.showStatus( 'Setting ACL...' );
-    this.atmos.setAcl( path, acl, null, function( result ) {
+    this.atmos.setAcl( id, acl, null, function( result ) {
         util.hideStatus( 'Setting ACL...' );
         if ( result.success ) {
             callback();
@@ -1110,13 +1218,13 @@ AtmosUtil.prototype.setAcl = function( path, acl, callback ) {
         }
     } );
 };
-AtmosUtil.prototype.getSystemMetadata = function( path, callback ) {
+AtmosUtil.prototype.getSystemMetadata = function( id, callback ) {
     var util = this;
     this.showStatus( 'Retrieving system metadata...' );
-    this.atmos.getSystemMetadata( path, null, null, function( result ) {
+    this.atmos.getSystemMetadata( id, null, null, function( result ) {
         util.hideStatus( 'Retrieving system metadata...' );
         if ( result.success ) {
-            callback( result.value );
+            callback( result.value.systemMeta );
         } else if ( result.httpCode == 404 ) { // execute callback passing null if object doesn't exist
             callback( null );
         } else {
@@ -1127,7 +1235,7 @@ AtmosUtil.prototype.getSystemMetadata = function( path, callback ) {
 AtmosUtil.prototype.getUserMetadata = function( entry, callback ) {
     var util = this;
     this.showStatus( 'Retrieving metadata...' );
-    this.atmos.getUserMetadata( entry.path, null, null, function( result ) {
+    this.atmos.getUserMetadata( entry.id, null, null, function( result ) {
         util.hideStatus( 'Retrieving metadata...' );
         if ( result.success ) {
             entry.userMeta = result.value.meta;
@@ -1138,10 +1246,10 @@ AtmosUtil.prototype.getUserMetadata = function( entry, callback ) {
         }
     } );
 };
-AtmosUtil.prototype.setUserMetadata = function( path, userMeta, listableMeta, callback ) {
+AtmosUtil.prototype.setUserMetadata = function( id, userMeta, listableMeta, callback ) {
     var util = this;
     this.showStatus( 'Saving metadata...' );
-    this.atmos.setUserMetadata( path, userMeta, listableMeta, null, function( result ) {
+    this.atmos.setUserMetadata( id, userMeta, listableMeta, null, function( result ) {
         util.hideStatus( 'Saving metadata...' );
         if ( result.success ) {
             callback();
@@ -1150,10 +1258,10 @@ AtmosUtil.prototype.setUserMetadata = function( path, userMeta, listableMeta, ca
         }
     } );
 };
-AtmosUtil.prototype.deleteUserMetadata = function( path, tags, callback ) {
+AtmosUtil.prototype.deleteUserMetadata = function( id, tags, callback ) {
     var util = this;
     this.showStatus( 'Saving metadata...' );
-    this.atmos.deleteUserMetadata( path, tags, null, function( result ) {
+    this.atmos.deleteUserMetadata( id, tags, null, function( result ) {
         util.hideStatus( 'Saving metadata...' );
         if ( result.success ) {
             callback();
@@ -1162,23 +1270,29 @@ AtmosUtil.prototype.deleteUserMetadata = function( path, tags, callback ) {
         }
     } );
 };
-AtmosUtil.prototype.createObject = function( path, data, mimeType, completeCallback, progressCallback ) {
+AtmosUtil.prototype.createObject = function( path, data, mimeType, completeCallback, progressCallback, currentLocation ) {
     var util = this;
     this.showStatus( 'Creating object...' );
-    this.atmos.createObjectOnPath( path, null, null, null, data, mimeType, null, function( result ) {
+    var callback = function( result ) {
         util.hideStatus( 'Creating object...' );
         if ( result.success ) {
-            completeCallback( true );
+            completeCallback( result.value );
         } else {
             util.atmosError( result );
             completeCallback( false );
         }
-    }, progressCallback );
+    };
+    if ( path ) this.atmos.createObjectOnPath( path, null, null, null, data, mimeType, null, callback, progressCallback );
+    else {
+        var listableMeta = {}; // add new object to current tag path if using object API
+        if ( currentLocation != '/' ) listableMeta[this.noSlashes( currentLocation )] = '';
+        this.atmos.createObject( null, null, this.useNamespace ? null : listableMeta, data, mimeType, null, callback, progressCallback );
+    }
 };
-AtmosUtil.prototype.overwriteObject = function( path, data, mimeType, completeCallback, progressCallback ) {
+AtmosUtil.prototype.overwriteObject = function( id, data, mimeType, completeCallback, progressCallback ) {
     var util = this;
     this.showStatus( 'Overwriting object...' );
-    this.atmos.updateObject( path, null, null, null, data, null, mimeType, null, function( result ) {
+    this.atmos.updateObject( id, null, null, null, data, null, mimeType, null, function( result ) {
         util.hideStatus( 'Overwriting object...' );
         if ( result.success ) {
             completeCallback( true );
@@ -1195,7 +1309,7 @@ AtmosUtil.prototype.renameObject = function( existingPath, newPath, callback ) {
         util.hideStatus( 'Checking for existing object...' );
         var overwrite = false;
         if ( result.success ) {
-            if ( result.value.systemMeta.type == ENTRY_TYPE.DIRECTORY ) {
+            if ( util.isDirectory( result.value.systemMeta.type ) ) {
                 alert( util.templates.get( 'directoryExistsError' ).render( {name: newPath} ) );
                 return;
             }
@@ -1213,10 +1327,10 @@ AtmosUtil.prototype.renameObject = function( existingPath, newPath, callback ) {
         } );
     } );
 };
-AtmosUtil.prototype.deleteObject = function( path, callback ) {
+AtmosUtil.prototype.deleteObject = function( id, callback ) {
     var util = this;
     this.showStatus( 'Deleting object...' );
-    this.atmos.deleteObject( path, null, function( result ) {
+    this.atmos.deleteObject( id, null, function( result ) {
         util.hideStatus( 'Deleting object...' );
         if ( result.success ) {
             callback();
@@ -1225,8 +1339,9 @@ AtmosUtil.prototype.deleteObject = function( path, callback ) {
         }
     } );
 };
-AtmosUtil.prototype.getShareableUrl = function( path, date, asAttachment ) {
-    return this.atmos.getShareableUrl( path, date, (asAttachment ? 'attachment' : false) );
+AtmosUtil.prototype.getShareableUrl = function( id, date, asAttachment ) {
+    var disposition = this.atmos.createAttachmentDisposition( AtmosRest.objectPathMatch.test( id ) ? false : id );
+    return this.atmos.getShareableUrl( id, date, (asAttachment ? disposition : false) );
 };
 AtmosUtil.prototype.sort = function( $table, subSelector, inverse ) {
 
@@ -1272,7 +1387,8 @@ function atmosBind( element, eventName, eventFunction ) {
 
 var ENTRY_TYPE = {
     DIRECTORY: 'directory',
-    REGULAR: 'regular'
+    REGULAR: 'regular',
+    TAG: 'tag'
 };
 
 // Select Text plug-in (http://jsfiddle.net/edelman/KcX6A/94/)
@@ -1358,10 +1474,7 @@ jQuery.fn.sortElements = (function() {
 
         var placements = this.map( function() {
 
-            var sortElement = getSortable.call( this ),
-                parentNode = sortElement.parentNode,
-
-                // Since the element itself will change position, we have
+            var sortElement = getSortable.call( this ), parentNode = sortElement.parentNode, // Since the element itself will change position, we have
                 // to have some way of storing it's original position in
                 // the DOM. The easiest way is to have a 'flag' node:
                 nextSibling = parentNode.insertBefore(

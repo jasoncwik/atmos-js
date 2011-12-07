@@ -36,6 +36,13 @@ input.longField {
     padding: 3px 6px;
 }
 
+.apiLink {
+    float: right;
+    margin-right: 15px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .atmosLocationField {
     width: 75%;
     margin: 0 4px 0 0;
@@ -210,6 +217,10 @@ input.longField {
 
 .atmosFileList .cell .icon.regular {
     background-image: url(../images/document.png);
+}
+
+.atmosFileList .cell .icon.tag {
+    background-image: url(../images/folder.png);
 }
 
 .atmosFileList .cell .icon.directory {
