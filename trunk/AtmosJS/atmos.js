@@ -182,6 +182,7 @@ function ListOptions( limit, token, includeMeta, userMetaTags, systemMetaTags ) 
  * @class ObjectResult
  */
 function ObjectResult( objectId, userMeta, listableUserMeta, systemMeta ) {
+    this.id = objectId;
     this.objectId = objectId;
     this.userMeta = userMeta;
     this.listableUserMeta = listableUserMeta;
@@ -199,6 +200,7 @@ function ObjectResult( objectId, userMeta, listableUserMeta, systemMeta ) {
  * @class DirectoryEntry
  */
 function DirectoryEntry( path, name, type, objectId, userMeta, listableUserMeta, systemMeta ) {
+    this.id = path;
     this.path = path;
     this.name = name;
     this.type = type;
@@ -1104,6 +1106,8 @@ AtmosRest.prototype._prepUploadHeaders = function( headers, mimeType ) {
  * callback: async callback (completion) method
  * success: (optional) success method - if present, should create a result object and call the callback method
  * progress: (optional) callback for updating progress of an upload (applies only to PUT and POST requests)
+ * formId: (optional) the element ID of a form to use instead of XHR for a POST or PUT request
+ * iframeId: (required if using a form) the element ID of the iframe to use as the target of the form specified above
  */
 AtmosRest.prototype._ajax = function( options ) {
     options.uri = this._resolveDots( options.uri );
@@ -1127,39 +1131,80 @@ AtmosRest.prototype._ajax = function( options ) {
     }
 
     // success/error handling
-    var xhr = this._getXMLHttpRequest(), me = this;
-    xhr.onreadystatechange = function() {
-        if ( xhr.readyState == 4 ) {
-            if ( xhr.status < 400 ) {
-                if ( options.success ) options.success( xhr );
-                else options.callback( me._createResult( xhr, true, options.state ) );
-            } else { // error
-                if ( options.error ) options.error( xhr );
-                else options.callback( me._createResult( xhr, false, options.state ) );
-            }
-        }
-    };
+    var me = this;
+    if ( options.formId ) { // using form
 
-    // progress callback
-    try {
-        if ( options.progress ) {
-            (xhr.upload || xhr).onprogress = function( event ) {
-                if ( event.lengthComputable ) {
-                    var progressPercent = Math.floor( (event.position || event.loaded) / (event.totalSize || event.total) * 100 );
-                    options.progress( progressPercent );
+        var form = document.getElementById( options.formId ), iframe = document.getElementById( options.iframeId );
+        iframe.onreadystatechange = function() {
+            if ( iframe.readyState == 'complete' ) {
+
+                // workaround to get document contents
+                var temp = document.createElement( "div" );
+                temp.appendChild( iframe.contentWindow.document.documentElement );
+                var responseText = temp.innerHTML;
+                if ( responseText.indexOf( "<Error>" == 0 ) ) { // error
+                    if ( options.error ) options.error( {responseText: responseText} );
+                    else options.callback( me._createResult( {responseText: responseText}, false, options.state ) );
+                } else {
+                    if ( options.success ) options.success( {responseText: responseText} );
+                    else options.callback( me._createResult( {responseText: responseText}, true, options.state ) );
                 }
-            };
+            }
+        };
+
+        // headers get passed as form parameters
+        var keys = Object.keys( options.headers );
+        for ( var i = 0; i < keys.length; i++ ) {
+            var element = form.elements[keys[i]];
+            if ( !element ) {
+                element = document.createElement( 'input' );
+                element.setAttribute( 'type', 'hidden' );
+                element.setAttribute( 'name', keys[i] );
+                form.insertBefore( element, form.childNodes[0] );
+            }
+            element.setAttribute( 'value', options.headers[keys[i]] );
         }
-    } catch( e ) {
-        // progress isn't supported
+
+        form.setAttribute( 'target', options.iframeId );
+        form.submit();
+
+    } else { // using XHR
+
+        var xhr = this._getXMLHttpRequest()
+        xhr.onreadystatechange = function() {
+            if ( xhr.readyState == 4 ) {
+                if ( xhr.status < 400 ) {
+                    if ( options.success ) options.success( xhr );
+                    else options.callback( me._createResult( xhr, true, options.state ) );
+                } else { // error
+                    if ( options.error ) options.error( xhr );
+                    else options.callback( me._createResult( xhr, false, options.state ) );
+                }
+            }
+        };
+
+        // progress callback
+        try {
+            if ( options.progress ) {
+                (xhr.upload || xhr).onprogress = function( event ) {
+                    if ( event.lengthComputable ) {
+                        var progressPercent = Math.floor( (event.position || event.loaded) / (event.totalSize || event.total) * 100 );
+                        options.progress( progressPercent );
+                    }
+                };
+            }
+        } catch( e ) {
+            // progress isn't supported
+        }
+
+        xhr.open( options.method, options.uri, true );
+
+        this._setHeaders( xhr, options.headers );
+
+        if ( options.data ) xhr.send( options.data );
+        else xhr.send();
+
     }
-
-    xhr.open( options.method, options.uri, true );
-
-    this._setHeaders( xhr, options.headers );
-
-    if ( options.data ) xhr.send( options.data );
-    else xhr.send();
 };
 
 AtmosRest.prototype._getXMLHttpRequest = function() {
@@ -1242,6 +1287,7 @@ AtmosRest.prototype._encodeURI = function( uri ) {
 
 AtmosRest.prototype._createResult = function( xhr, success, state ) {
     var result = new AtmosResult( success, state );
+
     result.httpCode = xhr.status;
     result.httpMessage = xhr.statusText;
 
@@ -1258,12 +1304,25 @@ AtmosRest.prototype._createResult = function( xhr, success, state ) {
 };
 
 AtmosRest.prototype._getXmlDoc = function( xhr ) {
-    if ( isNodejs ) {
-        // NodeJS doesn't have an XML parser yet; use the jsdom parser.
-        this.debug( "response:\n" + xhr.responseText );
-        return jsdom.jsdom( xhr.responseText );
-    } else {
+    if ( xhr.responseXML ) {
         return xhr.responseXML;
+    } else {
+        // use the jsdom parser.
+        this.debug( "response:\n" + xhr.responseText );
+        return this._createXmlDoc( xhr.responseText );
+    }
+};
+
+AtmosRest.prototype._createXmlDoc = function( xmlString ) {
+    if ( isNodejs ) {
+        return jsdom.jsdom( xmlString );
+    } else if ( window.DOMParser ) {
+        var parser = new DOMParser();
+        return parser.parseFromString( xmlString, "text/xml" );
+    } else if ( typeof ActiveXObject != 'undefined' ) {
+        var doc = new ActiveXObject( "MSXML.DomDocument" );
+        doc.loadXML( xmlString );
+        return doc;
     }
 };
 
@@ -1299,7 +1358,7 @@ AtmosRest.prototype._createObjectHandler = function( xhr, state, callback ) {
  * @returns {Object} a property object containing the values
  */
 AtmosRest.prototype._parseMetadata = function( value ) {
-    if ( typeof(value) == 'undefined' || value == null ) {
+    if ( typeof(value) == 'undefined' || value == null || value.length == 0 ) {
         return null;
     }
 
