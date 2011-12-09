@@ -43,13 +43,22 @@ Redistribution and use in source and binary forms, with or without modification,
         function upload() {
             var uploadForm = $( '#uploadForm' )
             var uploadField = $( 'input[name="uploadField"]' );
+            var basePath = $( 'input[name="basePath"]' );
             var mimeType = $( 'input[name="Content-Type"]', uploadForm );
             var emcDate = $( 'input[name="x-emc-date"]', uploadForm );
             var emcUid = $( 'input[name="x-emc-uid"]', uploadForm );
             var emcSignature = $( 'input[name="x-emc-signature"]', uploadForm );
-            var uri = uploadForm[0].action;
+            var uri = "/rest/namespace";
             var fileName = getName( uploadField.val() );
-            uri += fileName;
+            var dirName = basePath.val();
+            // Dir must start/end with slash
+            if(!dirName.charAt(0) == '/') {
+            	dirName = "/" + dirName;
+            }
+            if(!dirName.charAt(dirName.length-1) == '/') {
+            	dirName = dirName + "/";
+            }
+            uri += dirName + fileName;
             uploadForm[0].action = uri;
 
             var headers = {};
@@ -70,12 +79,13 @@ Redistribution and use in source and binary forms, with or without modification,
 </head>
 <body>
 
-<form action="/rest/namespace/stu/test/" id="uploadForm" target="uploadTarget" method="POST">
+<form action="" id="uploadForm" target="uploadTarget" method="POST" enctype="multipart/form-data">
+	<label for="basePath">Upload Directory</label><input type="text" name="basePath" value="/stu/test/" />
     <input type="hidden" name="Content-Type" value=""/>
     <input type="hidden" name="x-emc-date" value=""/>
     <input type="hidden" name="x-emc-uid" value=""/>
     <input type="hidden" name="x-emc-signature" value=""/>
-    <input type="file" name="uploadField"/>
+    <label for="uploadField">File to Upload:</label><input type="file" name="uploadField"/>
     <input type="button" value="Upload" onclick="upload()"/>
 </form>
 
