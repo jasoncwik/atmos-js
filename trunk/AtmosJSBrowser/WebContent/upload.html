@@ -82,6 +82,7 @@ Redistribution and use in source and binary forms, with or without modification,
 <form action="" id="uploadForm" target="uploadTarget" method="POST" enctype="multipart/form-data">
 	<label for="basePath">Upload Directory</label><input type="text" name="basePath" value="/stu/test/" />
     <input type="hidden" name="Content-Type" value=""/>
+    <input type="hidden" name="x-http-inject-response-headers" value="true"/>
     <input type="hidden" name="x-emc-date" value=""/>
     <input type="hidden" name="x-emc-uid" value=""/>
     <input type="hidden" name="x-emc-signature" value=""/>
