@@ -6,4 +6,4 @@
 || cross-domain || N || N || N || N || N || Y ||
 
 
-`*` IE caches all AJAX GET requests by default, so it will not be fully supported until the Atmos REST API includes an Expires header in its response (a patch is currently being developed to address this).  Using a random query parameter is not an option as it will be rejected by the REST server (even if included in the signature of the request.)
+`*` IE support requires an Atmos version with the browser-compatibility feature.  Currently this is slated for 2.0.2 or 2.0.1 with hotfix TBD.
