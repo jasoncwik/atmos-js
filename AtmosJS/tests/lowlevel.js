@@ -40,7 +40,7 @@ atmosLowLevel = {
     },
 
     'Object.keys test': function( test ) {
-        var keys = Object.keys( {foo:"bar", x:'y'} );
+        var keys = Object.keys( {foo: "bar", x: 'y'} );
         var correctKeys = ['foo', 'x'];
         test.ok( keys.length == correctKeys.length );
         for ( var i = 0; i < keys.length; i++ ) {
@@ -126,6 +126,17 @@ atmosLowLevel = {
         var child = atmos._getChildByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
         test.equal( children.length, 2, "found 2 children" );
         test.ok( child != null );
+        test.done();
+    },
+
+    'Form response test': function( test ) {
+        var responseText = "135\nHTTP/1.1 201 Created\nx-emc-policy: default\nx-emc-delta: 19096\nlocation: /rest/objects/4e4ec927a1068f5a04e4ec9918004304efb2ad7236d3";
+        var xhr = atmos._parseFormResponse( responseText );
+        test.equal( xhr.status, 201, "httpCode correct" );
+        test.equal( xhr.statusText, 'Created', "httpMessage correct" );
+        test.equal( xhr.responseText, '', "responseText correct" );
+        test.equal( xhr.getResponseHeader( 'location' ), '/rest/objects/4e4ec927a1068f5a04e4ec9918004304efb2ad7236d3', "location header correct" );
+        test.equal( Object.keys( xhr.headers ).length, 3, "headers.length correct" );
         test.done();
     }
 };

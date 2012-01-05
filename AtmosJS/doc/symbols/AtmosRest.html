@@ -195,11 +195,15 @@ ul.inheritsList
 	
 	<li><a href="../symbols/AclEntry.html">AclEntry</a></li>
 	
+	<li><a href="../symbols/AjaxRequest.html">AjaxRequest</a></li>
+	
 	<li><a href="../symbols/AtmosRest.html">AtmosRest</a></li>
 	
 	<li><a href="../symbols/AtmosResult.html">AtmosResult</a></li>
 	
-	<li><a href="../symbols/DirectoryEntry.html">DirectoryEntry</a></li>
+	<li><a href="../symbols/AtmosServiceInfo.html">AtmosServiceInfo</a></li>
+	
+	<li><a href="../symbols/DirectoryItem.html">DirectoryItem</a></li>
 	
 	<li><a href="../symbols/ListOptions.html">ListOptions</a></li>
 	
@@ -314,7 +318,7 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/AtmosRest.html#createObject">createObject</a></b>(acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback)
+								<div class="fixedFont"><b><a href="../symbols/AtmosRest.html#createObject">createObject</a></b>(acl, meta, listableMeta, form, data, mimeType, state, successCallback, progressCallback)
 								</div>
 								<div class="description">Creates an object in Atmos</div>
 							</td>
@@ -323,7 +327,7 @@ ul.inheritsList
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/AtmosRest.html#createObjectOnPath">createObjectOnPath</a></b>(path, acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback)
+								<div class="fixedFont"><b><a href="../symbols/AtmosRest.html#createObjectOnPath">createObjectOnPath</a></b>(path, acl, meta, listableMeta, form, data, mimeType, state, successCallback, progressCallback)
 								</div>
 								<div class="description">Creates an object in Atmos on the path provided.</div>
 							</td>
@@ -540,7 +544,7 @@ replicas, expiration, and retention.</div>
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/AtmosRest.html#updateObject">updateObject</a></b>(id, acl, meta, listableMeta, data, range, mimeType, state, successCallback, progressCallback)
+								<div class="fixedFont"><b><a href="../symbols/AtmosRest.html#updateObject">updateObject</a></b>(id, acl, meta, listableMeta, form, data, range, mimeType, state, successCallback, progressCallback)
 								</div>
 								<div class="description">Updates an object in Atmos with the given ID.</div>
 							</td>
@@ -606,6 +610,8 @@ Constructs a new AtmosRest object.
 <ul>
 <li>uid (required): the Atmos UID for the connection
 <li>secret (required): the Atmos shared secret key for the connection
+<li>utf8Support (optional): set to true to enable UTF8 non-latin character support in metadata values.
+    NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.utf8Support).
 </ul></dd>
 						
 						</dl>
@@ -670,7 +676,7 @@ Example code:<pre>
     var disposition = atmosRest.createAttachmentDisposition(); // fileName optional for namespace API (required for object API)
     var url = atmosRest.getShareableUrl( "/my/object", futureDate, disposition ); // URL response will contain a Content-Disposition header
 </pre>
-NOTE: this feature is only supported on Atmos 2.0.1 + hotfix XXXX
+NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).
 						
 						
 					</div>
@@ -702,7 +708,7 @@ NOTE: this feature is only supported on Atmos 2.0.1 + hotfix XXXX
 					<div class="fixedFont">
 					
 					
-					<b>createObject</b>(acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback)
+					<b>createObject</b>(acl, meta, listableMeta, form, data, mimeType, state, successCallback, progressCallback)
 					
 					</div>
 					<div class="description">
@@ -736,16 +742,24 @@ NOTE: this feature is only supported on Atmos 2.0.1 + hotfix XXXX
 								<dd>listable Metadata for the new object.  May be null for no listable metadata.</dd>
 							
 								<dt>
+									<span class="light fixedFont">{String}</span> <b>form</b>
+									
+								</dt>
+								<dd>the form element that contains the file(s) to upload. Either form or data must be specified.
+                NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).</dd>
+							
+								<dt>
 									<span class="light fixedFont">{Object}</span> <b>data</b>
 									
 								</dt>
-								<dd>the data for the new object (can be a String, Blob or File).</dd>
+								<dd>the data for the new object (can be a String, Blob or File). Either form or data must be specified</dd>
 							
 								<dt>
 									<span class="light fixedFont">{String}</span> <b>mimeType</b>
 									
 								</dt>
-								<dd>the mimeType for the new object.  If null, the object will be assigned application/octet-stream.</dd>
+								<dd>the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
+                         Leave blank if form is present (mime type will be extracted from multipart data)</dd>
 							
 								<dt>
 									<span class="light fixedFont">{Object}</span> <b>state</b>
@@ -758,13 +772,13 @@ NOTE: this feature is only supported on Atmos 2.0.1 + hotfix XXXX
 									
 								</dt>
 								<dd>the callback for when the function completes.  Should have the signature function(result)
-where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.</dd>
+                  where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.</dd>
 							
 								<dt>
 									<span class="light fixedFont">{function}</span> <b>progressCallback</b>
 									
 								</dt>
-								<dd>the (optional) callback for progress updates (i.e. status bar)</dd>
+								<dd>(optional) the callback for progress updates (i.e. status bar)</dd>
 							
 							</dl>
 						
@@ -781,7 +795,7 @@ where result will be an AtmosResult object.  The created Object ID will be in th
 					<div class="fixedFont">
 					
 					
-					<b>createObjectOnPath</b>(path, acl, meta, listableMeta, data, mimeType, state, successCallback, progressCallback)
+					<b>createObjectOnPath</b>(path, acl, meta, listableMeta, form, data, mimeType, state, successCallback, progressCallback)
 					
 					</div>
 					<div class="description">
@@ -821,16 +835,24 @@ where result will be an AtmosResult object.  The created Object ID will be in th
 								<dd>listable Metadata for the new object.  May be null for no listable metadata.</dd>
 							
 								<dt>
+									<span class="light fixedFont">{String}</span> <b>form</b>
+									
+								</dt>
+								<dd>the form element that contains the file(s) to upload. Either form or data must be specified
+                NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).</dd>
+							
+								<dt>
 									<span class="light fixedFont">{Object}</span> <b>data</b>
 									
 								</dt>
-								<dd>the data for the new object (can be a String, Blob or File).</dd>
+								<dd>the data for the new object (can be a String, Blob or File). Either form or data must be specified</dd>
 							
 								<dt>
 									<span class="light fixedFont">{String}</span> <b>mimeType</b>
 									
 								</dt>
-								<dd>the mimeType for the new object.  If null, the object will be assigned application/octet-stream.</dd>
+								<dd>the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
+                         Leave blank if form is present (mime type will be extracted from multipart data)</dd>
 							
 								<dt>
 									<span class="light fixedFont">{Object}</span> <b>state</b>
@@ -843,7 +865,7 @@ where result will be an AtmosResult object.  The created Object ID will be in th
 									
 								</dt>
 								<dd>the callback for when the function completes.  Should have the signature function(result)
-where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.</dd>
+                  where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.</dd>
 							
 								<dt>
 									<span class="light fixedFont">{function}</span> <b>progressCallback</b>
@@ -1364,7 +1386,7 @@ the object's info will be returned in result.value (as an ObjectInfo object).</d
 									
 								</dt>
 								<dd>the content-disposition that should be specified in the response header for the shareable
-       URL. NOTE: this feature is only supported on Atmos 2.0.1 + hotfix XXXX</dd>
+       URL. NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).</dd>
 							
 							</dl>
 						
@@ -2040,7 +2062,7 @@ old version to the current version).
 					<div class="fixedFont">
 					
 					
-					<b>updateObject</b>(id, acl, meta, listableMeta, data, range, mimeType, state, successCallback, progressCallback)
+					<b>updateObject</b>(id, acl, meta, listableMeta, form, data, range, mimeType, state, successCallback, progressCallback)
 					
 					</div>
 					<div class="description">
@@ -2080,22 +2102,30 @@ old version to the current version).
 								<dd>listable Metadata for the object.  May be null for no updates.</dd>
 							
 								<dt>
+									<span class="light fixedFont">{String}</span> <b>form</b>
+									
+								</dt>
+								<dd>the form element that contains the file(s) to upload. Either form or data must be specified
+                NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).</dd>
+							
+								<dt>
 									<span class="light fixedFont">{Object}</span> <b>data</b>
 									
 								</dt>
-								<dd>the replacement data for the object (can be a String, Blob or File).</dd>
+								<dd>the data for the new object (can be a String, Blob or File). Either form or data must be specified</dd>
 							
 								<dt>
 									<span class="light fixedFont">{<a href="../symbols/_global_.html#AtmosRange">AtmosRange</a>}</span> <b>range</b>
 									
 								</dt>
-								<dd>the range of the object to update, pass null to replace the entire object.</dd>
+								<dd>the range of the object to update, pass null to replace the entire object or if a form is used.</dd>
 							
 								<dt>
 									<span class="light fixedFont">{String}</span> <b>mimeType</b>
 									
 								</dt>
-								<dd>the mimeType for the object.  If null, the object will be assigned application/octet-stream.</dd>
+								<dd>the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
+                         Leave blank if form is present (mime type will be extracted from multipart data)</dd>
 							
 								<dt>
 									<span class="light fixedFont">{Object}</span> <b>state</b>
@@ -2108,7 +2138,7 @@ old version to the current version).
 									
 								</dt>
 								<dd>the callback for when the function completes.  Should have the signature function(result)
-where result will be an AtmosResult object. The result of this call will only contain status information.</dd>
+                  where result will be an AtmosResult object. The result of this call will only contain status information.</dd>
 							
 								<dt>
 									<span class="light fixedFont">{function}</span> <b>progressCallback</b>
@@ -2224,7 +2254,7 @@ version will be in result.value</dd>
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Mon Nov 28 2011 11:58:36 GMT-0600 (CST)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Thu Jan 05 2012 16:32:08 GMT-0600 (CST)
 		</div>
 	</body>
 </html>
