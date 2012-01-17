@@ -1,3 +1,64 @@
+/*
+CSS RESET
+http://meyerweb.com/eric/tools/css/reset/
+v2.0 | 20110126
+License: none (public domain)
+*/
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+}
+
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+    display: block;
+}
+
+body {
+    line-height: 1;
+}
+
+ol, ul {
+    list-style: none;
+}
+
+blockquote, q {
+    quotes: none;
+}
+
+blockquote:before, blockquote:after,
+q:before, q:after {
+    content: '';
+    content: none;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+/*
+END CSS RESET
+*/
+
 input.longField {
     width: 350px;
 }
@@ -8,18 +69,20 @@ input.longField {
     background-color: #e8e8e8;
     border-collapse: collapse;
     font: 10pt arial, sans-serif;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    border-radius: 8px 8px 0 0;
     box-shadow: 2px 3px 5px #555;
 }
 
 .atmosTitleBar {
     height: 18px;
+    background: #555;
     background: -webkit-linear-gradient(top, #aaa, #000);
     background: -moz-linear-gradient(top, #aaa, #000);
+    background: -o-linear-gradient(top, #aaa, #000);
     background: -ms-linear-gradient(top, #aaa, #000);
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    background: linear-gradient(top, #aaa, #000);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = '#aaaaaa', endColorstr = '#000000', GradientType = 0);
+    border-radius: 8px 8px 0 0;
     padding: 8px 10px;
     font: bold 11pt arial, sans-serif;
     color: #fff;
@@ -74,9 +137,13 @@ input.longField {
 .atmosButton {
     display: inline-block;
     width: auto;
+    background: #e0e0e0;
     background: -webkit-linear-gradient(top, #fff, #ccc);
     background: -moz-linear-gradient(top, #fff, #ccc);
+    background: -o-linear-gradient(top, #fff, #ccc);
     background: -ms-linear-gradient(top, #fff, #ccc);
+    background: linear-gradient(top, #fff, #ccc);
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = '#ffffff', endColorstr = '#cccccc', GradientType = 0);
     margin: 0 4px;
     padding: 3px 4px;
     border: 1pt solid #777;
@@ -150,18 +217,28 @@ input.longField {
     display: table-cell;
     border: 1px solid #ccc;
     padding: 2px 6px;
-    overflow: hidden;
     vertical-align: middle;
 }
 
 .atmosBrowser .table .row h4.cell,
-.atmosModalWindow .table .row h4.cell {
+.atmosBrowser .table .row th.cell,
+.atmosModalWindow .table .row h4.cell,
+.atmosModalWindow .table .row th.cell {
+    background: #eee;
     background: -webkit-linear-gradient(top, #fff, #ddd);
     background: -moz-linear-gradient(top, #fff, #ddd);
+    background: -o-linear-gradient(top, #fff, #ddd);
     background: -ms-linear-gradient(top, #fff, #ddd);
+    background: linear-gradient(top, #fff, #ddd);
     border: 1px solid #aaa;
-    padding: 3px 6px;
+    padding: 3px 6px 2px 6px;
     font: bold 10pt arial, sans-serif;
+}
+
+.atmosBrowser .table .row th.atmosHeaderSpacer {
+    background: #e8e8e8;
+    border: none;
+    padding: 0;
 }
 
 .atmosBrowser .table .row.selected,
@@ -204,15 +281,11 @@ input.longField {
     height: 18px;
     -webkit-background-size: contain;
     -moz-background-size: contain;
+    -o-background-size: contain;
     -ms-background-size: contain;
     background-size: contain;
     background-repeat: no-repeat;
     vertical-align: middle;
-}
-
-.atmosFileList .cell .icon.doc,
-.atmosFileList .cell .icon.docx {
-    background-image: url(../images/doc.png);
 }
 
 .atmosFileList .cell .icon.regular {
@@ -225,6 +298,11 @@ input.longField {
 
 .atmosFileList .cell .icon.directory {
     background-image: url(../images/folder.png);
+}
+
+.atmosFileList .cell .icon.doc,
+.atmosFileList .cell .icon.docx {
+    background-image: url(../images/doc.png);
 }
 
 .atmosFileList .cell .icon.gif {
@@ -292,15 +370,14 @@ input.longField {
     margin-top: -175px;
     margin-left: -250px;
     border: 1px solid #555;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    border-radius: 8px 8px 0 0;
     border-collapse: collapse;
     box-shadow: 2px 3px 5px #555;
     background-color: #e8e8e8;
     z-index: 10000;
 }
 
-.atmosModalWindow .atmosCloseButton {
+.atmosModalWindow .atmosXButton {
     display: inline-block;
     float: right;
     margin-top: -4px;
@@ -453,10 +530,12 @@ input.atmosPropertyValue {
 [draggable=true] {
     -webkit-user-drag: element;
     -moz-user-drag: element;
+    -o-user-drag: element;
     -ms-user-drag: element;
     user-drag: element;
     -webkit-user-select: none;
     -moz-user-select: none;
+    -o-user-select: none;
     -ms-user-select: none;
     user-select: none;
 }
@@ -464,6 +543,7 @@ input.atmosPropertyValue {
 [unselectable=on] {
     -webkit-user-select: none;
     -moz-user-select: none;
+    -o-user-select: none;
     -ms-user-select: none;
     user-select: none;
 }
