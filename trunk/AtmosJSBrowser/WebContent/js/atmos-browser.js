@@ -1,12 +1,12 @@
-function AtmosBrowser( options, pageElements, $parent ) {
-    this.templates = new AtmosTemplateEngine( pageElements );
+function AtmosBrowser( options, $parent ) {
+    this.templates = new AtmosTemplateEngine();
 
     // default settings
     this.settings = {
-        uid : null,
-        secret : null,
-        deletePrompt : true,
-        location : '/'
+        uid: null,
+        secret: null,
+        deletePrompt: true,
+        location: '/'
     };
     if ( options ) {
         jQuery.extend( this.settings, options );
@@ -22,6 +22,8 @@ function AtmosBrowser( options, pageElements, $parent ) {
         } );
     } else this._init( $parent );
 }
+
+AtmosBrowser.version = '1.0.0';
 
 AtmosBrowser.prototype._init = function( $parent ) {
 
@@ -40,6 +42,8 @@ AtmosBrowser.prototype._init = function( $parent ) {
     this.$shareButton = $main.find( '.atmosShareButton' );
     this.$propertiesButton = $main.find( '.atmosPropertiesButton' );
     this.$aclButton = $main.find( '.atmosAclButton' );
+    this.$infoButton = $main.find( '.atmosInfoButton' );
+    this.$uploadField = $main.find( 'input.atmosUploadField' );
 
     // write main template
     if ( $parent ) $parent.append( $main );
@@ -84,6 +88,10 @@ AtmosBrowser.prototype._init = function( $parent ) {
         fileRow = browser.singleSelectedRow();
         if ( fileRow ) browser.showAcl( fileRow.entry );
     };
+    if ( this.$infoButton.length > 0 ) this.$infoButton[0].onclick = function() {
+        fileRow = browser.singleSelectedRow();
+        if ( fileRow ) browser.showObjectInfo( fileRow.entry );
+    };
 
     this.namespaceOnlyButtons = [
         this.$createButton,
@@ -101,7 +109,7 @@ AtmosBrowser.prototype._init = function( $parent ) {
     } );
 
     // clicking out of the location field resets it to the current path
-    jQuery( window ).mousedown( function( event ) {
+    jQuery( document ).mousedown( function( event ) {
         if ( event.target != browser.$locationField[0] && event.target != browser.$goButton[0] ) browser.$locationField.val( browser.currentLocation );
     } );
 
@@ -120,9 +128,12 @@ AtmosBrowser.prototype._init = function( $parent ) {
     };
 
     // selecting files triggers an upload
-    var $uploadField = $main.find( 'input.atmosUploadField' );
-    if ( $uploadField.length > 0 ) atmosBind( $uploadField[0], 'change', function( event ) {
-        browser.uploadFiles( event.target.files || [event.target.value] );
+    if ( this.$uploadField.length > 0 ) atmosBind( this.$uploadField[0], 'change', function( event ) {
+        if ( event.target.files ) browser.uploadFiles( event.target.files );
+        else {
+            if ( /*browser.atmosInfo.browsercompat*/true ) browser.uploadFile( null, true );
+            else browser.util.error( browser.templates.get( 'atmosError.noBrowserCompat' ).render( {info: dumpObject( browser.atmosInfo )} ) );
+        }
     } );
 
     // drag-n-drop upload
@@ -135,8 +146,8 @@ AtmosBrowser.prototype._init = function( $parent ) {
     atmosBind( $main[0], 'dragenter', cancelEvent );
     atmosBind( $main[0], 'dragover', cancelEvent );
     atmosBind( $main[0], 'drop', cancelEvent );
-    $dropTarget[0].ondragenter = function() {
-        $dropTarget.addClass( 'targetActive' );
+    $dropTarget[0].ondragenter = function( event ) {
+        if ( event.dataTransfer.files ) $dropTarget.addClass( 'targetActive' );
     };
     $dropTarget[0].ondragleave = function() {
         $dropTarget.removeClass( 'targetActive' );
@@ -149,8 +160,8 @@ AtmosBrowser.prototype._init = function( $parent ) {
     var $statusMessage = $main.find( '.atmosStatusMessage' );
     this.util = new AtmosUtil( this.settings.uid, this.settings.secret, this.templates, $statusMessage );
     this.list( this.settings.location );
-    this.util.getAtmosVersion( function( atmosVersion ) {
-        browser.atmosVersion = atmosVersion;
+    this.util.getAtmosVersion( function( serviceInfo ) {
+        browser.atmosInfo = serviceInfo;
     } )
 };
 
@@ -221,8 +232,8 @@ AtmosBrowser.prototype.openSelectedItems = function() {
     }
 };
 AtmosBrowser.prototype.downloadSelectedItems = function() {
-    if ( this.atmosVersion < '2.0.1' ) {
-        alert( 'This feature requires Atmos version 2.0.1 or later.\nYour Atmos version is ' + this.atmosVersion );
+    if ( /*!this.atmosInfo.browsercompat*/false ) {
+        this.util.error( this.templates.get( 'atmosError.noBrowserCompat' ).render( {info: dumpObject( this.atmosInfo )} ) );
         return;
     }
     var selectedRows = this.getSelectedRows();
@@ -252,13 +263,23 @@ AtmosBrowser.prototype.showAcl = function( entry ) {
         new AclPage( entry, acl, browser.util, browser.templates );
     } );
 };
+AtmosBrowser.prototype.showObjectInfo = function( entry ) {
+    if ( this.util.isListable( entry.type ) ) {
+        this.util.error( this.templates.get( 'directoryNotAllowedError' ).render() );
+        return;
+    }
+    var browser = this;
+    this.util.getObjectInfo( entry.id, function( objectInfo ) {
+        new ObjectInfoPage( entry, objectInfo, browser.templates );
+    } );
+};
 AtmosBrowser.prototype.shareEntry = function( entry ) {
     if ( this.util.isListable( entry.type ) ) {
         this.util.error( this.templates.get( 'directoryNotAllowedError' ).render() );
         return;
     }
 
-    var requiredSelectors = ['input.atmosExpirationCount','select.atmosExpirationUnit','.atmosShareUrl','.atmosGenerateButton'];
+    var requiredSelectors = ['input.atmosExpirationCount', 'select.atmosExpirationUnit', '.atmosShareUrl', '.atmosGenerateButton'];
     var $sharePage = jQuery( this.templates.get( 'sharePage' ).render( {}, requiredSelectors ) );
     var $expirationCount = $sharePage.find( 'input.atmosExpirationCount' );
     var $expirationUnit = $sharePage.find( 'select.atmosExpirationUnit' );
@@ -290,69 +311,63 @@ AtmosBrowser.prototype.moveSelectedItems = function() {
 };
 AtmosBrowser.prototype.uploadFiles = function( files ) { // FileList (HTML5 File API)
     for ( var i = 0; i < files.length; i++ ) {
-        var browser = this, file = files[i];
-
-        if ( this.util.useNamespace ) {
-
-            // first check if the file exists
-            (function( file ) {
-                browser.util.getSystemMetadata( browser.currentLocation + file.name, function( systemMeta ) {
-                    var overwrite = false;
-                    if ( systemMeta ) {
-                        if ( browser.util.isDirectory( systemMeta.type ) ) {
-
-                            // can't overwrite directories
-                            alert( browser.templates.get( 'directoryExistsError' ).render( {name: file.name} ) );
-                            return;
-                        }
-
-                        // prompt to see if the users wishes to overwrite
-                        overwrite = confirm( browser.templates.get( 'itemExistsPrompt' ).render( {name: file.name} ) );
-                        if ( !overwrite ) return;
-                    }
-                    browser.uploadFile( file, overwrite );
-                } );
-            })( file );
-        } else {
-            this.uploadFile( file, false );
-        }
+        this.uploadFile( files[i] );
     }
 };
-AtmosBrowser.prototype.uploadFile = function( file, updating ) {
-    var browser = this;
-    var id = this.util.useNamespace ? this.currentLocation + file.name : false;
+AtmosBrowser.prototype.uploadFile = function( file, useForm ) {
+    var browser = this, fileName = null;
+    if ( useForm ) {
+        var localPath = this.$uploadField.val();
+        var lastSepIndex = Math.max( localPath.lastIndexOf( '\\' ), localPath.lastIndexOf( '/' ) );
+        fileName = lastSepIndex >= 0 ? localPath.substr( lastSepIndex + 1 ) : localPath;
+    } else fileName = file.name;
+    var id = this.util.useNamespace ? this.currentLocation + fileName : false;
+    var form = useForm ? this.$uploadField[0].form : null;
 
-    // grab the file row or create one
-    var fileRow = browser.findRow( id );
-    if ( !fileRow ) {
-        fileRow = browser.addRow( {id: id, name: file.name, size: file.size, type: ENTRY_TYPE.REGULAR} );
-        browser.$fileTable.append( fileRow.$root );
-    }
-    fileRow.showStatus();
-    fileRow.setStatus( 0 );
-    var completeF = function( returnValue ) {
-        if ( returnValue ) {
-            id = id || returnValue;
+    var doUpload = function( overwriting ) {
 
-            // refresh local metadata
-            browser.util.getSystemMetadata( id, function( systemMeta ) {
-                fileRow.updateEntry( {id: id, name: (browser.util.useNamespace ? file.name : id), systemMeta: systemMeta} );
-                fileRow.hideStatus();
-            } );
+        // grab the file row or create one
+        var fileRow = browser.findRow( id );
+        if ( !fileRow ) {
+            fileRow = browser.addRow( {id: id, name: fileName, size: (file ? file.size : 'n/a'), type: ENTRY_TYPE.REGULAR} );
+            browser.$fileTable.append( fileRow.$root );
+        }
+        fileRow.showStatus();
+        fileRow.setStatus( 0 );
+        var completeF = function( returnValue ) {
+            browser.$uploadField[0].form.reset();
+            if ( returnValue ) {
+                id = id || returnValue;
+
+                // refresh local metadata
+                browser.util.getSystemMetadata( id, function( systemMeta ) {
+                    fileRow.updateEntry( {id: id, name: (browser.util.useNamespace ? fileName : id), systemMeta: systemMeta} );
+                    fileRow.hideStatus();
+                } );
+            } else {
+                if ( overwriting ) fileRow.hideStatus();
+                else browser.removeRow( fileRow );
+            }
+        };
+        var progressF = function( status ) {
+            fileRow.setStatus( status );
+        };
+
+        // upload file (in webkit and mozilla browsers, we can call xhr.send(file) directly without processing it (major time saver!)
+        if ( overwriting ) {
+            browser.util.overwriteObject( id, form, file, (file ? file.type : null), completeF, progressF );
         } else {
-            if ( !updating ) browser.removeRow( fileRow );
-            else fileRow.hideStatus();
+            browser.util.createObject( id, form, file, (file ? file.type : null), completeF, progressF, browser.currentLocation );
         }
     };
-    var progressF = function( status ) {
-        fileRow.setStatus( status );
-    };
 
-    // upload file (in webkit and mozilla browsers, we can call xhr.send(file) directly without processing it (major time saver!)
-    if ( updating ) {
-        browser.util.overwriteObject( id, file, (file.type || 'application/octet-stream'), completeF, progressF );
+    // check if the file exists
+    if ( this.util.useNamespace ) {
+        browser._checkFileExists( fileName, function( exists, overwrite ) {
+            if ( !exists || overwrite ) doUpload( overwrite );
+        } );
     } else {
-        browser.util.createObject( id, file, (file.type || 'application/octet-stream'), completeF, progressF, browser.currentLocation );
+        doUpload( false );
     }
 };
 AtmosBrowser.prototype.deleteSelectedItems = function() {
@@ -480,6 +495,26 @@ AtmosBrowser.prototype._checkNoTags = function( selectedRows ) {
     }
     return true;
 };
+AtmosBrowser.prototype._checkFileExists = function( name, callback ) {
+    var browser = this;
+    browser.util.getSystemMetadata( browser.currentLocation + name, function( systemMeta ) {
+        var exists = false, overwrite = false;
+        if ( systemMeta ) {
+            exists = true;
+
+            if ( browser.util.isDirectory( systemMeta.type ) ) {
+
+                // can't overwrite directories
+                alert( browser.templates.get( 'directoryExistsError' ).render( {name: name} ) );
+            } else {
+
+                // prompt to see if the users wishes to overwrite
+                overwrite = confirm( browser.templates.get( 'itemExistsPrompt' ).render( {name: name} ) );
+            }
+        }
+        callback( exists, overwrite );
+    } );
+};
 
 function FileRow( entry, browser ) {
     var requiredSelectors = [
@@ -577,8 +612,8 @@ FileRow.prototype.showStatus = function() {
     this.$status.width( 0 );
 };
 FileRow.prototype.setStatus = function( percent ) {
-    this.$status.width( this.sizeWidth * percent / 100 );
-    this.$status.text( percent + "%" );
+    this.$status.width( (percent >= 0) ? this.sizeWidth * percent / 100 : this.sizeWidth );
+    this.$status.text( (percent >= 0) ? percent + "%" : "uploading..." );
 };
 FileRow.prototype.hideStatus = function() {
     this.$size.html( this.size );
@@ -606,7 +641,7 @@ FileRow.prototype._getExtension = function( fileName ) {
 };
 
 function ContextMenu( entry, browser ) {
-    var templateName = browser.util.isTag( entry.type ) ? 'tagContextMenu' : browser.util.isDirectory( entry.type ) ? 'directoryContextManu' : 'fileContextMenu';
+    var templateName = browser.util.isTag( entry.type ) ? 'tagContextMenu' : browser.util.isDirectory( entry.type ) ? 'directoryContextMenu' : 'fileContextMenu';
     this.$root = jQuery( browser.templates.get( templateName ).render() ).addClass( 'ATMOS_contextMenu' ); // flag for removal
     jQuery( 'body' ).append( this.$root );
 
@@ -619,6 +654,7 @@ function ContextMenu( entry, browser ) {
     var $shareOption = this.$root.find( '.shareOption' ).addClass( 'ATMOS_contextMenuOption' );
     var $propertiesOption = this.$root.find( '.propertiesOption' ).addClass( 'ATMOS_contextMenuOption' );
     var $aclOption = this.$root.find( '.aclOption' ).addClass( 'ATMOS_contextMenuOption' );
+    var $infoOption = this.$root.find( '.infoOption' ).addClass( 'ATMOS_contextMenuOption' );
 
     if ( $openOption.length > 0 ) $openOption[0].onclick = function() {
         browser.openSelectedItems();
@@ -651,10 +687,14 @@ function ContextMenu( entry, browser ) {
     if ( $aclOption.length > 0 ) $aclOption[0].onclick = function() {
         browser.showAcl( entry );
         menu.$root.remove();
-    }
+    };
+    if ( $infoOption.length > 0 ) $infoOption[0].onclick = function() {
+        browser.showObjectInfo( entry );
+        menu.$root.remove();
+    };
 }
 
-jQuery( window ).mousedown( function( event ) {
+jQuery( document ).mousedown( function( event ) {
     if ( !jQuery( event.target ).hasClass( 'ATMOS_contextMenuOption' ) ) jQuery( '.ATMOS_contextMenu' ).remove();
 } );
 ContextMenu.prototype.moveTo = function( x, y ) {
@@ -665,12 +705,12 @@ ContextMenu.prototype.moveTo = function( x, y ) {
 function ModalWindow( title, $content, templateEngine, width ) {
     var requiredSelectors = [
         '.atmosModalWindowContent',
-        '.atmosCloseButton'
+        '.atmosXButton'
     ];
     this.$background = jQuery( templateEngine.get( 'modalBackground' ).render() );
     this.$window = jQuery( templateEngine.get( 'modalWindow' ).render( {title: title}, requiredSelectors ) );
     this.$content = this.$window.find( '.atmosModalWindowContent' );
-    this.$closeButton = this.$window.find( '.atmosCloseButton' );
+    this.$closeButton = this.$window.find( '.atmosXButton' );
 
     jQuery( 'body' ).append( this.$background ).append( this.$window );
     this.$content.empty();
@@ -849,6 +889,7 @@ function AclPage( entry, acl, util, templateEngine ) {
     var page = this;
     this.$root.find( '.atmosAddUserAclButton' )[0].onclick = function() {
         var name = page.util.prompt( 'userAclNamePrompt', {}, page.util.validName, 'validNameError' );
+        if ( name == null || name.length == 0 ) return;
         page.addAclEntry( page.$userAclTable, name );
     };
     this.$root.find( '.atmosSaveButton' )[0].onclick = function() {
@@ -881,6 +922,28 @@ AclPage.prototype.getAclEntries = function( $table ) {
         entries.push( new AclEntry( name, access ) );
     } );
     return entries;
+};
+
+function ObjectInfoPage( entry, objectInfo, templateEngine ) {
+    this.templates = templateEngine;
+    this.$root = jQuery( templateEngine.get( 'objectInfoPage' ).render( {objectInfo: objectInfo}, ['.atmosReplicaList'] ) );
+    this.$replicaList = this.$root.find( '.atmosReplicaList' ).empty();
+
+    if ( objectInfo.replicas ) {
+        for ( var i = 0; i < objectInfo.replicas.length; i++ ) {
+            this.addReplica( objectInfo.replicas[i] );
+        }
+    }
+
+    var modalWindow = new ModalWindow( templateEngine.get( 'objectInfoPageTitle' ).render( {name: entry.name || entry.id} ), this.$root, templateEngine );
+
+    this.$root.find( '.atmosCloseButton' )[0].onclick = function() {
+        modalWindow.remove();
+    }
+}
+ObjectInfoPage.prototype.addReplica = function( replica ) {
+    var $replica = jQuery( this.templates.get( 'objectInfoReplica' ).render( {replica: replica} ) );
+    this.$replicaList.append( $replica );
 };
 
 function DirectoryPage( util, startPath, templateEngine, callback ) {
@@ -975,7 +1038,7 @@ function LoginPage( options, templateEngine, callback ) {
     modalWindow.hideCloseButton();
 
     $loginButton.click( function() {
-        new AtmosUtil( $uid.val(), $secret.val(), templateEngine ).getAtmosVersion( function( version ) {
+        new AtmosUtil( $uid.val(), $secret.val(), templateEngine ).getAtmosVersion( function( serviceInfo ) {
             callback( $uid.val(), $secret.val() );
             modalWindow.remove();
         } );
@@ -1032,7 +1095,7 @@ AtmosUtil.prototype.createDirectory = function( parentDirectory, callback ) {
             return;
         }
         util.showStatus( 'Creating directory...' );
-        util.atmos.createObjectOnPath( path, null, null, null, null, null, null, function( result ) {
+        util.atmos.createObjectOnPath( path, null, null, null, null, null, null, null, function( result ) {
             util.hideStatus( 'Creating directory...' );
             if ( result.success ) {
                 callback( name );
@@ -1079,7 +1142,7 @@ AtmosUtil.prototype.atmosError = function( result ) {
 AtmosUtil.prototype.futureDate = function( howMany, ofWhat ) {
     try {
         howMany = parseInt( howMany );
-    } catch( error ) {
+    } catch ( error ) {
         this.error( this.templates.get( 'invalidNumberError' ).render( {value: howMany} ) );
         return;
     }
@@ -1103,13 +1166,13 @@ AtmosUtil.prototype.validName = function( name ) {
 };
 AtmosUtil.prototype.endWithSlash = function( path ) {
     path = path.trim();
-    if ( path[path.length - 1] !== '/' ) path += '/';
+    if ( path.charAt( path.length - 1 ) !== '/' ) path += '/';
     return path;
 };
 AtmosUtil.prototype.noSlashes = function( path ) {
     if ( !path || path.length == 0 ) return path;
-    if ( path[0] == '/' ) path = path.substr( 1 );
-    if ( path[path.length - 1] == '/' ) path = path.substr( 0, path.length - 1 );
+    if ( path.charAt( 0 ) == '/' ) path = path.substr( 1 );
+    if ( path.charAt( path.length - 1 ) == '/' ) path = path.substr( 0, path.length - 1 );
     return path;
 };
 AtmosUtil.prototype.isListable = function( entryType ) {
@@ -1270,7 +1333,19 @@ AtmosUtil.prototype.deleteUserMetadata = function( id, tags, callback ) {
         }
     } );
 };
-AtmosUtil.prototype.createObject = function( path, data, mimeType, completeCallback, progressCallback, currentLocation ) {
+AtmosUtil.prototype.getObjectInfo = function( id, callback ) {
+    var util = this;
+    this.showStatus( 'Retrieving Object Info...' );
+    this.atmos.getObjectInfo( id, null, function( result ) {
+        util.hideStatus( 'Retrieving Object Info...' );
+        if ( result.success ) {
+            callback( result.value );
+        } else {
+            util.atmosError( result );
+        }
+    } );
+};
+AtmosUtil.prototype.createObject = function( path, form, data, mimeType, completeCallback, progressCallback, currentLocation ) {
     var util = this;
     this.showStatus( 'Creating object...' );
     var callback = function( result ) {
@@ -1282,17 +1357,17 @@ AtmosUtil.prototype.createObject = function( path, data, mimeType, completeCallb
             completeCallback( false );
         }
     };
-    if ( path ) this.atmos.createObjectOnPath( path, null, null, null, data, mimeType, null, callback, progressCallback );
+    if ( path ) this.atmos.createObjectOnPath( path, null, null, null, form, data, mimeType, null, callback, progressCallback );
     else {
         var listableMeta = {}; // add new object to current tag path if using object API
         if ( currentLocation != '/' ) listableMeta[this.noSlashes( currentLocation )] = '';
-        this.atmos.createObject( null, null, this.useNamespace ? null : listableMeta, data, mimeType, null, callback, progressCallback );
+        this.atmos.createObject( null, null, this.useNamespace ? null : listableMeta, form, data, mimeType, null, callback, progressCallback );
     }
 };
-AtmosUtil.prototype.overwriteObject = function( id, data, mimeType, completeCallback, progressCallback ) {
+AtmosUtil.prototype.overwriteObject = function( id, form, data, mimeType, completeCallback, progressCallback ) {
     var util = this;
     this.showStatus( 'Overwriting object...' );
-    this.atmos.updateObject( id, null, null, null, data, null, mimeType, null, function( result ) {
+    this.atmos.updateObject( id, null, null, null, form, data, null, mimeType, null, function( result ) {
         util.hideStatus( 'Overwriting object...' );
         if ( result.success ) {
             completeCallback( true );
@@ -1351,7 +1426,7 @@ AtmosUtil.prototype.sort = function( $table, subSelector, inverse ) {
         inverse = !this.sortMap[subSelector];
     }
     this.sortMap[subSelector] = inverse;
-    $table.children().sortElements( function( a, b ) {
+    $table.find( '.row' ).sortElements( function( a, b ) {
         var valA = jQuery( a ).find( subSelector ).text().toLowerCase();
         var valB = jQuery( b ).find( subSelector ).text().toLowerCase();
         if ( valA.length == 0 && valB.length > 0 ) return inverse ? 1 : -1;
@@ -1376,14 +1451,230 @@ function atmosBind( element, eventName, eventFunction ) {
         if ( !event.preventDefault ) event.preventDefault = function() {
             event.returnValue = false;
         };
-        if ( !event.pageX ) event.pageX = event.x + document.scrollLeft;
-        if ( !event.pageY ) event.pageY = event.y + document.scrollTop;
+        if ( !event.pageX ) event.pageX = event.x + (document.body.scrollLeft || document.documentElement.scrollLeft);
+        if ( !event.pageY ) event.pageY = event.y + (document.body.scrollTop || document.documentElement.scrollTop);
         if ( !event.which && event.button ) { // translate IE's mouse button
             event.which = (event.button < 2) ? 1 : (event.button == 4) ? 2 : 3; // 1 => 1, 4 => 2, * => 3
         }
+        if ( !event.target ) event.target = event.srcElement;
         eventFunction( event );
     };
 }
+
+function AtmosTemplateEngine() {
+    this.templates = [];
+
+    // find in-line HTML templates
+    var i, prefix = "template\\.atmos\\.";
+    for ( i = 0; i < HTML_TEMPLATES.length; i++ ) {
+        var name = HTML_TEMPLATES[i];
+        var $template = jQuery( '#' + prefix + name );
+        if ( $template.length == 0 ) throw 'Required in-line template "' + prefix + name + '" not found';
+        this.templates[name] = new AtmosTemplate( name, $template.html(), this );
+    }
+
+    // fixed templates (messages)
+    var templateNames = Object.keys( MESSAGE_TEMPLATES );
+    for ( i = 0; i < templateNames.length; i++ ) {
+        this.templates[templateNames[i]] = new AtmosTemplate( templateNames[i], MESSAGE_TEMPLATES[templateNames[i]], this );
+    }
+}
+/**
+ * Returns an AtmosTemplate of the specified name or an error if it is not found in the map of templates
+ * @param name the name of the template to return
+ */
+AtmosTemplateEngine.prototype.get = function( name ) {
+    var template = this.templates[name];
+    if ( !template ) throw name + " not found in templates";
+    return template;
+};
+
+function AtmosTemplate( name, content, engine ) {
+    this.name = name;
+    this.content = content;
+    this.engine = engine;
+}
+/**
+ * Renderer for templates. Provides a velocity-like parser for strings.
+ * @param {Object} model the model from which to pull values for replacing tags/variables
+ * @param {Array} requiredSelectors (optional) an array of jQuery selectors that are expected to be present in this
+ * template. An error will be thrown if any of these selectors are absent. Good for debugging custom HTML.
+ */
+AtmosTemplate.prototype.render = function( model, requiredSelectors ) {
+    if ( requiredSelectors ) {
+        var $content = jQuery( this.content );
+        var missingSelectors = [];
+        for ( var j = 0; j < requiredSelectors.length; j++ ) {
+            if ( $content.find( requiredSelectors[j] ).length == 0 ) missingSelectors.push( requiredSelectors[j] );
+        }
+        if ( missingSelectors.length > 0 ) throw "Template " + this.name + " is missing required selectors: " + missingSelectors.join( ", " );
+    }
+
+    var result = this.content;
+
+    // required tags (i.e. "%{tagName}") will be retained in the output if unresolvable
+    var tags = this.content.match( /%\{[^}]+\}/g );
+    if ( tags && !model ) throw "Template " + this.name + " contains required tags, but no model was specified";
+    if ( tags ) result = this._replaceTags( result, tags, model, true );
+
+    // optional tags (i.e. "${tagName}") will be removed from the output
+    tags = this.content.match( /\$\{[^}]+\}/g );
+    if ( tags ) result = this._replaceTags( result, tags, model, false );
+
+    return result;
+};
+AtmosTemplate.prototype._replaceTags = function( sourceString, tagArray, model, retainUnresolvableTags ) {
+    var remaining = sourceString;
+    var complete = '';
+    for ( var i = 0; i < tagArray.length; i++ ) {
+        var tag = tagArray[i];
+        var tagName = tag.substr( 2, tag.length - 3 );
+        var tagStart = remaining.indexOf( tag );
+        var tagValue;
+        try {
+            tagValue = model[tagName];
+            if ( !tagValue ) {
+                var propPath = tagName.split( "." ), prop = model;
+                for ( var j = 0; j < propPath.length; j++ ) {
+                    prop = prop[propPath[j]];
+                }
+                tagValue = prop;
+            }
+        } catch ( e ) {
+            tagValue = false; // the value isn't in the model (this might be ok)
+        }
+        if ( tagValue ) {
+            complete += remaining.substr( 0, tagStart ) + tagValue;
+        } else {
+            // check for a sub-template
+            try {
+                complete += remaining.substr( 0, tagStart ) + this.engine.get( tagName ).render( model );
+            } catch ( error ) { // tag is unresolvable
+                this._debug( "In template " + this.name + ", tag " + tagName + " not found in model or templates (" + error + ")" );
+                complete += remaining.substr( 0, tagStart );
+                if ( retainUnresolvableTags ) complete += tag;
+            }
+        }
+        remaining = remaining.substr( tagStart + tag.length );
+    }
+    complete += remaining;
+
+    return complete;
+};
+AtmosTemplate.prototype._debug = function( message ) {
+    if ( typeof(console) !== 'undefined' ) {
+        if ( typeof(console.debug) !== 'undefined' ) {
+            console.debug( message );
+        } else if ( typeof(console.log) !== 'undefined' ) {
+            console.log( message );
+        }
+    }
+};
+
+var HTML_TEMPLATES = [
+    "modalBackground",
+    "modalWindow",
+    "loginPage",
+    "main",
+    "fileRow",
+    "fileRowLoading",
+    "statusBar",
+    "directoryContextMenu",
+    "tagContextMenu",
+    "fileContextMenu",
+    "propertiesPage",
+    "editablePropertyRow",
+    "readonlyPropertyRow",
+    "sharePage",
+    "aclPage",
+    "aclRow",
+    "objectInfoPage",
+    "objectInfoReplica",
+    "directoryPage",
+    "directoryItem"
+];
+
+var MESSAGE_TEMPLATES = {
+    functionNotSupportedError: 'This function is not currently supported',
+    newDirectoryNamePrompt: 'What would you like to name the new directory?',
+    validNameError: '%{name} is not a valid name.\nNote: the characters "?" and "@" cannot be used in a name.',
+    validPathError: "%{path} is not a valid path",
+    nothingSelectedError: "Please select an item first",
+    multipleFilesSelectedError: 'You can only perform this operation on one item',
+    selectionContainsDirectoryError: 'This operation cannot be performed on directories.\nRemove the directories from your selection and try again.',
+    directoryNotAllowedError: 'This operation cannot be performed on directories.',
+    deleteItemsPrompt: 'Are you sure you want to delete the selected item(s)?',
+    deleteNonEmptyDirectoryPrompt: 'The directory %{path} is not empty. If you continue, all of its contents will be deleted.',
+    renameItemPrompt: 'What name would you like to give this item?',
+    itemExistsPrompt: 'An object named %{name} already exists.\nWould you like to overwrite it?',
+    itemExistsError: 'An object named %{name} already exists.',
+    directoryExistsError: 'A directory named %{name} already exists.\nYou cannot overwrite directories.',
+    tagPrompt: 'What would you like to name this tag?',
+    tagEmpty: 'You must specify a tag',
+    tagExists: 'There is already a property named %{tag}',
+    invalidNumberError: '#{value} is not a valid number',
+    userAclNamePrompt: 'What user name would you like to add?',
+    groupAclNamePrompt: 'What group name would you like to add?',
+
+    loginPageTitle: 'Please provide your credentials',
+    propertiesPageTitle: '%{name} properties',
+    sharePageTitle: 'Share %{name}',
+    aclPageTitle: 'ACL for %{name}',
+    objectInfoPageTitle: 'Storage info for %{name}',
+    directoryPageTitle: 'Select target directory',
+
+    'atmosError.403': 'You are not authorized to perform this action',
+    'atmosError.404': 'The item you\'ve requested cannot be found',
+    'atmosError.500': 'An unexpected server error has occured: %{message}',
+    'atmosError.1001': 'The server encountered an internal error. Please try again.',
+    'atmosError.1002': 'One or more arguments in the request were invalid.',
+    'atmosError.1003': 'The requested object was not found.',
+    'atmosError.1004': 'The specified range cannot be satisfied.',
+    'atmosError.1005': 'One or more metadata tags were not found for the requested object.',
+    'atmosError.1006': 'Operation aborted because of a conflicting operation in process against the resource. Note this error code may indicate that the system temporarily is too busy to process the request. This is a non-fatal error; you can re-try the request later.',
+    'atmosError.1007': 'The server encountered an internal error. Please try again.',
+    'atmosError.1008': 'The requested resource was not found on the server.',
+    'atmosError.1009': 'The method specified in the Request is not allowed for the resource identified.',
+    'atmosError.1010': 'The requested object size exceeds the maximum allowed upload/download size.',
+    'atmosError.1011': 'The specified object length does not match the actual length of the attached object.',
+    'atmosError.1012': 'There was a mismatch between the attached object size and the specified extent size.',
+    'atmosError.1013': 'The server encountered an internal error. Please try again.',
+    'atmosError.1014': 'The maximum allowed metadata entries per object has been exceeded.',
+    'atmosError.1015': 'The request could not be finished due to insufficient access privileges.',
+    'atmosError.1016': 'The resource you are trying to create already exists.',
+    'atmosError.1019': 'The server encountered an I/O error. Please try again.',
+    'atmosError.1020': 'The requested resource is missing or could not be found.',
+    'atmosError.1021': 'The requested resource is not a directory.',
+    'atmosError.1022': 'The requested resource is a directory.',
+    'atmosError.1023': 'The directory you are attempting to delete is not empty.',
+    'atmosError.1024': 'The server encountered an internal error. Please try again.',
+    'atmosError.1025': 'The server encountered an internal error. Please try again.',
+    'atmosError.1026': 'The server encountered an internal error. Please try again.',
+    'atmosError.1027': 'The server encountered an internal error. Please try again.',
+    'atmosError.1028': 'The server encountered an internal error. Please try again.',
+    'atmosError.1029': 'The server encountered an internal error. Please try again.',
+    'atmosError.1031': 'The request timestamp was outside the valid time window.',
+    'atmosError.1032': 'There was a mismatch between the signature in the request and the signature as computed by the server.\nPlease check your credentials and try again',
+    'atmosError.1033': 'Unable to retrieve the secret key for the specified user.',
+    'atmosError.1034': 'Unable to read the contents of the HTTP body.',
+    'atmosError.1037': 'The specified token is invalid.',
+    'atmosError.1040': 'The server is busy. Please try again',
+    'atmosError.1041': 'The requested filename length exceeds the maximum length allowed.',
+    'atmosError.1042': 'The requested operation is not supported.',
+    'atmosError.1043': 'The object has the maximum number of links',
+    'atmosError.1044': 'The specified parent does not exist.',
+    'atmosError.1045': 'The specified parent is not a directory.',
+    'atmosError.1046': 'The specified object is not in the namespace.',
+    'atmosError.1047': 'Source and target are the same file.',
+    'atmosError.1048': 'The target directory is not empty and may not be overwritten',
+    'atmosError.1049': 'The checksum sent with the request did not match the checksum as computed by the server',
+    'atmosError.1050': 'The requested checksum algorithm is different than the one previously used for this object.',
+    'atmosError.1051': 'Checksum verification may only be used with append update requests',
+    'atmosError.1052': 'The specified checksum algorithm is not implemented.',
+    'atmosError.1053': 'Checksum cannot be computed for an object on update for which one wasn\'t computed at create time.',
+    'atmosError.1054': 'The checksum input parameter was missing from the request.',
+    'atmosError.noBrowserCompat': 'This feature is not supported on your current browser by this version of Atmos (%{info}).'
+};
 
 var ENTRY_TYPE = {
     DIRECTORY: 'directory',
@@ -1423,6 +1714,49 @@ jQuery.scrollbarWidth = function() {
         $temp.remove();
     }
     return jQuery._scrollbarWidth;
+};
+
+// Plug-in to alter CSS rules
+jQuery.cssRule = function( selector, property, value ) {
+    var ss, rules, newRule = true;
+    for ( var i = 0; i < document.styleSheets.length; i++ ) {
+        ss = document.styleSheets[i];
+        rules = (ss.cssRules || ss.rules);
+        if ( !rules ) continue; // stylesheet has no rules (this sometimes happens in Chrome)
+        var lsel = selector.toLowerCase();
+
+        for ( var i2 = 0, len = rules.length; i2 < len; i2++ ) {
+            if ( rules[i2].selectorText && (rules[i2].selectorText.toLowerCase() == lsel) ) {
+                newRule = false;
+                if ( value != null ) {
+                    rules[i2].style[property] = value;
+                    return;
+                }
+                else {
+                    if ( ss.deleteRule ) {
+                        ss.deleteRule( i2 );
+                    }
+                    else if ( ss.removeRule ) {
+                        ss.removeRule( i2 );
+                    }
+                    else {
+                        rules[i2].style.cssText = '';
+                    }
+                }
+            }
+        }
+    }
+
+    if ( newRule ) {
+        ss = document.styleSheets[0] || {};
+        if ( ss.insertRule ) {
+            rules = (ss.cssRules || ss.rules);
+            ss.insertRule( selector + '{ ' + property + ':' + value + '; }', rules.length );
+        }
+        else if ( ss.addRule ) {
+            ss.addRule( selector, property + ':' + value + ';', 0 );
+        }
+    }
 };
 
 // Plug-in to return outer HTML of an element (necessary for FireFox)
