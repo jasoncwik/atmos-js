@@ -131,7 +131,7 @@ AtmosBrowser.prototype._init = function( $parent ) {
     if ( this.$uploadField.length > 0 ) atmosBind( this.$uploadField[0], 'change', function( event ) {
         if ( event.target.files ) browser.uploadFiles( event.target.files );
         else {
-            if ( /*browser.atmosInfo.browsercompat*/true ) browser.uploadFile( null, true );
+            if ( browser.atmosInfo.browsercompat ) browser.uploadFile( null, true );
             else browser.util.error( browser.templates.get( 'atmosError.noBrowserCompat' ).render( {info: dumpObject( browser.atmosInfo )} ) );
         }
     } );
@@ -232,7 +232,7 @@ AtmosBrowser.prototype.openSelectedItems = function() {
     }
 };
 AtmosBrowser.prototype.downloadSelectedItems = function() {
-    if ( /*!this.atmosInfo.browsercompat*/false ) {
+    if ( !this.atmosInfo.browsercompat ) {
         this.util.error( this.templates.get( 'atmosError.noBrowserCompat' ).render( {info: dumpObject( this.atmosInfo )} ) );
         return;
     }
