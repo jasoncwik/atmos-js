@@ -278,20 +278,14 @@ function AjaxRequest( options ) {
 /**
  * @class AtmosServiceInfo class to encapsulate information about the Atmos service.
  * @param {string} version the version of Atmos
- * @param {boolean} object whether this Atmos instance supports the object REST API
- * @param {boolean} namespace whether this Atmos instance supports the namespace REST API
- * @param {boolean} utf8 whether this Atmos instance supports non-latin UTF8 content in headers
- * @param {boolean} browsercompat whether this Atmos instance supports additional browser compatibility features
+ * @param {boolean} utf8Support whether this Atmos instance supports non-latin UTF8 content in headers
+ * @param {boolean} browserCompat whether this Atmos instance supports additional browser compatibility features
  *                  (i.e. multipart form posts, response header inclusion, cache and content-disposition headers, etc.)
- * @param {boolean} keyvalue whether this Atmos instance supports key-value querying
  */
-function AtmosServiceInfo( version, object, namespace, utf8, browsercompat, keyvalue ) {
+function AtmosServiceInfo( version, utf8Support, browserCompat ) {
     this.version = version;
-    this.object = object;
-    this.namespace = namespace;
-    this.utf8 = utf8;
-    this.browsercompat = browsercompat;
-    this.keyvalue = keyvalue;
+    this.utf8Support = utf8Support;
+    this.browserCompat = browserCompat;
 }
 
 /**
@@ -304,7 +298,7 @@ function AtmosServiceInfo( version, object, namespace, utf8, browsercompat, keyv
  * <li>uid (required): the Atmos UID for the connection
  * <li>secret (required): the Atmos shared secret key for the connection
  * <li>utf8Support (optional): set to true to enable UTF8 non-latin character support in metadata values.
- *     NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.utf8).
+ *     NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.utf8Support).
  * </ul>
  *
  * @class AtmosRest
@@ -342,7 +336,6 @@ AtmosRest.prototype.getServiceInformation = function( state, callback ) {
         headers: {},
         state: state,
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             var version = "n/a";
 
             // looking for /Version/Atmos (<Version><Atmos>X.X.X</Atmos></Version>)
@@ -350,20 +343,10 @@ AtmosRest.prototype.getServiceInformation = function( state, callback ) {
             var versionNodes = doc.getElementsByTagName( "Version" );
             if ( versionNodes.length ) version = me._getText( me._getChildByTagName( versionNodes[0], "Atmos" ) );
 
-            result.value = new AtmosServiceInfo( version, false, false, false, false, false );
+            var utf8Support = xhr.getResponseHeader( "x-emc-support-utf8" ) == "true";
+            var browserCompat = xhr.getResponseHeader( "x-emc-browser-compat" ) == "true";
 
-            var features = xhr.getResponseHeader( "x-emc-features" );
-            if ( features ) {
-                var tokens = features.split( ", " );
-                for ( var i = 0; i < tokens.length; i++ ) {
-                    tokens[i] = tokens[i].replaceAll( "-", "" ); // remove hyphens
-                    result.value[tokens[i]] = true; // serviceInfo[feature] = true
-                }
-            } else {
-                result.value.object = true;
-                result.value.namespace = true;
-                result.value.utf8 = xhr.getResponseHeader( "x-emc-support-utf8" ) == "true";
-            }
+            result.value = new AtmosServiceInfo( version, utf8Support, browserCompat );
         },
         complete: callback
     } ) );
@@ -375,7 +358,7 @@ AtmosRest.prototype.getServiceInformation = function( state, callback ) {
  * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
  * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
  * @param {String} form the form element that contains the file(s) to upload. Either form or data must be specified.
- *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
+ *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).
  * @param {Object} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
  * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
  *                          Leave blank if form is present (mime type will be extracted from multipart data)
@@ -400,7 +383,6 @@ AtmosRest.prototype.createObject = function( acl, meta, listableMeta, form, data
         mimeType: mimeType,
         progress: progressCallback,
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             me._processCreateObjectResult( result, xhr );
         },
         complete: successCallback,
@@ -417,7 +399,7 @@ AtmosRest.prototype.createObject = function( acl, meta, listableMeta, form, data
  * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
  * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
  * @param {String} form the form element that contains the file(s) to upload. Either form or data must be specified
- *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
+ *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).
  * @param {Object} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
  * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
  *                          Leave blank if form is present (mime type will be extracted from multipart data)
@@ -445,7 +427,6 @@ AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta
         mimeType: mimeType,
         progress: progressCallback,
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             me._processCreateObjectResult( result, xhr );
         },
         complete: successCallback,
@@ -470,7 +451,6 @@ AtmosRest.prototype.readObject = function( id, range, state, callback ) {
         headers: {},
         range: range,
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             result.data = xhr.responseText;
         },
         complete: callback,
@@ -486,7 +466,7 @@ AtmosRest.prototype.readObject = function( id, range, state, callback ) {
  * @param {Object} meta regular Metadata for the object.  May be null for no updates.
  * @param {Object} listableMeta listable Metadata for the object.  May be null for no updates.
  * @param {String} form the form element that contains the file(s) to upload. Either form or data must be specified
- *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
+ *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).
  * @param {Object} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
  * @param {AtmosRange} range the range of the object to update, pass null to replace the entire object or if a form is used.
  * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
@@ -547,7 +527,6 @@ AtmosRest.prototype.listVersions = function( id, state, callback ) {
         method: 'GET',
         headers: {},
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             result.value = me._parseObjectVersions( xhr );
         },
         complete: callback,
@@ -569,7 +548,6 @@ AtmosRest.prototype.versionObject = function( id, state, callback ) {
         method: 'POST',
         headers: {},
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             me._processCreateObjectResult( result, xhr );
         },
         complete: callback,
@@ -654,7 +632,7 @@ AtmosRest.prototype.rename = function( oldPath, newPath, force, state, callback 
  *     var disposition = atmosRest.createAttachmentDisposition(); // fileName optional for namespace API (required for object API)
  *     var url = atmosRest.getShareableUrl( "/my/object", futureDate, disposition ); // URL response will contain a Content-Disposition header
  * </pre>
- * NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
+ * NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).
  * @param fileName
  */
 AtmosRest.prototype.createAttachmentDisposition = function( fileName ) {
@@ -668,7 +646,7 @@ AtmosRest.prototype.createAttachmentDisposition = function( fileName ) {
  * @param {String} id the object ID or path for which to generate the URL
  * @param {Date} expirationDate the expiration date of the URL (as
  * @param {String} disposition the content-disposition that should be specified in the response header for the shareable
- *        URL. NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
+ *        URL. NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.browserCompat).
  * @return a URL that can be used to share the object's content
  */
 AtmosRest.prototype.getShareableUrl = function( id, expirationDate, disposition ) {
@@ -722,7 +700,6 @@ AtmosRest.prototype.getAcl = function( id, state, callback ) {
         method: 'GET',
         headers: {},
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             var userAcls = me._parseAclEntries( xhr.getResponseHeader( "x-emc-useracl" ) );
             var groupAcls = me._parseAclEntries( xhr.getResponseHeader( "x-emc-groupacl" ) );
             result.value = new Acl( userAcls, groupAcls );
@@ -768,7 +745,6 @@ AtmosRest.prototype.listUserMetadataTags = function( id, state, callback ) {
         method: 'GET',
         headers: {},
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             var decode = xhr.getResponseHeader( "x-emc-utf8" ) == "true";
             result.value = {};
             var tagHeader = xhr.getResponseHeader( "x-emc-tags" );
@@ -801,11 +777,9 @@ AtmosRest.prototype.getUserMetadata = function( id, filter, state, callback ) {
         method: 'GET',
         headers: headers,
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
-            var decode = xhr.getResponseHeader( "x-emc-utf8" ) == "true";
             result.value = {};
-            result.value.meta = me._parseMetadata( xhr.getResponseHeader( "x-emc-meta" ), decode );
-            result.value.listableMeta = me._parseMetadata( xhr.getResponseHeader( "x-emc-listable-meta" ), decode );
+            result.value.meta = me._parseMetadata( xhr.getResponseHeader( "x-emc-meta" ) );
+            result.value.listableMeta = me._parseMetadata( xhr.getResponseHeader( "x-emc-listable-meta" ) );
         },
         complete: callback,
         state: state
@@ -832,10 +806,8 @@ AtmosRest.prototype.getSystemMetadata = function( id, filter, state, callback ) 
         method: 'GET',
         headers: headers,
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
-            var decode = xhr.getResponseHeader( "x-emc-utf8" ) == "true";
             result.value = {};
-            result.value.systemMeta = me._parseMetadata( xhr.getResponseHeader( "x-emc-meta" ), decode );
+            result.value.systemMeta = me._parseMetadata( xhr.getResponseHeader( "x-emc-meta" ) );
             result.value.systemMeta.mimeType = xhr.getResponseHeader( "Content-Type" );
         },
         complete: callback,
@@ -860,11 +832,9 @@ AtmosRest.prototype.getAllMetadata = function( id, state, callback ) {
         method: 'HEAD',
         headers: {},
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
-            var decode = xhr.getResponseHeader( "x-emc-utf8" ) == "true";
             result.value = {};
-            result.value.meta = me._parseMetadata( xhr.getResponseHeader( "x-emc-meta" ), decode );
-            result.value.listableMeta = me._parseMetadata( xhr.getResponseHeader( "x-emc-listable-meta" ), decode );
+            result.value.meta = me._parseMetadata( xhr.getResponseHeader( "x-emc-meta" ) );
+            result.value.listableMeta = me._parseMetadata( xhr.getResponseHeader( "x-emc-listable-meta" ) );
             var userAcls = me._parseAclEntries( xhr.getResponseHeader( "x-emc-useracl" ) );
             var groupAcls = me._parseAclEntries( xhr.getResponseHeader( "x-emc-groupacl" ) );
             result.value.acl = new Acl( userAcls, groupAcls );
@@ -889,7 +859,6 @@ AtmosRest.prototype.getObjectInfo = function( id, state, callback ) {
         method: 'GET',
         headers: {},
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             me._processObjectInfoResult( result, xhr );
         },
         complete: callback,
@@ -960,7 +929,6 @@ AtmosRest.prototype.getListableTags = function( tag, state, callback ) {
         method: 'GET',
         headers: headers,
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             var decode = xhr.getResponseHeader( "x-emc-utf8" ) == "true";
             var tagHeader = xhr.getResponseHeader( "x-emc-listable-tags" );
             if ( tagHeader ) result.value = me._listToArray( tagHeader, decode );
@@ -995,7 +963,6 @@ AtmosRest.prototype.listObjects = function( tag, options, state, callback ) {
         method: 'GET',
         headers: headers,
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             me._processListObjectsResult( result, xhr );
         },
         complete: callback,
@@ -1030,7 +997,6 @@ AtmosRest.prototype.listDirectory = function( directory, options, state, callbac
         method: 'GET',
         headers: headers,
         processResult: function( result, xhr ) {
-            if ( !result.success ) return;
             me._processListDirectoryResult( directory, result, xhr );
         },
         complete: callback,
@@ -1236,7 +1202,7 @@ AtmosRest.prototype._ajax = function( options ) {
         options.form.action = options.uri;
         options.form.method = 'POST';
         options.form.enctype = options.form.encoding = 'multipart/form-data';
-        options.form.target = iframe.name;
+        options.form.target = iframe.id;
         options.form.submit();
 
     } else { // using XHR
@@ -1298,30 +1264,19 @@ AtmosRest.prototype._setFormHeaders = function( form, headers ) {
     for ( var i = 0; i < keys.length; i++ ) {
         var element = form.elements[keys[i]];
         if ( !element ) {
-            try { // for IE6
-                element = document.createElement( '<input type="hidden" name="' + keys[i] + '">' );
-            } catch ( e ) {
-                element = document.createElement( 'input' );
-                element.name = keys[i];
-            }
-            element.type = "hidden";
+            element = document.createElement( 'input' );
+            element.setAttribute( 'type', 'hidden' );
+            element.setAttribute( 'name', keys[i] );
             form.insertBefore( element, form.childNodes[0] );
         }
-        element.value = headers[keys[i]];
+        element.setAttribute( 'value', headers[keys[i]] );
     }
 };
 
 AtmosRest.prototype._createTargetIframe = function( callback ) {
-    var name = 'ATMOS_IFRAME_' + ++AtmosRest.iframeCount; //TODO: manage names better
-    var iframe;
-    try { // for IE6
-        iframe = document.createElement( '<iframe name="' + name + '"></iframe>' );
-    } catch ( e ) {
-        iframe = document.createElement( 'iframe' );
-        iframe.name = name;
-    }
-    iframe.id = name;
-    iframe.style.display = 'none';
+    var iframe = document.createElement( 'iframe' );
+    iframe.id = iframe.name = 'ATMOS_IFRAME_' + ++AtmosRest.iframeCount; //TODO: manage names better
+    iframe.setAttribute( 'style', 'display: none;' );
     document.body.appendChild( iframe );
     var complete = function() {
         var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -1507,10 +1462,9 @@ AtmosRest.prototype._processCreateObjectResult = function( result, xhr ) {
 /**
  * Parses a metadata value string into a property object
  * @param {String} value the metadata value string
- * @param {boolean} decode whether to URI decode the name/value pairs (if UTF8 header is set)
  * @returns {Object} a property object containing the values
  */
-AtmosRest.prototype._parseMetadata = function( value, decode ) {
+AtmosRest.prototype._parseMetadata = function( value ) {
     if ( typeof(value) == 'undefined' || value == null || value.length == 0 ) {
         return null;
     }
@@ -1520,11 +1474,11 @@ AtmosRest.prototype._parseMetadata = function( value, decode ) {
     var values = value.split( "," );
     for ( var i = 0; i < values.length; i++ ) {
         var nvpair = values[i].split( "=", 2 );
-        var name = decode ? decodeURIComponent( nvpair[0].trim() ) : nvpair[0].trim();
+        var name = decodeURIComponent( nvpair[0].trim() );
         if ( nvpair.length == 1 ) {
             result[name] = "";
         } else {
-            result[name] = decode ? decodeURIComponent( nvpair[1] ) : nvpair[1];
+            result[name] = decodeURIComponent( nvpair[1] );
         }
     }
 

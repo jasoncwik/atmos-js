@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="atmos-js" default="compile">
-    <property name="version" value="2.0.0" />
-    
     <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
 
     <path id="jsdoc_classpath">
@@ -29,7 +27,7 @@
 
     <target name="compile">
 
-        <jscomp compilationLevel="simple" debug="false" output="atmos-min-${version}.js">
+        <jscomp compilationLevel="simple" debug="false" output="atmos-min.js">
 
             <sources dir="lib">
                 <file name="crypto.js"/>
