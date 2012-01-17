@@ -1,0 +1,23 @@
+To install on your Atmos system:
+
+1) unzip the archive
+
+2) ensure you have Java installed and on your path (type "java -version" in a shell or command window to verify)
+
+3) in a shell or command window go to the folder where you unzipped the files.  Use the upload script to upload/install
+   the browser on Atmos (you will need your credentials).
+
+   On Windows:
+   upload.bat main.html /remote/path/to/install
+
+   On OSX:
+   upload.sh main.html /remote/path/to/install
+
+   The script will prompt you for Atmos connection details (including your credentials).  When it completes, it will
+   print out a long URL.  This is the public URL for the browser.
+
+4) Copy the URL and paste it into a web browser.  You should be prompted for credentials.  Once you enter them, you should
+   see the root directory of the Atmos namespace.
+
+
+Please report any issues on http://code.google.com/p/atmos-js/issues/list
