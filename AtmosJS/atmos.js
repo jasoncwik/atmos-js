@@ -356,7 +356,7 @@ AtmosRest.prototype.getServiceInformation = function( state, callback ) {
             if ( features ) {
                 var tokens = features.split( ", " );
                 for ( var i = 0; i < tokens.length; i++ ) {
-                    tokens[i] = tokens[i].replaceAll( "-", "" ); // remove hyphens
+                    tokens[i] = tokens[i].replace( /-/g, "" ); // remove hyphens
                     result.value[tokens[i]] = true; // serviceInfo[feature] = true
                 }
             } else {
@@ -1360,9 +1360,10 @@ AtmosRest.prototype._parseFormResponse = function( responseText ) {
         if ( !isNaN( headerLength ) ) {
             nextLine( true );
 
-            var statusWords = nextLine( true ).split( ' ' );
+            var statusLine = nextLine( true );
+            var statusWords = statusLine.split( ' ' );
             xhrFacade.status = parseInt( statusWords[1] );
-            xhrFacade.statusText = statusWords[2];
+            xhrFacade.statusText = statusLine.substr( statusWords[0].length + statusWords[1].length + 2 );
 
             while ( charCount < headerLength ) {
                 var line = nextLine( true );
@@ -1377,9 +1378,19 @@ AtmosRest.prototype._parseFormResponse = function( responseText ) {
     xhrFacade.getResponseHeader = function( name ) {
         return this.headers[name];
     };
-    xhrFacade.responseText = responseText;
+    xhrFacade.responseText = this._decodeXmlEntities( responseText );
 
     return xhrFacade;
+};
+
+/**
+ * Decodes XML entities ('&gt;' => '<')
+ * @param raw raw text to decode
+ */
+AtmosRest.prototype._decodeXmlEntities = function( raw ) {
+    raw = raw.replace( /&gt;/g, '>' );
+    raw = raw.replace( /&lt;/g, '<' );
+    return raw;
 };
 
 /**
