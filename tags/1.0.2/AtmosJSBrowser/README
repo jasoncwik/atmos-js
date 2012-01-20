@@ -1,0 +1,42 @@
+To install on your Atmos system:
+
+1) unzip the archive
+
+2) ensure you have Java installed and on your path (type "java -version" in a shell or command window to verify)
+
+3) in a shell or command window go to the folder where you unzipped the files.  Use the upload script to upload/install
+   the browser on Atmos (you will need your credentials).
+
+   On Windows:
+   upload.bat main.html /remote/path/to/install
+
+   On OSX:
+   upload.sh main.html /remote/path/to/install
+
+   The script will prompt you for Atmos connection details (including your credentials).  When it completes, it will
+   print out a long URL.  This is the public URL for the browser.
+
+4) Copy the URL and paste it into a web browser.  You should be prompted for credentials.  Once you enter them, you should
+   see the root directory of the Atmos namespace.
+
+
+Please report any issues on http://code.google.com/p/atmos-js/issues/list
+
+
+Release Notes:
+
+1.0.2
+
+Stores credentials in user-data (using HTML5 local storage API).  The secret key is AES encrypted first.  If credentials
+are stored, the browser will use them and bypass the credentials screen.  You can change your credentials at any time
+using the link in the top-right.
+
+1.0.1
+
+Updated Atmos JS binding to 2.0.2 (fixes bugs in error processing of form posts).
+
+1.0.0
+
+This is the first official release of the Atmos HTML5 browser.  It currently works in all major browsers except IE <10.
+In the coming weeks, an Atmos hot fix (for 2.0.x) will be released that will add support for IE8+.  IE6 is not currently
+supported.
