@@ -51,9 +51,34 @@ Redistribution and use in source and binary forms, with or without modification,
     }
 
 </style>
+<!--[if lt IE 9]>
+<style type="text/css">
+    .atmosTitleBar {
+        filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = '#aaaaaa', endColorstr = '#000000', GradientType = 0);
+    }
+
+    .atmosButton {
+        filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = '#ffffff', endColorstr = '#cccccc', GradientType = 0);
+    }
+</style>
+<![endif]-->
+<!--[if lt IE 8]>
+<style type="text/css">
+    .atmosHeaderSpacer {
+        display: none;
+    }
+
+    .atmosUploadContainer {
+        width: 59px;
+    }
+</style>
+<![endif]-->
 <!-- Atmos REST API -->
-<script type="text/javascript" src="js/atmos-min.js"></script>
+<script type="text/javascript" src="../../AtmosJS/atmos.js"></script>
 <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+<script type="text/javascript" src="//crypto-js.googlecode.com/files/2.2.0-pbkdf2.js"></script>
+<script type="text/javascript" src="//crypto-js.googlecode.com/files/2.2.0-ofb.js"></script>
+<script type="text/javascript" src="//crypto-js.googlecode.com/files/2.2.0-aes.js"></script>
 <script type="text/javascript" src="js/atmos-browser.js"></script>
 <script type="text/javascript">
     function getHashParameterByName( name ) {
@@ -66,10 +91,6 @@ Redistribution and use in source and binary forms, with or without modification,
         // pull credentials from hash string if present (hash string is *not* sent over the wire)
         var uid = getHashParameterByName( "uid" );
         var secret = getHashParameterByName( "secret" );
-        if ( !uid && !secret ) {
-            uid = ""; // set these for auto-login
-            secret = "";
-        }
 
         browser = new AtmosBrowser( {
             uid: uid,
@@ -77,14 +98,14 @@ Redistribution and use in source and binary forms, with or without modification,
             location: "/"
         }, $( '.main-content' ) );
 
-        // crop upload field to size of upload button
-        // (even though it's transparent, we don't want it covering other buttons)
-        $.cssRule( '.atmosUploadContainer', 'width', $( '.atmosUploadButton' ).outerWidth( true ) + 'px' );
-
         // account for the scrollbar (must be dynamic to support Lion's overlay scrollbars)
-        $.cssRule( '.atmosHeaderSpacer', 'width', jQuery.scrollbarWidth() + 'px' );
+        var sbWidth = jQuery.scrollbarWidth();
+        if ( sbWidth ) $.cssRule( '.atmosHeaderSpacer', 'width', sbWidth + 'px' );
     } );
 
+    function changeCredsClick() {
+        browser.changeCredentials();
+    }
     function namespaceClick() {
         browser.useNamespaceApi();
         $( '#atmosNamespaceLink' ).hide();
@@ -108,6 +129,7 @@ Redistribution and use in source and binary forms, with or without modification,
                 <span class="atmosButton atmosUpButton" title="Go to the parent directory">Up</span>
                 <span class="atmosButton atmosCreateButton" title="Create directory">Create</span>
             </div>
+            <div class="apiLink" onclick="changeCredsClick()">Change Credentials</div>
             <div id="atmosNamespaceLink" class="apiLink" onclick="namespaceClick()" style="display: none;">Switch to
                 Namespace API
             </div>

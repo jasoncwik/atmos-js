@@ -81,7 +81,6 @@ input.longField {
     background: -o-linear-gradient(top, #aaa, #000);
     background: -ms-linear-gradient(top, #aaa, #000);
     background: linear-gradient(top, #aaa, #000);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = '#aaaaaa', endColorstr = '#000000', GradientType = 0);
     border-radius: 8px 8px 0 0;
     padding: 8px 10px;
     font: bold 11pt arial, sans-serif;
@@ -115,6 +114,7 @@ input.longField {
 .atmosUploadContainer {
     position: relative;
     display: inline-block;
+    width: 56px;
     overflow: hidden;
     vertical-align: top;
 }
@@ -143,7 +143,6 @@ input.longField {
     background: -o-linear-gradient(top, #fff, #ccc);
     background: -ms-linear-gradient(top, #fff, #ccc);
     background: linear-gradient(top, #fff, #ccc);
-    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = '#ffffff', endColorstr = '#cccccc', GradientType = 0);
     margin: 0 4px;
     padding: 3px 4px;
     border: 1pt solid #777;

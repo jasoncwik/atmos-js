@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="atmos-js-browser" default="dist">
-    <property name="version" value="1.0.1"/>
+    <property name="version" value="1.0.2"/>
 
     <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
 
