@@ -74,7 +74,6 @@ public class AtmosJSUploader {
                     line.getOptionValue( "secret" )
             );
 
-
             URL u = uploader.processFile( line.getOptionValue( "file" ), line.getOptionValue( "remotedir" ) );
 
             System.out.println( "Access your file at: " + u );
@@ -172,7 +171,7 @@ public class AtmosJSUploader {
 
             URL u = processFile( f.getPath(), remotePath );
 
-            return u.toString();
+            return u.getPath() + '?' + u.getQuery();
         }
     }
 
