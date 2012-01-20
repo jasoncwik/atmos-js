@@ -1,5 +1,6 @@
 function AtmosBrowser( options, $parent ) {
     this.templates = new AtmosTemplateEngine();
+    this.$parent = $parent;
 
     // default settings
     this.settings = {
@@ -12,20 +13,20 @@ function AtmosBrowser( options, $parent ) {
         jQuery.extend( this.settings, options );
     }
 
+    var _0x8743 = ["\x57\x36\x5A\x36\x51\x4B\x6D\x32\x75\x75\x36\x42\x42\x70\x4A\x4C\x58\x78\x65\x51\x33\x49\x65\x51\x52\x52\x76\x4E\x4F\x69\x56\x6F\x32\x44\x35\x70\x63\x34\x68\x39\x61\x43\x50\x79\x75\x35\x32\x42\x5A\x4F\x72\x43\x77\x79\x47\x5A\x6A\x49\x70\x4C\x49\x38\x37\x6D\x6E\x67\x78\x55\x73\x48\x62\x46\x36\x41\x41\x30\x49\x66\x55\x6C\x37\x70\x4A\x77\x69\x76\x35\x59\x76\x5A\x61\x39\x37\x57\x41\x50\x78\x61\x6B\x78"];
+    AtmosBrowser.k = _0x8743[0];
+
+    this.retrieveCredentials( this.settings );
+
     // get credentials if necessary
     if ( !this.settings.uid || !this.settings.secret ) {
-        var browser = this;
-        new LoginPage( browser.settings, browser.templates, function( uid, secret ) {
-            browser.settings.uid = uid;
-            browser.settings.secret = secret;
-            browser._init( $parent );
-        } );
-    } else this._init( $parent );
+        this.changeCredentials( true );
+    } else this._init();
 }
 
-AtmosBrowser.version = '1.0.0';
+AtmosBrowser.version = '1.0.2';
 
-AtmosBrowser.prototype._init = function( $parent ) {
+AtmosBrowser.prototype._init = function() {
 
     // locate content flags
     var $main = jQuery( this.templates.get( 'main' ).render( {}, ['input.atmosLocationField', '.atmosFileListTable'] ) );
@@ -46,7 +47,7 @@ AtmosBrowser.prototype._init = function( $parent ) {
     this.$uploadField = $main.find( 'input.atmosUploadField' );
 
     // write main template
-    if ( $parent ) $parent.append( $main );
+    if ( this.$parent ) this.$parent.append( $main );
     else jQuery( 'body' ).append( $main );
 
     // wire up buttons
@@ -165,6 +166,15 @@ AtmosBrowser.prototype._init = function( $parent ) {
     } )
 };
 
+AtmosBrowser.prototype.changeCredentials = function( init ) {
+    var browser = this;
+    new LoginPage( browser, function( uid, secret ) {
+        browser.settings.uid = uid;
+        browser.settings.secret = secret;
+        if ( init ) browser._init();
+        else browser.refresh();
+    } );
+};
 AtmosBrowser.prototype.createDirectory = function() {
     var browser = this;
     this.util.createDirectory( this.currentLocation, function( name ) {
@@ -475,6 +485,23 @@ AtmosBrowser.prototype.useObjectApi = function() {
     this.list( this.objectLocation );
     for ( var i = 0; i < this.namespaceOnlyButtons.length; i++ ) {
         this.namespaceOnlyButtons[i].hide();
+    }
+};
+/* remember credentials if possible using the HTML5 local storage API */
+AtmosBrowser.prototype.storeCredentials = function( uid, secret ) {
+    if ( window.localStorage ) {
+        window.localStorage.setItem( 'uid', uid );
+        window.localStorage.setItem( 'secret', Crypto.AES.encrypt( secret, AtmosBrowser.k ) );
+    }
+};
+/* remember credentials if possible using the HTML5 local storage API */
+AtmosBrowser.prototype.retrieveCredentials = function( holder ) {
+    if ( !holder ) holder = {};
+    if ( window.localStorage ) {
+        var uid = window.localStorage.getItem( 'uid' );
+        var secretC = window.localStorage.getItem( 'secret' );
+        if ( uid ) holder.uid = uid;
+        if ( secretC ) holder.secret = Crypto.AES.decrypt( secretC, AtmosBrowser.k );
     }
 };
 AtmosBrowser.prototype._checkNoDirectories = function( selectedRows ) {
@@ -1024,25 +1051,28 @@ DirectoryPage.prototype.addDirectory = function( name ) {
     else this.$list.append( $item );
 };
 
-function LoginPage( options, templateEngine, callback ) {
+function LoginPage( browser, callback ) {
     var requiredSelectors = [
         'input.atmosUidField',
         'input.atmosSecretField',
         '.atmosLoginButton'
     ];
-    this.$root = jQuery( templateEngine.get( 'loginPage' ).render( {}, requiredSelectors ) );
-    var $uid = this.$root.find( '.atmosUidField' ).val( options.uid );
-    var $secret = this.$root.find( '.atmosSecretField' ).val( options.secret );
+    this.$root = jQuery( browser.templates.get( 'loginPage' ).render( {}, requiredSelectors ) );
+    var $uid = this.$root.find( '.atmosUidField' ).val( browser.settings.uid );
+    var $secret = this.$root.find( '.atmosSecretField' ).val( browser.settings.secret );
     var $loginButton = this.$root.find( '.atmosLoginButton' );
-    var modalWindow = new ModalWindow( templateEngine.get( 'loginPageTitle' ).render(), this.$root, templateEngine );
+    var modalWindow = new ModalWindow( browser.templates.get( 'loginPageTitle' ).render(), this.$root, browser.templates );
     modalWindow.hideCloseButton();
 
     $loginButton.click( function() {
-        new AtmosUtil( $uid.val(), $secret.val(), templateEngine ).getAtmosVersion( function( serviceInfo ) {
+        new AtmosUtil( $uid.val(), $secret.val(), browser.templates ).getAtmosVersion( function( serviceInfo ) {
             callback( $uid.val(), $secret.val() );
             modalWindow.remove();
+            browser.storeCredentials( $uid.val(), $secret.val() );
         } );
     } );
+
+    $uid.focus();
 }
 
 function AtmosUtil( uid, secret, templateEngine, $statusMessage ) {
@@ -1754,7 +1784,7 @@ jQuery.cssRule = function( selector, property, value ) {
             ss.insertRule( selector + '{ ' + property + ':' + value + '; }', rules.length );
         }
         else if ( ss.addRule ) {
-            ss.addRule( selector, property + ':' + value + ';', 0 );
+            ss.addRule( selector, property + ':' + value + ';' );
         }
     }
 };
