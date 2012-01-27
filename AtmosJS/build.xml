@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="atmos-js" default="compile">
-    <property name="version" value="2.0.2" />
+    <property name="version" value="2.0.3" />
     
     <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
 
@@ -31,10 +31,8 @@
 
         <jscomp compilationLevel="simple" debug="false" output="atmos-min-${version}.js">
 
-            <sources dir="lib">
-                <file name="crypto.js"/>
-                <file name="hmac.js"/>
-                <file name="sha1.js"/>
+            <sources dir="lib-min">
+                <file name="crypto-sha1-hmac-pbkdf2-ofb-aes.js"/>
             </sources>
 
             <sources dir="${basedir}">

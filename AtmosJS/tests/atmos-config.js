@@ -20,15 +20,15 @@
  */
 
 var atmosConfig = {
-    uid: "bb1d64e2c2be41a9a33106a6a2b36723/atmosjs",
-    secret: "im2GKDI8X2cn8r/Dd/h6588uqaw=",
+    uid: "0bc871f97086456db2e803ccc172ccec/stu",
+    secret: "1ofJI8FYceLBTGvflJutDvc4uwc=",
     utf8Support: true
 };
 
 
 if ( typeof(global) != 'undefined' ) {
     // We're running inside node.js
-    atmosConfig.host = 'lciga070.lss.emc.com';
+    atmosConfig.host = 'lciga092.lss.emc.com';
     atmosConfig.protocol = 'http:';
 
     global.atmosConfig = atmosConfig;
