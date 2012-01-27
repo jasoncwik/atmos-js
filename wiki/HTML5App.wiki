@@ -32,7 +32,7 @@ In the future, this app may be included as a feature of Atmos, but for now, you 
 
 Here is a browser compatibility matrix.
 
-|| Atmos Version || Internet Explorer 8+ || Internet Explorer 10+ || Chrome 14+ || Safari 5.1+ || FireFox 3.6+ ||
+|| Atmos Version || Internet Explorer 8+ || Internet Explorer 10+ || Chrome 14+ || Safari 5.1+ || Firefox 3.6+ ||
 || v1.4.0 - 2.0.2 || No || Yes`*` || Yes`*` || Yes`*` || Yes`*` ||
 || v2.0.3+ || Yes || Yes || Yes || Yes || Yes ||
 
