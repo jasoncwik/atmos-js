@@ -868,7 +868,7 @@ PropertiesPage.prototype.save = function() {
 };
 PropertiesPage.prototype._getProperties = function( $table ) {
     var properties = new Object();
-    $table.children().each( function() {
+    $table.find( '.row' ).each( function() {
         var $this = jQuery( this );
         var prop = $this.find( '.atmosPropertyName' ).text();
         var $val = $this.find( '.atmosPropertyValue' );
@@ -942,7 +942,7 @@ AclPage.prototype.addAclEntry = function( $table, name, access ) {
 };
 AclPage.prototype.getAclEntries = function( $table ) {
     var entries = new Array();
-    $table.children().each( function() {
+    $table.find( '.row' ).each( function() {
         var $this = jQuery( this );
         var name = $this.find( '.atmosAclName' ).text();
         var access = $this.find( '.atmosAclValue:checked' ).val();
