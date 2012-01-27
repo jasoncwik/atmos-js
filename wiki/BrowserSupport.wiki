@@ -6,4 +6,4 @@
 || cross-domain || N || N || N || N || N || Y ||
 
 
-`*` IE support requires an Atmos version with the browser-compatibility feature.  Currently this is slated for 2.0.2 or 2.0.1 with hotfix TBD.
+`*` IE support requires an Atmos version with the browser-compatibility feature.  Currently this is slated for 2.0.3.
