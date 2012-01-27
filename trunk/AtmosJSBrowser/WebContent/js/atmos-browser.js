@@ -24,7 +24,7 @@ function AtmosBrowser( options, $parent ) {
     } else this._init();
 }
 
-AtmosBrowser.version = '1.0.2';
+AtmosBrowser.version = '1.0.3';
 
 AtmosBrowser.prototype._init = function() {
 
