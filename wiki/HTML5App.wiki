@@ -3,7 +3,7 @@
 
 = Introduction =
 
-The HTML5 browser is a sample DHTML application that uses the Atmos !JavaScript API to communicate with an Atmos instance and displays a file-browser-style interface to the user for interaction.  One might compare it to [https://addons.mozilla.org/en-US/firefox/addon/atmosfox/ AtmosFox] or <Chrome Plug-in> except that this app is pure HTML5, works in multiple browsers and does not require any client plug-ins.
+The HTML5 browser is a sample DHTML application that uses the Atmos !JavaScript API to communicate with an Atmos instance and displays a file-browser-style interface to the user for interaction.  One might compare it to [https://addons.mozilla.org/en-US/firefox/addon/atmosfox/ AtmosFox] or AtmosChrome (currently in beta) except that this app is pure HTML5, works in multiple browsers and does not require any client plug-ins.
 
 
 = Installation =
