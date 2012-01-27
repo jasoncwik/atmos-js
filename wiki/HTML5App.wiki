@@ -44,9 +44,9 @@ At this time there is no plan to support IE6.
 This application uses the [http://dev.w3.org/html5/webstorage/#the-localstorage-attribute HTML5 local storage API] to store your credentials on your local machine.  The secret key is AES encrypted first.  Once credentials are entered, the app will use them and bypass the credentials screen.  You can change your credentials at any time using the link in the top-right.
 
 
-= Extended Features =
+= Usage Notes =
 
+  * When in Object API mode, you can type an objectId into the location bar to search for it
   * In all browsers except Internet Explorer, you can drag files into the file list to upload them.  You should see a green box around the file list while dragging if this feature is available.
   * In Chrome, you can drag files one-at-a-time out of the file list and onto a local target (i.e. the desktop or an open folder) to download them.
-
-Note that you cannot upload or download folders at this time.
+  * You cannot upload or download folders at this time.
