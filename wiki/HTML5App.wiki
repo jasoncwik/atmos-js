@@ -1,0 +1,52 @@
+#summary Atmos HTML5 Browser Application
+#labels Featured,Phase-Support
+
+= Introduction =
+
+The HTML5 browser is a sample DHTML application that uses the Atmos JavaScript API to communicate with an Atmos instance and displays a file-browser-style interface to the user for interaction.  One might compare it to [https://addons.mozilla.org/en-US/firefox/addon/atmosfox/ AtmosFox] or <Chrome Plug-in> except that this app is pure HTML5, works in multiple browsers and does not require any plug-ins.
+
+
+= Installation =
+
+In the future, this app may be included as a feature of Atmos, but for now, you must install it on the Atmos instance to which it will connect (it must be hosted on the same domain due to AJAX restrictions).  To install on your Atmos system:
+
+  * Unzip the latest atmos-js-browser-x.x.x.zip archive (found on the [http://code.google.com/p/atmos-js/downloads/list Downloads] page).
+
+  * Ensure you have Java installed and on your path (type "java -version" in a shell or command window to verify)
+
+  * In a shell or command window go to the folder where you unzipped the files.  Use the upload script to upload/install the browser on Atmos (you will need your credentials).
+  On Windows:
+{{{
+  upload.bat main.html /remote/path/to/install
+}}}
+  On OSX:
+{{{
+  upload.sh main.html /remote/path/to/install
+}}}
+  The script will prompt you for Atmos connection details (including your credentials).  When it completes, it will print out a long URL.  This is the public URL for the browser.
+
+  * Copy the URL and paste it into a web browser.  You should be prompted for credentials.  Once you enter them, you should see the root directory of the Atmos namespace.
+
+
+= Limitations =
+
+Some features may not be available depending on your version of Atmos.  These limitations are broken down into the table below.  Features are listed on the left column and Atmos versions are across the top.
+
+||  || v1.4.0 - v2.0.2 || v2.0.3+ ||
+|| Download || No || Yes ||
+|| Internet Explorer || No || IE8+ ||
+
+At this time there is no plan to support IE6.
+
+
+= Credentials =
+
+This application uses the [http://dev.w3.org/html5/webstorage/#the-localstorage-attribute HTML5 local storage API] to store your credentials on your local machine.  The secret key is AES encrypted first.  Once credentials are entered, the app will use them and bypass the credentials screen.  You can change your credentials at any time using the link in the top-right.
+
+
+= Extended Features =
+
+  * In all browsers except Internet Explorer, you can drag files into the file list to upload them.  You should see a green box around the file list while dragging if this feature is available.
+  * In Chrome, you can drag files one-at-a-time out of the file list and onto a local target (i.e. the desktop or an open folder) to download them.
+
+Note that you cannot upload or download folders at this time.
