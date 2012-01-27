@@ -33,7 +33,7 @@ In the future, this app may be included as a feature of Atmos, but for now, you 
 Some features may not be available depending on your version of Atmos.  These limitations are broken down into the table below.  Features are listed on the left column and Atmos versions are across the top.
 
 ||  || v1.4.0 - v2.0.2 || v2.0.3+ ||
-|| Download || No* || Yes ||
+|| Download || No`*` || Yes ||
 || Internet Explorer || No || IE8+ ||
 
 `*` Although you cannot use the "Download" link/button, you can "Open" files and use the browser's Save-As feature as a work-around.
