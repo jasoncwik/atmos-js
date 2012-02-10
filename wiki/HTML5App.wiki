@@ -36,7 +36,7 @@ Here is a browser compatibility matrix.
 || v1.4.0 - 2.0.2 || No || Yes`*` || Yes`*` || Yes`*` ||
 || v2.0.3+ || Yes || Yes || Yes || Yes ||
 
-`*`This version of Atmos does not support direct downloads.  Although you cannot use the "Download" link/button, you can "Open" files and use the browser's Save-As feature as a work-around.
+`*`This version of Atmos does not support direct-to-folder downloads through a web browser (the Content-Disposition header).  Although you cannot use the "Download" link/button, you can "Open" files and use the browser's Save-As feature as a work-around.
 
 At this time there is no plan to support IE6.
 
