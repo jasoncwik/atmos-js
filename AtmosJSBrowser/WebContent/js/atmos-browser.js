@@ -24,7 +24,7 @@ function AtmosBrowser( options, $parent ) {
     } else this._init();
 }
 
-AtmosBrowser.version = '1.0.3';
+AtmosBrowser.version = '1.0.4';
 
 AtmosBrowser.prototype._init = function() {
 
@@ -161,7 +161,7 @@ AtmosBrowser.prototype._init = function() {
     var $statusMessage = $main.find( '.atmosStatusMessage' );
     this.util = new AtmosUtil( this.settings.uid, this.settings.secret, this.templates, $statusMessage );
     this.list( this.settings.location );
-    this.util.getAtmosVersion( function( serviceInfo ) {
+    this.util.getAtmosInfo( function( serviceInfo ) {
         browser.atmosInfo = serviceInfo;
     } )
 };
@@ -172,7 +172,10 @@ AtmosBrowser.prototype.changeCredentials = function( init ) {
         browser.settings.uid = uid;
         browser.settings.secret = secret;
         if ( init ) browser._init();
-        else browser.refresh();
+        else {
+            browser.util.setCredentials( uid, secret );
+            browser.refresh();
+        }
     } );
 };
 AtmosBrowser.prototype.createDirectory = function() {
@@ -1065,7 +1068,7 @@ function LoginPage( browser, callback ) {
     modalWindow.hideCloseButton();
 
     $loginButton.click( function() {
-        new AtmosUtil( $uid.val(), $secret.val(), browser.templates ).getAtmosVersion( function( serviceInfo ) {
+        new AtmosUtil( $uid.val(), $secret.val(), browser.templates ).getAtmosInfo( function( serviceInfo ) {
             callback( $uid.val(), $secret.val() );
             modalWindow.remove();
             browser.storeCredentials( $uid.val(), $secret.val() );
@@ -1076,12 +1079,15 @@ function LoginPage( browser, callback ) {
 }
 
 function AtmosUtil( uid, secret, templateEngine, $statusMessage ) {
-    this.atmos = new AtmosRest( {uid: uid, secret: secret} );
     this.templates = templateEngine;
     this.useNamespace = true;
     this.$statusMessage = $statusMessage;
+    this.setCredentials( uid, secret );
 }
 
+AtmosUtil.prototype.setCredentials = function( uid, secret ) {
+    this.atmos = new AtmosRest( {uid: uid, secret: secret} );
+};
 AtmosUtil.prototype.debug = function( message ) {
     if ( typeof(console) !== 'undefined' ) {
         if ( typeof(console.debug) !== 'undefined' ) {
@@ -1102,15 +1108,19 @@ AtmosUtil.prototype.prompt = function( templateName, model, validatorFunction, v
     if ( value == null || value.length == 0 ) return null;
     return value;
 };
-AtmosUtil.prototype.getAtmosVersion = function( callback ) {
+AtmosUtil.prototype.getAtmosInfo = function( callback ) {
     var util = this;
     this.atmos.getServiceInformation( null, function( result ) {
         if ( result.success ) {
+            util.updateServiceInfo( result.value );
             callback( result.value )
         } else {
             util.atmosError( result );
         }
     } );
+};
+AtmosUtil.prototype.updateServiceInfo = function( serviceInfo ) {
+    this.atmos.atmosConfig.utf8Support = serviceInfo.utf8;
 };
 AtmosUtil.prototype.createDirectory = function( parentDirectory, callback ) {
     var name = this.prompt( 'newDirectoryNamePrompt', {}, this.validName, 'validNameError' );

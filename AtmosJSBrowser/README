@@ -25,6 +25,11 @@ Please report any issues on http://code.google.com/p/atmos-js/issues/list
 
 Release Notes:
 
+1.0.4
+
+Fixed Defect 1 - Change credential link appears to work, but does not change underlying credentials.
+Fixed Defect 2 - UTF8 Support is never enabled.
+
 1.0.3
 
 Integrated Crypto AES libraries into atmos-min.js and fixed bug where multiple metadata properties were being
