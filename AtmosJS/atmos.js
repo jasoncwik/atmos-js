@@ -1195,6 +1195,12 @@ AtmosRest.prototype._ajax = function( options ) {
         this._signRequest( options.method, options.headers, options.uri );
     }
 
+    // workaround for a bug in node.js
+    if ( /DELETE/.test( options.method ) ) {
+        if ( !options.headers ) options.headers = {};
+        options.headers["Content-Length"] = 0;
+    }
+
     // skip for absolute URLs
     if ( !/^https?:\/\//.test( options.uri ) ) {
 
