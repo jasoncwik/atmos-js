@@ -62,6 +62,7 @@ randomFilename = function( name, ext ) {
 
 var directoryName = randomFilename( 8, 0 );
 var specialCharacterName = ",:&=+$#";
+var user = atmosConfig.uid.substr( atmosConfig.uid.lastIndexOf( '/' ) + 1 );
 // NOTE: percent (%) for some reason causes signature errors on the server side. I still haven't found a way to avoid this.
 
 atmosApi = {
@@ -684,7 +685,7 @@ atmosApi = {
 
         test.expect( 6 );
 
-        var myAccess = new AclEntry( 'stu', AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
+        var myAccess = new AclEntry( user, AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
         var groupAccess = new AclEntry( AclEntry.GROUPS.OTHER, AclEntry.ACL_PERMISSIONS.READ );
         var acl = new Acl( [myAccess], [groupAccess] );
 
@@ -714,7 +715,7 @@ atmosApi = {
 
         test.expect( 8 );
 
-        var myAccess = new AclEntry( 'stu', AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
+        var myAccess = new AclEntry( user, AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
         var bobsAccess = new AclEntry( 'jimbob', AclEntry.ACL_PERMISSIONS.READ );
         var groupAccess = new AclEntry( AclEntry.GROUPS.OTHER, AclEntry.ACL_PERMISSIONS.READ );
         var acl = new Acl( [myAccess, bobsAccess], [groupAccess] );
@@ -894,7 +895,7 @@ atmosApi = {
 
         test.expect( 9 );
 
-        var myAccess = new AclEntry( 'stu', AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
+        var myAccess = new AclEntry( user, AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
         var groupAccess = new AclEntry( AclEntry.GROUPS.OTHER, AclEntry.ACL_PERMISSIONS.READ );
         var acl = new Acl( [myAccess], [groupAccess] );
         var meta = {foo: "bar", foo2: "baz"};
@@ -1121,23 +1122,22 @@ atmosApi = {
         } );
     },
 
-    'testUTF8Support': function( test ) {
-        atmos.info( "atmosApi.testUTF8Support" );
+    'testUtf8Path': function( test ) {
+        atmos.info( "atmosApi.testUtf8Path" );
 
-        test.expect( 6 );
+        test.expect( 4 );
 
+        var oneByteChars = "Hello! ,";
+        var twoByteChars = "АБВГ"; // Cyrillic letters
+        var fourByteChars = "𠜎𠜱𠝹𠱓"; // Chinese symbols
+        var utf8String = oneByteChars + twoByteChars + fourByteChars;
         var directory = "/" + directoryName + "/";
-        var filename = randomFilename( 8, 3 );
-        var fullPath = directory + filename;
-        var listableMeta = {listable4: ""};
-        var userMeta = {foo: "Létání"};
+        var fullPath = directory + utf8String;
 
-        atmos.createObjectOnPath( fullPath, null, userMeta, listableMeta, null, "Hello World!", "text/plain", null,
+        atmos.createObjectOnPath( fullPath, null, null, null, null, "Hello World!", "text/plain", null,
             function( result ) {
-
                 test.ok( result.success, "Creation successful" );
-                test.ok( result.value != null, "Object ID not null" );
-                test.equal( result.httpCode, 201, "HttpCode correct" );
+                if ( !result.success ) return;
 
                 // Enqueue for cleanup
                 cleanup.push( result.value );
@@ -1145,27 +1145,179 @@ atmosApi = {
                 var options = new ListOptions( 0, null, true, null, null );
                 atmos.listDirectory( directory, options, null, function( result2 ) {
                     test.ok( result2.success, "List successful" );
-                    if ( !result2.success ) {
-                        test.done();
-                        return;
-                    }
-                    // Iterate through the results and make sure our OID is present
-                    for ( var i = 0; i < result2.value.length; i++ ) {
-                        // @type DirectoryItem
-                        var entry = result2.value[i];
-                        atmos.debug( "entry: " + dumpObject( entry ) );
-                        if ( entry.objectId == result.value ) {
-                            test.equal( entry.userMeta["foo"], userMeta.foo, "Object metadata" );
+                    if ( !result2.success ) return;
 
-                            atmos.rename( fullPath, directory + "Létání", true, null, function( result3 ) {
-                                test.ok( result3.success, "rename successful" );
-                                test.done();
-                            } );
-                            return;
+                    // Iterate through the results and make sure our UTF8 object is present
+                    var found = false;
+                    for ( var i = 0; i < result2.value.length; i++ ) {
+                        if ( result2.value[i].path == fullPath ) {
+                            found = true;
+                            break;
                         }
                     }
+                    test.ok( found, "UTF8 path found in directory listing" );
 
-                    test.ok( false, "Could not find oid " + result.value + " in object list" );
+                    // test read
+                    atmos.readObject( fullPath, null, null, function( result3 ) {
+                        test.ok( result3.data == "Hello World!", "Content matches" );
+                        test.done();
+                    } );
+                } );
+            } );
+    },
+
+    'testUtf8Rename': function( test ) {
+        atmos.info( "atmosApi.testUtf8Rename" );
+
+        test.expect( 5 );
+
+        var oneByteChars = "Hello2! ,";
+        var twoByteChars = "АБВГ"; // Cyrillic letters
+        var fourByteChars = "𠜎𠜱𠝹𠱓"; // Chinese symbols
+        var utf8String = oneByteChars + twoByteChars + fourByteChars;
+        var directory = "/" + directoryName + "/";
+        var normalPath = directory + "utf8Rename.txt";
+        var fullPath = directory + utf8String;
+
+        atmos.createObjectOnPath( normalPath, null, null, null, null, "Hello World!", "text/plain", null,
+            function( result ) {
+                test.ok( result.success, "Creation successful" );
+                if ( !result.success ) return;
+
+                // Enqueue for cleanup
+                cleanup.push( result.value );
+
+                // rename to UTF8 string
+                atmos.rename( normalPath, fullPath, true, null, function( result2 ) {
+                    test.ok( result2.success, "Rename successful" );
+                    if ( !result2.success ) return;
+
+                    // wait for rename to propagate
+                    setTimeout( function() {
+
+                        var options = new ListOptions( 0, null, true, null, null );
+                        atmos.listDirectory( directory, options, null, function( result3 ) {
+                            test.ok( result3.success, "List successful" );
+                            if ( !result3.success ) return;
+
+                            // Iterate through the results and make sure our UTF8 object is present
+                            var found = false;
+                            for ( var i = 0; i < result3.value.length; i++ ) {
+                                if ( result3.value[i].path == fullPath ) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            test.ok( found, "UTF8 path found in directory listing" );
+
+                            // test read
+                            atmos.readObject( fullPath, null, null, function( result4 ) {
+                                test.ok( result4.data == "Hello World!", "Content matches" );
+                                test.done();
+                            } );
+                        } );
+                    }, 5000 );
+                } );
+            } );
+    },
+
+    'testUtf8Content': function( test ) {
+        atmos.info( "atmosApi.testUtf8Content" );
+
+        test.expect( 2 );
+
+        var oneByteChars = "Hello! ,";
+        var twoByteChars = "АБВГ"; // Cyrillic letters
+        var fourByteChars = "𠜎𠜱𠝹𠱓"; // Chinese symbols
+        var utf8String = oneByteChars + twoByteChars + fourByteChars;
+        var directory = "/" + directoryName + "/";
+        var fullPath = directory + "utf8Content.txt";
+
+        atmos.createObjectOnPath( fullPath, null, null, null, null, utf8String, "text/plain", null,
+            function( result ) {
+                test.ok( result.success, "Creation successful" );
+                if ( !result.success ) return;
+
+                // Enqueue for cleanup
+                cleanup.push( result.value );
+
+                // test read
+                atmos.readObject( fullPath, null, null, function( result3 ) {
+                    test.ok( result3.data == utf8String, "Content matches" );
+                    test.done();
+                } );
+            } );
+    },
+
+    'testUtf8Metadata': function( test ) {
+        atmos.info( "atmosApi.testUtf8Metadata" );
+
+        test.expect( 3 );
+
+        var oneByteChars = "Hello2! ,";
+        var twoByteChars = "АБВГ"; // Cyrillic letters
+        var fourByteChars = "𠜎𠜱𠝹𠱓"; // Chinese symbols
+        var utf8String = oneByteChars + twoByteChars + fourByteChars;
+        var directory = "/" + directoryName + "/";
+        var fullPath = directory + "utf8Metadata.txt";
+
+        var meta = {};
+        meta["utf8Key"] = utf8String;
+        meta[utf8String] = "utf8Value";
+
+        atmos.createObjectOnPath( fullPath, null, meta, null, null, "Hello World!", "text/plain", null,
+            function( result ) {
+                test.ok( result.success, "Creation successful" );
+                if ( !result.success ) return;
+
+                // Enqueue for cleanup
+                cleanup.push( result.value );
+
+                atmos.getUserMetadata( fullPath, null, null, function( result4 ) {
+                    test.ok( result4.value.meta["utf8Key"] == utf8String, "UTF8 value matches" );
+                    test.ok( result4.value.meta[utf8String] == "utf8Value", "UTF8 key matches" );
+                    test.done();
+                } );
+            } );
+    },
+
+    'testUtf8ListableMeta': function( test ) {
+        atmos.info( "atmosApi.testUtf8ListableMeta" );
+
+        test.expect( 3 );
+
+        var oneByteChars = "Hello! ";
+        var twoByteChars = "АБВГ"; // Cyrillic letters
+        var fourByteChars = "𠜎𠜱𠝹𠱓"; // Chinese symbols
+        var utf8String = oneByteChars + twoByteChars + fourByteChars;
+        var directory = "/" + directoryName + "/";
+        var fullPath = directory + "utf8Listable.txt";
+
+        var listable = {};
+        listable[utf8String] = "";
+
+        atmos.createObjectOnPath( fullPath, null, null, listable, null, "Hello World!", "text/plain", null,
+            function( result ) {
+                test.ok( result.success, "Creation successful" );
+                if ( !result.success ) return;
+
+                // Enqueue for cleanup
+                cleanup.push( result.value );
+
+                atmos.listObjects( utf8String, null, null, function( result2 ) {
+                    test.ok( result2.success, "List successful" );
+                    if ( !result2.success ) return;
+
+                    // Iterate through the results and make sure our UTF8 object is present
+                    var found = false;
+                    for ( var i = 0; i < result2.value.length; i++ ) {
+                        if ( result2.value[i].id == result.value ) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    test.ok( found, "object found in UTF8 tag listing" );
+
                     test.done();
                 } );
             } );

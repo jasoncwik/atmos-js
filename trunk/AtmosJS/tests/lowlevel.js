@@ -102,7 +102,7 @@ atmosLowLevel = {
         test.done();
     },
 
-    'UTF-16 encode test': function( test ) {
+    'UTF-8 encode test': function( test ) {
         test.ok( atmos.createAttachmentDisposition( "бöｼ.txt" ) == "attachment; filename*=UTF-8''%D0%B1%C3%B6%EF%BD%BC.txt" );
         test.done();
     },

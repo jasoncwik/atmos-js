@@ -1196,7 +1196,7 @@ AtmosRest.prototype._ajax = function( options ) {
     }
 
     // workaround for a bug in node.js
-    if ( /DELETE/.test( options.method ) ) {
+    if ( isNodejs && /DELETE/.test( options.method ) ) {
         if ( !options.headers ) options.headers = {};
         options.headers["Content-Length"] = 0;
     }
@@ -1244,6 +1244,9 @@ AtmosRest.prototype._ajax = function( options ) {
         options.form.enctype = options.form.encoding = 'multipart/form-data';
         options.form.target = iframe.name;
         options.form.submit();
+
+        // make sure we clean up our added fields, or they will be included in future POSTs
+        this._unsetFormHeaders( options.form, options.headers );
 
     } else { // using XHR
 
@@ -1314,6 +1317,18 @@ AtmosRest.prototype._setFormHeaders = function( form, headers ) {
             form.insertBefore( element, form.childNodes[0] );
         }
         element.value = headers[keys[i]];
+    }
+};
+
+AtmosRest.prototype._unsetFormHeaders = function( form, headers ) {
+
+    // remove headers form form parameters to avoid re-POSTing them
+    var keys = Object.keys( headers );
+    for ( var i = 0; i < keys.length; i++ ) {
+        var element = form.elements[keys[i]];
+        if ( element ) {
+            form.removeChild(element);
+        }
     }
 };
 
