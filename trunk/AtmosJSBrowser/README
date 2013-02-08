@@ -25,6 +25,14 @@ Please report any issues on http://code.google.com/p/atmos-js/issues/list
 
 Release Notes:
 
+1.0.5
+
+Added support for dynamic field display in file rows. Now you can display mtime, ctime, or any metadata you want.
+Note that file name and size are required. Sort headers specify their sort-field by CSS class name using the
+data-sort-class attribute.
+Also added support for date formatting in template fields using D{tagName}. Note that if you use a formatted value in
+a file row column, be sure to specify the data-raw-value attribute so that the column may be sorted correctly.
+
 1.0.4
 
 Fixed Defect 1 - Change credential link appears to work, but does not change underlying credentials.

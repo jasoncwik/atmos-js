@@ -266,6 +266,10 @@ input.longField {
     text-transform: capitalize;
 }
 
+.atmosFileDate {
+    width: 150px;
+}
+
 .atmosStatusBar {
     width: 0;
     height: 15px;
