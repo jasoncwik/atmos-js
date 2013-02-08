@@ -24,7 +24,7 @@ function AtmosBrowser( options, $parent ) {
     } else this._init();
 }
 
-AtmosBrowser.version = '1.0.4';
+AtmosBrowser.version = '1.0.5';
 
 AtmosBrowser.prototype._init = function() {
 
@@ -115,18 +115,12 @@ AtmosBrowser.prototype._init = function() {
     } );
 
     // sortable columns
-    var $nameHeader = $main.find( '.atmosFileNameHeader' );
-    var $sizeHeader = $main.find( '.atmosFileSizeHeader' );
-    var $typeHeader = $main.find( '.atmosFileTypeHeader' );
-    if ( $nameHeader.length > 0 ) $nameHeader[0].onclick = function() {
-        browser.util.sort( browser.$fileTable, '.atmosFileName' );
-    };
-    if ( $sizeHeader.length > 0 ) $sizeHeader[0].onclick = function() {
-        browser.util.sort( browser.$fileTable, '.atmosFileSize' );
-    };
-    if ( $typeHeader.length > 0 ) $typeHeader[0].onclick = function() {
-        browser.util.sort( browser.$fileTable, '.atmosFileType' );
-    };
+    $main.find( '[data-sort-class]' ).each( function() {
+        var sortClass = jQuery( this ).data( 'sortClass' );
+        this.onclick = function() {
+            browser.util.sort( browser.$fileTable, '.' + sortClass );
+        };
+    } );
 
     // selecting files triggers an upload
     if ( this.$uploadField.length > 0 ) atmosBind( this.$uploadField[0], 'change', function( event ) {
@@ -547,17 +541,7 @@ AtmosBrowser.prototype._checkFileExists = function( name, callback ) {
 };
 
 function FileRow( entry, browser ) {
-    var requiredSelectors = [
-        '.atmosFileIcon',
-        '.atmosFileName',
-        '.atmosFileSize',
-        '.atmosFileType'
-    ];
-    this.$root = jQuery( browser.templates.get( 'fileRow' ).render( {}, requiredSelectors ) );
-    this.$icon = this.$root.find( '.atmosFileIcon' );
-    this.$name = this.$root.find( '.atmosFileName' );
-    this.$size = this.$root.find( '.atmosFileSize' );
-    this.$type = this.$root.find( '.atmosFileType' );
+    this.$root = jQuery( browser.templates.get( 'fileRow' ).render() );
     this.$status = jQuery( browser.templates.get( 'statusBar' ).render() );
     this.interactive = true;
     this.browser = browser;
@@ -607,6 +591,18 @@ FileRow.prototype.updateEntry = function( entry ) {
     this.size = entry.size || '';
     if ( !this.browser.util.isListable( entry.type ) && entry.systemMeta ) this.size = entry.systemMeta.size || 'n/a';
 
+    var requiredSelectors = [
+        '.atmosFileIcon',
+        '.atmosFileName',
+        '.atmosFileSize'
+    ];
+    var $tempRow = jQuery( this.browser.templates.get( 'fileRowContents' ).render( {entry: entry, size: this.size}, requiredSelectors ) );
+    this.$root.html( $tempRow.html() );
+
+    this.$icon = this.$root.find( '.atmosFileIcon' );
+    this.$name = this.$root.find( '.atmosFileName' );
+    this.$size = this.$root.find( '.atmosFileSize' );
+
     // classify icon for ease of styling
     this.$icon.addClass( entry.type );
     if ( entry.name ) {
@@ -616,7 +612,6 @@ FileRow.prototype.updateEntry = function( entry ) {
 
     this.$name.text( entry.name || entry.id );
     this.$size.text( this.size );
-    this.$type.text( entry.type );
 };
 FileRow.prototype.dragStart = function( event ) {
     if ( this.entry.systemMeta ) {
@@ -1236,20 +1231,26 @@ AtmosUtil.prototype.list = function( path, includeMetadata, callback ) {
     var options = new ListOptions( 0, null, true, null, null );
     this.showStatus( 'Listing directory...' );
     if ( this.useNamespace ) {
-        this.atmos.listDirectory( path, options, null, function( result ) {
-            util.hideStatus( 'Listing directory...' );
-            if ( result.success ) {
-                var entries = [];
-                for ( var i = 0; i < result.value.length; i++ ) {
-                    if ( path === '/' && result.value[i].name === 'apache' ) continue;
-                    entries.push( result.value[i] );
+        var list_call = function( util, options, entries ) {
+            util.atmos.listDirectory( path, options, null, function( result ) {
+                util.hideStatus( 'Listing directory...' );
+                if ( result.success ) {
+                    for ( var i = 0; i < result.value.length; i++ ) {
+                        if ( path === '/' && result.value[i].name === 'apache' ) continue;
+                        entries.push( result.value[i] );
+                    }
+                    if ( result.token ) { // we don't have all the results, so make another list call
+                        options.token = result.token;
+                        util.showStatus( 'Listing directory...' );
+                        list_call( util, options, entries );
+                    } else callback( entries );
+                } else {
+                    util.atmosError( result );
+                    callback( null );
                 }
-                callback( entries );
-            } else {
-                util.atmosError( result );
-                callback( null );
-            }
-        } );
+            } );
+        };
+        list_call( util, options, [] );
     } else { // object API
         this.atmos.getListableTags( this.noSlashes( path ), null, function( result ) {
             if ( result.success ) {
@@ -1260,19 +1261,26 @@ AtmosUtil.prototype.list = function( path, includeMetadata, callback ) {
                     }
                 }
                 if ( path != '/' ) {
-                    util.atmos.listObjects( util.noSlashes( path ), options, null, function( result2 ) {
-                        util.hideStatus( 'Listing directory...' );
-                        if ( result2.success ) {
-                            for ( var i = 0; i < result2.value.length; i++ ) {
-                                result2.value[i].type = ENTRY_TYPE.REGULAR;
-                                entries.push( result2.value[i] );
+                    var list_call = function( util, options, entries ) {
+                        util.atmos.listObjects( util.noSlashes( path ), options, null, function( result2 ) {
+                            util.hideStatus( 'Listing directory...' );
+                            if ( result2.success ) {
+                                for ( var i = 0; i < result2.value.length; i++ ) {
+                                    result2.value[i].type = ENTRY_TYPE.REGULAR;
+                                    entries.push( result2.value[i] );
+                                }
+                                if ( result2.token ) { // we don't have all the results so make another list call
+                                    options.token = result2.token;
+                                    util.showStatus( 'Listing directory...' );
+                                    list_call( util, options, entries );
+                                } else callback( entries );
+                            } else {
+                                util.atmosError( result2 );
+                                callback( null );
                             }
-                            callback( entries );
-                        } else {
-                            util.atmosError( result2 );
-                            callback( null );
-                        }
-                    } );
+                        } );
+                    };
+                    list_call( util, options, entries );
                 } else {
                     util.hideStatus( 'Listing directory...' );
                     callback( entries );
@@ -1467,8 +1475,11 @@ AtmosUtil.prototype.sort = function( $table, subSelector, inverse ) {
     }
     this.sortMap[subSelector] = inverse;
     $table.find( '.row' ).sortElements( function( a, b ) {
-        var valA = jQuery( a ).find( subSelector ).text().toLowerCase();
-        var valB = jQuery( b ).find( subSelector ).text().toLowerCase();
+        var $a = jQuery( a ).find( subSelector ), $b = jQuery( b ).find( subSelector );
+        var valA = $a.data( 'rawValue' ) || $a.text();
+        valA = valA.toLowerCase();
+        var valB = $b.data( 'rawValue' ) || $b.text();
+        valB = valB.toLowerCase();
         if ( valA.length == 0 && valB.length > 0 ) return inverse ? 1 : -1;
         else if ( valA.length > 0 && valB.length == 0 ) return inverse ? -1 : 1;
         if ( !isNaN( valA ) && !isNaN( valB ) ) {
@@ -1561,9 +1572,15 @@ AtmosTemplate.prototype.render = function( model, requiredSelectors ) {
     tags = this.content.match( /\$\{[^}]+\}/g );
     if ( tags ) result = this._replaceTags( result, tags, model, false );
 
+    // date tags (i.e. "D{tagName}") will be parsed and formatted to the client's locale. date tags are optional (removed)
+    tags = this.content.match( /D\{[^}]+\}/g );
+    if ( tags ) result = this._replaceTags( result, tags, model, false, function(value) {
+        return new Date( value ).toLocaleString();
+    } );
+
     return result;
 };
-AtmosTemplate.prototype._replaceTags = function( sourceString, tagArray, model, retainUnresolvableTags ) {
+AtmosTemplate.prototype._replaceTags = function( sourceString, tagArray, model, retainUnresolvableTags, formatFunction ) {
     var remaining = sourceString;
     var complete = '';
     for ( var i = 0; i < tagArray.length; i++ ) {
@@ -1584,6 +1601,7 @@ AtmosTemplate.prototype._replaceTags = function( sourceString, tagArray, model, 
             tagValue = false; // the value isn't in the model (this might be ok)
         }
         if ( tagValue ) {
+            if ( formatFunction ) tagValue = formatFunction( tagValue );
             complete += remaining.substr( 0, tagStart ) + tagValue;
         } else {
             // check for a sub-template
@@ -1617,6 +1635,7 @@ var HTML_TEMPLATES = [
     "loginPage",
     "main",
     "fileRow",
+    "fileRowContents",
     "fileRowLoading",
     "statusBar",
     "directoryContextMenu",
@@ -1849,8 +1868,8 @@ jQuery.fn.sortElements = (function() {
         var placements = this.map( function() {
 
             var sortElement = getSortable.call( this ), parentNode = sortElement.parentNode, // Since the element itself will change position, we have
-                // to have some way of storing it's original position in
-                // the DOM. The easiest way is to have a 'flag' node:
+            // to have some way of storing it's original position in
+            // the DOM. The easiest way is to have a 'flag' node:
                 nextSibling = parentNode.insertBefore(
                     document.createTextNode( '' ),
                     sortElement.nextSibling

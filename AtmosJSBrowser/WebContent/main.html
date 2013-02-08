@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
 
- Copyright (c) 2011, EMC Corporation
+ Copyright (c) 2011-2013, EMC Corporation
 
  All rights reserved.
 
@@ -153,9 +153,9 @@ Redistribution and use in source and binary forms, with or without modification,
                 <table class="table">
                     <tr class="row">
                         <th class="cell atmosIcon">&nbsp;</th>
-                        <th class="cell atmosFileName atmosFileNameHeader">Name</th>
-                        <th class="cell atmosFileSize atmosFileSizeHeader">Size</th>
-                        <th class="cell atmosFileType atmosFileTypeHeader">Type</th>
+                        <th data-sort-class="atmosFileName" class="cell atmosFileName">Name</th>
+                        <th data-sort-class="atmosFileSize" class="cell atmosFileSize">Size</th>
+                        <th data-sort-class="atmosFileDate" class="cell atmosFileDate">Date</th>
                         <th class="cell atmosHeaderSpacer"></th>
                     </tr>
                 </table>
@@ -199,11 +199,14 @@ Redistribution and use in source and binary forms, with or without modification,
 </script>
 <script id="template.atmos.fileRow" type="text/html">
     <tr class="row" draggable="true" unselectable="on">
+    </tr>
+</script>
+<script id="template.atmos.fileRowContents" type="text/html">
+    <tr>
         <td class="atmosIcon cell"><span class="atmosFileIcon icon"></span></td>
         <td class="atmosFileName cell"></td>
-        <td class="atmosFileSize cell">
-        </td>
-        <td class="atmosFileType cell"></td>
+        <td class="atmosFileSize cell"></td>
+        <td data-raw-value="${entry.systemMeta.mtime}" class="atmosFileDate cell">D{entry.systemMeta.mtime}</td>
     </tr>
 </script>
 <script id="template.atmos.fileRowLoading" type="text/html">
