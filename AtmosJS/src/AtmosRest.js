@@ -38,8 +38,9 @@ AtmosRest = function( atmosConfig ) {
 };
 
 // release version
-/** @define {Number} */
-AtmosRest.version = 0.1;
+/** @define {string} */
+var AtmosRestVersion = '0.1';
+AtmosRest.version = AtmosRestVersion;
 
 // counters
 AtmosRest.iframeCount = 0;
