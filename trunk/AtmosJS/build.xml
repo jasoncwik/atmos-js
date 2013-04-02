@@ -31,7 +31,7 @@
     <target name="compile">
 
         <jscomp compilationLevel="simple" debug="false" output="atmos-min-${version}.js">
-            <define name="AtmosRest.version" value="${version}"/>
+            <define name="AtmosRestVersion" value="${version}"/>
             <define name="COMPILED" value="true"/>
 
             <sources dir="lib-min">
