@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<!--
+ 
+ Copyright (c) 2011, EMC Corporation
+ 
+ All rights reserved.
+ 
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * Neither the name of the EMC Corporation nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ 
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+-->
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link type="text/css" href="nodeunit/nodeunit.css" rel="Stylesheet">
+    <title>AtmosJS Unit Tests</title>
+
+    <script type="text/javascript" src="lib-min/crypto-sha1-hmac-pbkdf2-ofb-aes.js"></script>
+    <script type="text/javascript" src="src/deps.js"></script>
+    <script type="text/javascript" src="src/AccessToken.js"></script>
+    <script type="text/javascript" src="src/Acl.js"></script>
+    <script type="text/javascript" src="src/AtmosConfig.js"></script>
+    <script type="text/javascript" src="src/AtmosRest.js"></script>
+    <script type="text/javascript" src="src/AtmosResult.js"></script>
+    <script type="text/javascript" src="src/AtmosServiceInfo.js"></script>
+    <script type="text/javascript" src="src/DirectoryItem.js"></script>
+    <script type="text/javascript" src="src/HttpRequest.js"></script>
+    <script type="text/javascript" src="src/ListOptions.js"></script>
+    <script type="text/javascript" src="src/ObjectInfo.js"></script>
+    <script type="text/javascript" src="src/ObjectResult.js"></script>
+    <script type="text/javascript" src="src/compat/AtmosRest20Compat.js"></script>
+    <script type="text/javascript" src="nodeunit/nodeunit.js"></script>
+    <script type="text/javascript" src="tests/atmos-config.js"></script>
+    <script type="text/javascript" src="tests/test-deps.js"></script>
+    <script type="text/javascript" src="tests/atmosapi-compat.js"></script>
+    <script type="text/javascript">
+        function doUpload() {
+            var uploadForm = document.getElementById( 'uploadForm' );
+            atmos.createObject( null, null, {listable: ""}, uploadForm, null, null, null, function( result ) {
+                if ( result.successful ) {
+                    alert( "object create successful" );
+                    atmos.deleteObject( null, result.value );
+                } else alert( "error" + result.errorCode + ": " + result.errorMessage );
+            } );
+            atmos.createObjectOnPath( "/test/upload.zip", null, null, {listable: ""}, uploadForm, null, null, null, function( result ) {
+                if ( result.successful ) {
+                    alert( "zip create successful" );
+                    atmos.deleteObject( null, result.value );
+                } else alert( "error" + result.errorCode + ": " + result.errorMessage );
+            } );
+            atmos.createObjectOnPath( "/test/upload.doc", null, null, {listable: ""}, uploadForm, null, null, null, function( result ) {
+                if ( result.successful ) {
+                    alert( "doc create successful (id: " + result.value + ")" );
+                    atmos.updateObject( result.value, null, null, null, uploadForm, null, null, null, null, function( result2 ) {
+                        if ( result2.successful ) {
+                            alert( "update successful" );
+                            atmos.deleteObject( null, result.value );
+                        } else alert( "error" + result2.errorCode + ": " + result2.errorMessage );
+                    } );
+                } else alert( "error" + result.errorCode + ": " + result.errorMessage );
+            } );
+        }
+    </script>
+</head>
+<body>
+<h1 id="nodeunit-header">AtmosJS Unit Tests</h1>
+<script type="text/javascript">
+    atmos = new AtmosRest( window.atmosConfig );
+    nodeunit.run( {
+        'REST API': atmosApi,
+        'Cleanup': cleanupTest
+    } );
+</script>
+
+<hr/>
+
+Test multipart upload:
+<form id="uploadForm">
+    <input type="file" name="upload"/>
+    <input type="button" value="Test Upload" onclick="doUpload()"/>
+</form>
+
+</body>
+</html>

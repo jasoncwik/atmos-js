@@ -19,16 +19,17 @@
 
  */
 
-var atmosConfig = {
-    uid: "0bc871f97086456db2e803ccc172ccec/stu",
-    secret: "1ofJI8FYceLBTGvflJutDvc4uwc=",
-    utf8Support: true
+var atmosConfig = /** @type AtmosConfig */ {
+    uid: "15f02fc57acd4e17bb79c3e83822e2c9/A50231654471c3a4fa57",
+    secret: "MrJjsV+LdcpT+C6AWGe0Infntiw=",
+    enableUtf8: true,
+    enableDebug: false
 };
 
 
 if ( typeof(global) != 'undefined' ) {
     // We're running inside node.js
-    atmosConfig.host = 'lciga092.lss.emc.com';
+    atmosConfig.host = 'api.atmosonline.com';
     atmosConfig.protocol = 'http:';
 
     global.atmosConfig = atmosConfig;

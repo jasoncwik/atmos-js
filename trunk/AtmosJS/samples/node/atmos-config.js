@@ -24,7 +24,7 @@ var atmosConfig = {
     protocol: "http:", // either http: or https:
     uid: "ab105326496a4228add95d20306030fd/CONNEAABCF7F31DDF0F7", // the subtenant/uid
     secret: "ra15Bu1Gk2AX5QV1K7iC9scG/OM=", // the secret key
-    utf8Support: true // enable if you're connecting to 1.4.1+
+    enableUtf8: true // enable if you're connecting to 1.4.1+
 };
 
 if ( typeof(global) != 'undefined' ) {
