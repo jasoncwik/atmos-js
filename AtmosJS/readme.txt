@@ -4,9 +4,10 @@
  * Some libraries from Crypto-JS (see the lib-min folder)
   * crypto-*.js
 
-= Dependencies when running in Node.js =
- * jsnode (npm install jsnode)
- * XMLHttpRequest (included in lib dir)
+= Dependencies when running in Node.js (npm packages) =
+ * xmldom
+ * xmlhttprequest
+ * nodeunit (for testing only)
   
 = Optional Components =
  * nodeunit (see nodeunit folder) - used for optional unit tests

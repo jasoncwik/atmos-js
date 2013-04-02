@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="atmos-js" default="compile">
-    <property name="version" value="2.0.4" />
-    
+    <property name="src" location="src"/>
+    <property name="version" value="2.1.0"/>
+
     <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
 
     <path id="jsdoc_classpath">
@@ -20,7 +21,7 @@
     <target name="doc" description="uses jsdoc to generate the documentation">
         <jsdoctoolkit jsdochome="${jsdoc_home}/" template="jsdoc"
                       outputdir="doc">
-            <source file="atmos.js"/>
+            <fileset dir="${src}" includes="*.js"/>
         </jsdoctoolkit>
     </target>
 
@@ -30,15 +31,16 @@
     <target name="compile">
 
         <jscomp compilationLevel="simple" debug="false" output="atmos-min-${version}.js">
+            <define name="AtmosRest.version" value="${version}"/>
+            <define name="COMPILED" value="true"/>
 
             <sources dir="lib-min">
                 <file name="crypto-sha1-hmac-pbkdf2-ofb-aes.js"/>
             </sources>
 
-            <sources dir="${basedir}">
-                <file name="atmos.js"/>
-            </sources>
-
+            <path>
+                <fileset dir="${src}" includes="*.js"/>
+            </path>
         </jscomp>
 
     </target>

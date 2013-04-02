@@ -1,4 +1,4 @@
-AtmosJS = require( '../../atmos.js' );
+AtmosJS = require( '../../atmos-min-2.1.0.js' );
 AtmosRest = AtmosJS.AtmosRest;
 ListOptions = AtmosJS.ListOptions;
 AtmosRange = AtmosJS.AtmosRange;
@@ -11,8 +11,8 @@ atmos = new AtmosRest( atmosConfig );
 
 atmos.info( "calling getServiceInformation" ); // logs to console
 
-atmos.getServiceInformation( null, function( result ) {
-    if ( result.success ) {
+atmos.getServiceInformation( function( result ) {
+    if ( result.successful ) {
         var serverInfo = result.value;
         atmos.info( "Connected to Atmos version " + serverInfo.version + " on host " + atmos.atmosConfig.host );
     }

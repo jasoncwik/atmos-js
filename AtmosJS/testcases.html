@@ -26,36 +26,84 @@ Redistribution and use in source and binary forms, with or without modification,
     <title>AtmosJS Unit Tests</title>
 
     <script type="text/javascript" src="lib-min/crypto-sha1-hmac-pbkdf2-ofb-aes.js"></script>
-    <script type="text/javascript" src="atmos.js"></script>
+    <script type="text/javascript" src="src/deps.js"></script>
+    <script type="text/javascript" src="src/AccessToken.js"></script>
+    <script type="text/javascript" src="src/Acl.js"></script>
+    <script type="text/javascript" src="src/AtmosConfig.js"></script>
+    <script type="text/javascript" src="src/AtmosRest.js"></script>
+    <script type="text/javascript" src="src/AtmosResult.js"></script>
+    <script type="text/javascript" src="src/AtmosServiceInfo.js"></script>
+    <script type="text/javascript" src="src/DirectoryItem.js"></script>
+    <script type="text/javascript" src="src/HttpRequest.js"></script>
+    <script type="text/javascript" src="src/ListOptions.js"></script>
+    <script type="text/javascript" src="src/ObjectInfo.js"></script>
+    <script type="text/javascript" src="src/ObjectResult.js"></script>
     <script type="text/javascript" src="nodeunit/nodeunit.js"></script>
     <script type="text/javascript" src="tests/atmos-config.js"></script>
+    <script type="text/javascript" src="tests/test-deps.js"></script>
     <script type="text/javascript" src="tests/lowlevel.js"></script>
     <script type="text/javascript" src="tests/atmosapi.js"></script>
     <script type="text/javascript">
         function doUpload() {
             var uploadForm = document.getElementById( 'uploadForm' );
-            atmos.createObject( null, null, {listable: ""}, uploadForm, null, null, null, function( result ) {
-                if ( result.success ) {
+            atmos.createObject( null, null, {listable: ""}, uploadForm, null, null, function( result ) {
+                if ( result.successful ) {
                     alert( "object create successful" );
                     atmos.deleteObject( result.value );
                 } else alert( "error" + result.errorCode + ": " + result.errorMessage );
             } );
-            atmos.createObjectOnPath( "/test/upload.zip", null, null, {listable: ""}, uploadForm, null, null, null, function( result ) {
-                if ( result.success ) {
+            atmos.createObjectOnPath( "/test/upload.zip", null, null, {listable: ""}, uploadForm, null, null, function( result ) {
+                if ( result.successful ) {
                     alert( "zip create successful" );
                     atmos.deleteObject( result.value );
                 } else alert( "error" + result.errorCode + ": " + result.errorMessage );
             } );
-            atmos.createObjectOnPath( "/test/upload.doc", null, null, {listable: ""}, uploadForm, null, null, null, function( result ) {
-                if ( result.success ) {
+            atmos.createObjectOnPath( "/test/upload.doc", null, null, {listable: ""}, uploadForm, null, null, function( result ) {
+                if ( result.successful ) {
                     alert( "doc create successful (id: " + result.value + ")" );
-                    atmos.updateObject( result.value, null, null, null, uploadForm, null, null, null, null, function( result2 ) {
-                        if ( result2.success ) {
+                    atmos.updateObject( result.value, null, null, null, uploadForm, null, null, null, function( result2 ) {
+                        if ( result2.successful ) {
                             alert( "update successful" );
                             atmos.deleteObject( result.value );
                         } else alert( "error" + result2.errorCode + ": " + result2.errorMessage );
                     } );
                 } else alert( "error" + result.errorCode + ": " + result.errorMessage );
+            } );
+        }
+    </script>
+    <script type="text/javascript">
+        function doTokenUpload() {
+            atmos.atmosConfig.enableUtf8 = false; //workaround for URL decode bug in access token api
+            var tokenForm = document.getElementById( 'tokenForm' );
+            var tokenTarget = document.getElementById( 'tokenTarget' );
+
+            var complete = function() {
+                atmos.atmosConfig.enableUtf8 = true;
+                atmos.listDirectory( uploadPath, null, function( result ) {
+                    if ( result.value && result.value.length > 0 ) {
+                        atmos.deleteObject( result.value[0].objectId, function( result ) {
+                            atmos.deleteObject( uploadPath );
+                        } );
+                    } else atmos.deleteObject( uploadPath );
+                } );
+            };
+            if ( tokenTarget.attachEvent ) tokenTarget.attachEvent( "onload", complete );
+            else tokenTarget.onload = complete;
+
+            var expiration = new Date();
+            expiration.setMinutes( expiration.getMinutes() + 5 );
+            var policy = new AccessTokenPolicy( expiration, 1, 0, null, null, null, null, [
+                new AccessTokenFormField( 'x-emc-listable-meta', false, null, 'listable=' ),
+                new AccessTokenFormField( 'x-http-inject-response-headers', true )
+            ] );
+
+            var uploadPath = '/token-upload-test/';
+            atmos.createObjectOnPath( uploadPath, null, null, null, null, null, null, function( result ) {
+                atmos.createAccessToken( policy, uploadPath, null, {'pre-set': 'true'}, null, function( result ) {
+                    alert( 'Access token create: ' + (result.successful ? 'successful' : 'unsuccessful') );
+                    tokenForm.action = result.value;
+                    tokenForm.submit();
+                } );
             } );
         }
     </script>
@@ -71,9 +119,25 @@ Redistribution and use in source and binary forms, with or without modification,
     } );
 </script>
 
+<hr/>
+
+Test multipart upload:
 <form id="uploadForm">
     <input type="file" name="upload"/>
     <input type="button" value="Test Upload" onclick="doUpload()"/>
 </form>
+
+<hr/>
+
+Test anonymous upload:
+<form id="tokenForm" target="tokenTarget" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="x-emc-listable-meta" value="listable=true"/>
+    <input type="hidden" name="x-http-inject-response-headers" value="true"/>
+    <input type="file" name="x-emc-file"/>
+    <input type="button" value="Test Token" onclick="doTokenUpload()"/>
+</form>
+
+<iframe id="tokenTarget" name="tokenTarget" width="800" height="120" src="about:blank"></iframe>
+
 </body>
 </html>

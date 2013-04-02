@@ -21,10 +21,25 @@
 
 if ( typeof(require) != 'undefined' ) {
     // We're running inside node.js
-    var atmosJS = require( '../atmos.js' );
-    AtmosRest = atmosJS.AtmosRest;
-    dumpObject = atmosJS.dumpObject;
+    require( '../src/deps.js' );
+    AccessToken = require( '../src/AccessToken.js' ).AccessToken;
+    AccessTokenPolicy = require( '../src/AccessToken.js' ).AccessTokenPolicy;
+    AccessTokenFormField = require( '../src/AccessToken.js' ).AccessTokenFormField;
+    Acl = require( '../src/Acl.js' ).Acl;
+    AclEntry = require( '../src/Acl.js' ).AclEntry;
+    AtmosConfig = require( '../src/AtmosConfig.js' ).AtmosConfig;
+    AtmosResult = require( '../src/AtmosResult.js' ).AtmosResult;
+    AtmosServiceInfo = require( '../src/AtmosServiceInfo.js' ).AtmosServiceInfo;
+    DirectoryItem = require( '../src/DirectoryItem.js' ).DirectoryItem;
+    HttpRequest = require( '../src/HttpRequest.js' ).HttpRequest;
+    AtmosRange = require( '../src/HttpRequest.js' ).AtmosRange;
+    ListOptions = require( '../src/ListOptions.js' ).ListOptions;
+    ObjectInfo = require( '../src/ObjectInfo.js' ).ObjectInfo;
+    ObjectReplica = require( '../src/ObjectInfo.js' ).ObjectReplica;
+    ObjectResult = require( '../src/ObjectResult.js' ).ObjectResult;
+    AtmosRest = require( '../src/AtmosRest.js' ).AtmosRest;
     require( './atmos-config.js' );
+    require( './test-deps.js' );
     atmos = new AtmosRest( atmosConfig );
 }
 
@@ -78,7 +93,7 @@ atmosLowLevel = {
         };
         var esu = new AtmosRest( config );
 
-        var headers = new Object();
+        var headers = {};
         headers["X-Emc-Date"] = 'Thu, 05 Jun 2008 16:38:19 GMT';
         headers["Date"] = 'Thu, 05 Jun 2008 16:38:19 GMT';
         headers["X-Emc-Listable-Meta"] = 'part4/part7/part8=quick';
@@ -109,21 +124,9 @@ atmosLowLevel = {
 
     'XML test': function( test ) {
         var xml = "<root><main><child></child><child></child></main></root>";
-        var doc;
-        if ( typeof(require) != 'undefined' ) {
-            // inside NodeJS
-            doc = jsdom.jsdom( xml );
-        } else {
-            if ( window.DOMParser ) {
-                var parser = new DOMParser();
-                doc = parser.parseFromString( xml, "text/xml" );
-            } else if ( typeof ActiveXObject != 'undefined' ) {
-                doc = new ActiveXObject( "MSXML.DomDocument" );
-                doc.loadXML( xml );
-            }
-        }
-        var children = atmos._getChildrenByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
-        var child = atmos._getChildByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
+        var doc = parseXml( xml );
+        var children = getChildrenByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
+        var child = getChildByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
         test.equal( children.length, 2, "found 2 children" );
         test.ok( child != null );
         test.done();
@@ -137,6 +140,59 @@ atmosLowLevel = {
         test.equal( xhr.responseText, '', "responseText correct" );
         test.equal( xhr.getResponseHeader( 'location' ), '/rest/objects/4e4ec927a1068f5a04e4ec9918004304efb2ad7236d3', "location header correct" );
         test.equal( Object.keys( xhr.headers ).length, 3, "headers.length correct" );
+        test.done();
+    },
+
+    'Resolve URL test': function( test ) {
+        var path = '/this/is/a/path/to/an/object';
+        var query = 'querystring=true';
+        var url = atmos._resolveUrl( path, query );
+        var scheme = atmosConfig.protocol || window.location.protocol;
+        var host = atmosConfig.host || window.location.host;
+        var port = '';
+        if ( atmosConfig.port || (typeof(window) != 'undefined' && window.location.port) ) port = ':' + atmosConfig.port || window.location.port;
+
+        test.equal( url, scheme + '//' + host + port + path + '?' + query, "URL matches" );
+        test.done();
+    },
+
+    'Date parse test': function( test ) {
+        var date = new Date();
+        date.setUTCFullYear( 2020, 0, 1 );
+        date.setUTCHours( 5, 0, 0, 0 );
+        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2020-01-01T05:00:00.000Z' ), date, 'Z date matches' );
+        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2020-01-01T05:00:00.000+0000' ), date, '+0000 date matches' );
+        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2020-01-01T01:30:00-0330' ), date, '-0330 date matches' );
+        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2019-12-31T23:00:00-0600' ), date, 'roll forward date matches' );
+        date.setUTCHours( 22, 0, 0, 0 );
+        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2020-01-02T04:00:00+0600' ), date, 'roll back date matches' );
+
+        test.done();
+    },
+
+    'Access token XML test': function( test ) {
+        var now = new Date();
+        now.setUTCFullYear( 2020, 0, 1 );
+        now.setUTCHours( 12, 0, 0, 0 );
+        var policy = new AccessTokenPolicy( now, 5, 6, ['1.1.1.1', '2.2.2.2'], ['3.3.3.3', '4.4.4.4'], 0, 1000, [
+            new AccessTokenFormField( 'x-emc-meta', true, 'name=value' ),
+            new AccessTokenFormField( 'x-emc-listable-meta', true, undefined, 'listable=' )
+        ] );
+        var xml1 = '<policy><expiration>' + now.toISOString() + '</expiration><max-uploads>5</max-uploads><max-downloads>6</max-downloads><source><allow>1.1.1.1</allow><allow>2.2.2.2</allow><deny>3.3.3.3</deny><deny>4.4.4.4</deny></source><content-length-range from="0" to="1000"></content-length-range><form-field name="x-emc-meta" optional="true"><eq>name=value</eq></form-field><form-field name="x-emc-listable-meta" optional="true"><starts-with>listable=</starts-with></form-field></policy>';
+        var xml2 = '<policy><expiration>' + now.toISOString() + '</expiration><max-uploads>5</max-uploads><max-downloads>6</max-downloads><source><allow>1.1.1.1</allow><allow>2.2.2.2</allow><deny>3.3.3.3</deny><deny>4.4.4.4</deny></source><content-length-range from="0" to="1000"/><form-field name="x-emc-meta" optional="true"><eq>name=value</eq></form-field><form-field name="x-emc-listable-meta" optional="true"><starts-with>listable=</starts-with></form-field></policy>';
+        var sxml = serializeXml( policy.toDocument() ).trim();
+        test.ok( xml1 == sxml || xml2 == sxml, 'XML serialization is valid' );
+        test.deepEqual( AccessTokenPolicy.fromNode( getChildByTagName( parseXml( xml1 ), 'policy' ) ), policy, "policy XML parsing is valid" );
+
+        var myAccess = new AclEntry( 'USER_A', AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
+        var groupAccess = new AclEntry( AclEntry.GROUPS.OTHER, AclEntry.ACL_PERMISSIONS.READ );
+        var acl = new Acl( [myAccess], [groupAccess] );
+        var token = new AccessToken( 'xxxxxxx_token_id', policy, undefined, 'abcdef0123456789', acl );
+
+        xml1 = '<access-token><access-token-id>xxxxxxx_token_id</access-token-id><expiration>2020-01-01T12:00:00Z</expiration><max-uploads>5</max-uploads><max-downloads>6</max-downloads><source><allow>1.1.1.1</allow><allow>2.2.2.2</allow><deny>3.3.3.3</deny><deny>4.4.4.4</deny></source><content-length-range from="0" to="1000"/><form-field name="x-emc-meta" optional="true"><eq>name=value</eq></form-field><form-field name="x-emc-listable-meta" optional="true"><starts-with>listable=</starts-with></form-field><object-id>abcdef0123456789</object-id><useracl>USER_A=FULL_CONTROL</useracl><groupacl>other=READ</groupacl></access-token>';
+        var parsedToken = AccessToken.fromNode( getChildByTagName( parseXml( xml1 ), 'access-token' ) );
+        test.deepEqual( parsedToken, token, "token XML parsing is valid" );
+
         test.done();
     }
 };
