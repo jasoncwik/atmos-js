@@ -59,8 +59,54 @@ table {
 END CSS RESET
 */
 
+ul {
+    list-style: disc;
+    margin: 6px 2px;
+    padding: 2px;
+}
+
+li {
+    margin-left: 16px;
+}
+
 input.longField {
     width: 350px;
+}
+
+#atmosAboutPage {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 360px;
+    margin-top: -75px;
+    margin-left: -180px;
+    border: 1px solid #555;
+    border-radius: 8px;
+    border-collapse: collapse;
+    box-shadow: 2px 3px 5px #555;
+    background-color: #e8e8e8;
+    z-index: 10000;
+    padding: 8px;
+    text-align: center;
+}
+
+#atmosLicense {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 500px;
+    margin-top: -300px;
+    margin-left: -250px;
+    border: 1px solid #555;
+    border-radius: 8px;
+    border-collapse: collapse;
+    box-shadow: 2px 3px 5px #555;
+    background-color: #e8e8e8;
+    z-index: 15000;
+    padding: 8px;
+    font: 11pt arial, sans-serif;
 }
 
 .atmosBrowser {
@@ -93,21 +139,44 @@ input.longField {
     overflow: hidden;
 }
 
+.atmosTitleBar .atmosXButton {
+    display: inline-block;
+    float: right;
+    width: 16px;
+    height: 16px;
+    background: #aaa;
+    margin-top: -3px;
+    margin-left: 5px;
+    border: 1pt solid #777;
+    border-radius: 8px;
+    vertical-align: top;
+    font: bold 10pt arial, sans-serif;
+    color: #333;
+    text-align: center;
+    line-height: 1.4;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.atmosTitleBar .configGear {
+    font-size: 12pt;
+    line-height: 1;
+}
+
 .atmosButtonBar {
-    height: 22px;
-    padding: 3px 6px;
+    font-size: 0;
 }
 
 .apiLink {
     float: right;
-    margin-right: 15px;
+    margin: 3px 15px 3px 0;
     text-decoration: underline;
     cursor: pointer;
 }
 
 .atmosLocationField {
     width: 75%;
-    margin: 0 4px 0 0;
+    margin: 2px 4px 0 2px;
     font-size: 10pt;
 }
 
@@ -125,8 +194,17 @@ input.longField {
     right: 0;
     top: 0;
     opacity: 0.0;
-    filter: alpha(opacity = 0);
+    filter: alpha(opacity=0);
     z-index: 1000;
+}
+
+.atmosFilterContainer {
+    font-size: 0;
+}
+
+.atmosFilterField {
+    margin: 3px -2px 0 1px;
+    width: 80px;
 }
 
 .atmosLabel {
@@ -143,7 +221,7 @@ input.longField {
     background: -o-linear-gradient(top, #fff, #ccc);
     background: -ms-linear-gradient(top, #fff, #ccc);
     background: linear-gradient(top, #fff, #ccc);
-    margin: 0 4px;
+    margin: 2px 3px;
     padding: 3px 4px;
     border: 1pt solid #777;
     border-radius: 4px;
@@ -157,7 +235,7 @@ input.longField {
 
 .atmosFileList {
     position: absolute;
-    top: 90px;
+    top: 86px;
     bottom: 0;
     width: 100%;
     height: auto;
@@ -172,6 +250,16 @@ input.longField {
     height: auto;
     overflow-y: scroll;
     overflow-x: hidden;
+}
+
+.atmosFileList .table {
+    table-layout: fixed;
+}
+
+.atmosFileList .cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .atmosStatusMessage {
@@ -259,15 +347,18 @@ input.longField {
 
 .atmosFileSize {
     width: 100px;
+    max-width: 100px;
 }
 
 .atmosFileType {
     width: 150px;
+    max-width: 150px;
     text-transform: capitalize;
 }
 
 .atmosFileDate {
-    width: 150px;
+    width: 200px;
+    max-width: 200px;
 }
 
 .atmosStatusBar {
@@ -359,9 +450,9 @@ input.longField {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: #fff;
+    background-color: #777;
     opacity: 0.7;
-    filter: alpha(opacity = 70);
+    filter: alpha(opacity=70);
     z-index: 1000;
 }
 
@@ -380,17 +471,8 @@ input.longField {
     z-index: 10000;
 }
 
-.atmosModalWindow .atmosXButton {
-    display: inline-block;
-    float: right;
-    margin-top: -4px;
-    font: bold 12pt sans-serif;
-    color: #333;
-    cursor: pointer;
-}
-
 .atmosModalWindowContent {
-    max-height: 500px;
+    max-height: 450px;
     overflow: auto;
     padding: 8px;
     font: 10pt sans-serif;
@@ -432,8 +514,15 @@ input.atmosPropertyValue {
     padding: 0;
 }
 
-.atmosExpirationCount {
+.atmosExpirationCount,
+.atmosDownloadCount {
     width: 50px;
+}
+
+.atmosTableCaption {
+    margin: 0 8px 10px 8px;
+    text-align: center;
+    font-size: 8pt;
 }
 
 .atmosShareInstructions {
@@ -479,7 +568,7 @@ input.atmosPropertyValue {
 
 .transparent {
     opacity: 0.5;
-    filter: alpha(opacity = 50);
+    filter: alpha(opacity=50);
 }
 
 .atmosContextMenu {
@@ -528,6 +617,10 @@ input.atmosPropertyValue {
 
 .atmosSelectedDisplay {
     margin: 8px 12px;
+}
+
+.hidden {
+    display: none;
 }
 
 [draggable=true] {

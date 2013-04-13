@@ -23,7 +23,7 @@ Redistribution and use in source and binary forms, with or without modification,
 <head>
 <meta charset="UTF-8">
 <title>Atmos HTML5 Browser</title>
-<link href="css/atmos-browser.css" rel="stylesheet" type="text/css">
+<link href="../WebContent/css/atmos-browser.css" rel="stylesheet" type="text/css">
 <style type="text/css">
     html {
         height: 100%;
@@ -74,9 +74,24 @@ Redistribution and use in source and binary forms, with or without modification,
 </style>
 <![endif]-->
 <!-- Atmos REST API -->
-<script type="text/javascript" src="js/atmos-min-2.1.1.js"></script>
+<script type="text/javascript" src="../WebContent/js/atmos-min-2.1.1.js"></script>
 <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-<script type="text/javascript" src="js/atmos-browser-min-2.0.0.js"></script>
+<script type="text/javascript" src="//code.jquery.com/jquery-migrate-1.1.1.js"></script>
+<script type="text/javascript" src="../src/deps.js"></script>
+<script type="text/javascript" src="../src/AclPage.js"></script>
+<script type="text/javascript" src="../src/AtmosBrowser.js"></script>
+<script type="text/javascript" src="../src/AtmosBrowserUtil.js"></script>
+<script type="text/javascript" src="../src/AtmosTemplate.js"></script>
+<script type="text/javascript" src="../src/AtmosTemplateEngine.js"></script>
+<script type="text/javascript" src="../src/ConfigPage.js"></script>
+<script type="text/javascript" src="../src/ContextMenu.js"></script>
+<script type="text/javascript" src="../src/DirectoryPage.js"></script>
+<script type="text/javascript" src="../src/FileRow.js"></script>
+<script type="text/javascript" src="../src/ModalWindow.js"></script>
+<script type="text/javascript" src="../src/ObjectInfoPage.js"></script>
+<script type="text/javascript" src="../src/PropertiesPage.js"></script>
+<script type="text/javascript" src="../src/SharePage.js"></script>
+<script type="text/javascript" src="../src/VersionsPage.js"></script>
 <script type="text/javascript">
     function getHashParameterByName( name ) {
         var match = new RegExp( '[#&]' + name + '=([^&]*)' ).exec( window.location.hash );

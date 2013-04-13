@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="atmos-js-browser" default="dist">
-    <property name="version" value="1.0.5"/>
+    <property name="src" location="src"/>
+    <property name="version" value="2.0.0"/>
 
     <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
 
@@ -20,7 +21,7 @@
     <target name="doc" description="uses jsdoc to generate the documentation">
         <jsdoctoolkit jsdochome="${jsdoc_home}/" template="jsdoc"
                       outputdir="doc">
-            <source file="js/atmos-browser.js"/>
+            <fileset dir="${src}" includes="*.js"/>
         </jsdoctoolkit>
     </target>
 
@@ -29,12 +30,13 @@
 
     <target name="compile">
 
-        <jscomp compilationLevel="simple" debug="false" output="WebContent/js/atmos-browser-min.js">
+        <jscomp compilationLevel="simple" debug="false" output="WebContent/js/atmos-browser-min-${version}.js">
+            <define name="ATMOS_BROWSER_VERSION" value="${version}"/>
+            <define name="ATMOS_BROWSER_COMPILED" value="true"/>
 
-            <sources dir="WebContent/js">
-                <file name="atmos-browser.js"/>
-            </sources>
-
+            <path>
+                <fileset dir="${src}" includes="*.js"/>
+            </path>
         </jscomp>
 
     </target>
@@ -42,8 +44,8 @@
     <target name="dist" depends="compile" description="builds a distributable package">
         <zip destfile="${ant.project.name}-${version}.zip">
             <zipfileset dir="WebContent" includes="main.html"/>
-            <zipfileset dir="WebContent/js" includes="*-min.js" prefix="js"/>
-            <zipfileset dir="WebContent/css" includes="atmos-browser.css" prefix="css"/>
+            <zipfileset dir="WebContent/js" includes="*.js" prefix="js"/>
+            <zipfileset dir="WebContent/css" includes="*.css" prefix="css"/>
             <zipfileset dir="WebContent/images" prefix="images"/>
             <zipfileset dir=".">
                 <include name="upload.*"/>
