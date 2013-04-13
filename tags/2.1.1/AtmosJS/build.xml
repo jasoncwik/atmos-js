@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="atmos-js" default="compile">
+    <property name="src" location="src"/>
+    <property name="version" value="2.1.1"/>
+
+    <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
+
+    <path id="jsdoc_classpath">
+        <fileset dir="${jsdoc_home}">
+            <include name="*.jar"/>
+        </fileset>
+        <fileset dir="${jsdoc_home}/java/classes">
+            <include name="js.jar"/>
+        </fileset>
+    </path>
+
+    <taskdef name="jsdoctoolkit" classname="uk.co.darrenhurley.ant.tasks.JsDocToolkit"
+             classpathref="jsdoc_classpath"/>
+
+
+    <target name="doc" description="uses jsdoc to generate the documentation">
+        <jsdoctoolkit jsdochome="${jsdoc_home}/" template="jsdoc"
+                      outputdir="doc">
+            <fileset dir="${src}" includes="*.js"/>
+        </jsdoctoolkit>
+    </target>
+
+    <taskdef name="jscomp" classname="com.google.javascript.jscomp.ant.CompileTask"
+             classpath="compiler.jar"/>
+
+    <target name="compile">
+
+        <jscomp compilationLevel="simple" debug="false" output="atmos-min-${version}.js">
+            <define name="ATMOS_REST_VERSION" value="${version}"/>
+            <define name="ATMOS_REST_COMPILED" value="true"/>
+
+            <sources dir="lib-min">
+                <file name="crypto-sha1-hmac-pbkdf2-ofb-aes.js"/>
+            </sources>
+
+            <path>
+                <fileset dir="${src}" includes="*.js"/>
+            </path>
+        </jscomp>
+
+    </target>
+
+</project>
