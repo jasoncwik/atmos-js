@@ -50,6 +50,7 @@
             <zipfileset dir=".">
                 <include name="upload.*"/>
                 <include name="JSUpload.jar"/>
+                <include name="README"/>
             </zipfileset>
         </zip>
     </target>
