@@ -25,6 +25,16 @@ Please report any issues on http://code.google.com/p/atmos-js/issues/list
 
 Release Notes:
 
+2.0.0
+
+Added "Snapshots" feature utilizing Atmos object versioning.
+Added "Filter" feature to filter namespace directory list.
+Added more options for "Share" utilizing Atmos access tokens.
+Added support for multiple credentials.
+Replaced "Type" column in file list with "Date" reflecting mtime.
+Miscellaneous bug fixes and UI enhancements.
+Refactored source into multiple class files for legibility and ease of maintenance.
+
 1.0.5
 
 Added support for dynamic field display in file rows. Now you can display mtime, ctime, or any metadata you want.
