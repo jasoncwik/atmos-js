@@ -2,7 +2,7 @@
   "author": "Chris Arnett <christopher.arnett@emc.com>",
   "name": "atmos",
   "description": "Connector for EMC Atmos cloud storage",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "homepage": "http://code.google.com/p/atmos-js",
   "repository": {
     "url": ""

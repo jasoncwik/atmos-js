@@ -24,8 +24,8 @@
  * to determine the contents of the value object.
  * @param successful {boolean}
  * @param value {*=}
- * @param message {String=}
- * @param token {String=}
+ * @param message {string=}
+ * @param token {string=}
  * @constructor
  */
 AtmosResult = function( successful, value, message, token ) {

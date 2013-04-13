@@ -24,7 +24,7 @@
  * { limit: 0, includeMeta: true }
  * @param {int} limit maximum number of objects to return from server.  0=default (generally
  * the default limit is 5000).
- * @param {String} token server token for continuing results.  Check your results object for a
+ * @param {string} token server token for continuing results.  Check your results object for a
  * token and pass into this field on the subsequent request to continue your listing.
  * @param {boolean} includeMeta if true, object metadata will be returned with the results
  * @param {Array.<string>} userMetaTags if non-null, the list of user metadata tags to return in the metadata

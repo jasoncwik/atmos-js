@@ -21,25 +21,27 @@
 
 if ( typeof(require) != 'undefined' ) {
     // We're running inside node.js
-    require( '../src/deps.js' );
-    AccessToken = require( '../src/AccessToken.js' ).AccessToken;
-    AccessTokenPolicy = require( '../src/AccessToken.js' ).AccessTokenPolicy;
-    AccessTokenFormField = require( '../src/AccessToken.js' ).AccessTokenFormField;
-    Acl = require( '../src/Acl.js' ).Acl;
-    AclEntry = require( '../src/Acl.js' ).AclEntry;
-    AtmosConfig = require( '../src/AtmosConfig.js' ).AtmosConfig;
-    AtmosResult = require( '../src/AtmosResult.js' ).AtmosResult;
-    AtmosServiceInfo = require( '../src/AtmosServiceInfo.js' ).AtmosServiceInfo;
-    DirectoryItem = require( '../src/DirectoryItem.js' ).DirectoryItem;
-    HttpRequest = require( '../src/HttpRequest.js' ).HttpRequest;
-    AtmosRange = require( '../src/HttpRequest.js' ).AtmosRange;
-    ListOptions = require( '../src/ListOptions.js' ).ListOptions;
-    ObjectInfo = require( '../src/ObjectInfo.js' ).ObjectInfo;
-    ObjectReplica = require( '../src/ObjectInfo.js' ).ObjectReplica;
-    ObjectResult = require( '../src/ObjectResult.js' ).ObjectResult;
-    AtmosRest = require( '../src/AtmosRest.js' ).AtmosRest;
-    require( './atmos-config.js' );
-    require( './test-deps.js' );
+    require( '../src/deps' );
+    AccessToken = require( '../src/AccessToken' ).AccessToken;
+    AccessTokenPolicy = require( '../src/AccessToken' ).AccessTokenPolicy;
+    AccessTokenFormField = require( '../src/AccessToken' ).AccessTokenFormField;
+    Acl = require( '../src/Acl' ).Acl;
+    AclEntry = require( '../src/Acl' ).AclEntry;
+    AtmosConfig = require( '../src/AtmosConfig' ).AtmosConfig;
+    AtmosResult = require( '../src/AtmosResult' ).AtmosResult;
+    AtmosServiceInfo = require( '../src/AtmosServiceInfo' ).AtmosServiceInfo;
+    AtmosUtil = require( '../src/AtmosUtil' ).AtmosUtil;
+    DirectoryItem = require( '../src/DirectoryItem' ).DirectoryItem;
+    HttpRequest = require( '../src/HttpRequest' ).HttpRequest;
+    AtmosRange = require( '../src/HttpRequest' ).AtmosRange;
+    ListOptions = require( '../src/ListOptions' ).ListOptions;
+    ObjectInfo = require( '../src/ObjectInfo' ).ObjectInfo;
+    ObjectReplica = require( '../src/ObjectInfo' ).ObjectReplica;
+    ObjectResult = require( '../src/ObjectResult' ).ObjectResult;
+    ObjectVersion = require( '../src/ObjectVersion' ).ObjectVersion;
+    AtmosRest = require( '../src/AtmosRest' ).AtmosRest;
+    require( './atmos-config' );
+    require( './test-deps' );
     atmos = new AtmosRest( atmosConfig );
 }
 
@@ -124,9 +126,9 @@ atmosLowLevel = {
 
     'XML test': function( test ) {
         var xml = "<root><main><child></child><child></child></main></root>";
-        var doc = parseXml( xml );
-        var children = getChildrenByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
-        var child = getChildByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
+        var doc = AtmosUtil.parseXml( xml );
+        var children = AtmosUtil.getChildrenByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
+        var child = AtmosUtil.getChildByTagName( doc.getElementsByTagName( 'main' )[0], 'child' );
         test.equal( children.length, 2, "found 2 children" );
         test.ok( child != null );
         test.done();
@@ -160,12 +162,12 @@ atmosLowLevel = {
         var date = new Date();
         date.setUTCFullYear( 2020, 0, 1 );
         date.setUTCHours( 5, 0, 0, 0 );
-        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2020-01-01T05:00:00.000Z' ), date, 'Z date matches' );
-        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2020-01-01T05:00:00.000+0000' ), date, '+0000 date matches' );
-        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2020-01-01T01:30:00-0330' ), date, '-0330 date matches' );
-        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2019-12-31T23:00:00-0600' ), date, 'roll forward date matches' );
+        test.deepEqual( AtmosUtil.parseIso8601Date( '2020-01-01T05:00:00.000Z' ), date, 'Z date matches' );
+        test.deepEqual( AtmosUtil.parseIso8601Date( '2020-01-01T05:00:00.000+0000' ), date, '+0000 date matches' );
+        test.deepEqual( AtmosUtil.parseIso8601Date( '2020-01-01T01:30:00-0330' ), date, '-0330 date matches' );
+        test.deepEqual( AtmosUtil.parseIso8601Date( '2019-12-31T23:00:00-0600' ), date, 'roll forward date matches' );
         date.setUTCHours( 22, 0, 0, 0 );
-        test.deepEqual( AccessTokenPolicy.parseIso8601Date( '2020-01-02T04:00:00+0600' ), date, 'roll back date matches' );
+        test.deepEqual( AtmosUtil.parseIso8601Date( '2020-01-02T04:00:00+0600' ), date, 'roll back date matches' );
 
         test.done();
     },
@@ -178,20 +180,26 @@ atmosLowLevel = {
             new AccessTokenFormField( 'x-emc-meta', true, 'name=value' ),
             new AccessTokenFormField( 'x-emc-listable-meta', true, undefined, 'listable=' )
         ] );
-        var xml1 = '<policy><expiration>' + now.toISOString() + '</expiration><max-uploads>5</max-uploads><max-downloads>6</max-downloads><source><allow>1.1.1.1</allow><allow>2.2.2.2</allow><deny>3.3.3.3</deny><deny>4.4.4.4</deny></source><content-length-range from="0" to="1000"></content-length-range><form-field name="x-emc-meta" optional="true"><eq>name=value</eq></form-field><form-field name="x-emc-listable-meta" optional="true"><starts-with>listable=</starts-with></form-field></policy>';
-        var xml2 = '<policy><expiration>' + now.toISOString() + '</expiration><max-uploads>5</max-uploads><max-downloads>6</max-downloads><source><allow>1.1.1.1</allow><allow>2.2.2.2</allow><deny>3.3.3.3</deny><deny>4.4.4.4</deny></source><content-length-range from="0" to="1000"/><form-field name="x-emc-meta" optional="true"><eq>name=value</eq></form-field><form-field name="x-emc-listable-meta" optional="true"><starts-with>listable=</starts-with></form-field></policy>';
-        var sxml = serializeXml( policy.toDocument() ).trim();
+        var xml1 = '<policy><expiration>' + now.toISOString() + '</expiration><max-uploads>5</max-uploads><max-downloads>6</max-downloads><source><allow>1.1.1.1</allow><allow>2.2.2.2</allow><disallow>3.3.3.3</disallow><disallow>4.4.4.4</disallow></source><content-length-range from="0" to="1000"></content-length-range><form-field name="x-emc-meta" optional="true"><eq>name=value</eq></form-field><form-field name="x-emc-listable-meta" optional="true"><starts-with>listable=</starts-with></form-field></policy>';
+        var xml2 = '<policy><expiration>' + now.toISOString() + '</expiration><max-uploads>5</max-uploads><max-downloads>6</max-downloads><source><allow>1.1.1.1</allow><allow>2.2.2.2</allow><disallow>3.3.3.3</disallow><disallow>4.4.4.4</disallow></source><content-length-range from="0" to="1000"/><form-field name="x-emc-meta" optional="true"><eq>name=value</eq></form-field><form-field name="x-emc-listable-meta" optional="true"><starts-with>listable=</starts-with></form-field></policy>';
+        var sxml = AtmosUtil.serializeXml( policy.toDocument() ).trim();
         test.ok( xml1 == sxml || xml2 == sxml, 'XML serialization is valid' );
-        test.deepEqual( AccessTokenPolicy.fromNode( getChildByTagName( parseXml( xml1 ), 'policy' ) ), policy, "policy XML parsing is valid" );
+        var ppolicy = AccessTokenPolicy.fromNode( AtmosUtil.getChildByTagName( AtmosUtil.parseXml( xml1 ), 'policy' ) );
+        test.deepEqual( ppolicy, policy, "policy XML parsing is valid" );
 
         var myAccess = new AclEntry( 'USER_A', AclEntry.ACL_PERMISSIONS.FULL_CONTROL );
         var groupAccess = new AclEntry( AclEntry.GROUPS.OTHER, AclEntry.ACL_PERMISSIONS.READ );
         var acl = new Acl( [myAccess], [groupAccess] );
         var token = new AccessToken( 'xxxxxxx_token_id', policy, undefined, 'abcdef0123456789', acl );
 
-        xml1 = '<access-token><access-token-id>xxxxxxx_token_id</access-token-id><expiration>2020-01-01T12:00:00Z</expiration><max-uploads>5</max-uploads><max-downloads>6</max-downloads><source><allow>1.1.1.1</allow><allow>2.2.2.2</allow><deny>3.3.3.3</deny><deny>4.4.4.4</deny></source><content-length-range from="0" to="1000"/><form-field name="x-emc-meta" optional="true"><eq>name=value</eq></form-field><form-field name="x-emc-listable-meta" optional="true"><starts-with>listable=</starts-with></form-field><object-id>abcdef0123456789</object-id><useracl>USER_A=FULL_CONTROL</useracl><groupacl>other=READ</groupacl></access-token>';
-        var parsedToken = AccessToken.fromNode( getChildByTagName( parseXml( xml1 ), 'access-token' ) );
+        xml1 = '<access-token><access-token-id>xxxxxxx_token_id</access-token-id><expiration>2020-01-01T12:00:00Z</expiration><max-uploads>5</max-uploads><max-downloads>6</max-downloads><source><allow>1.1.1.1</allow><allow>2.2.2.2</allow><disallow>3.3.3.3</disallow><disallow>4.4.4.4</disallow></source><content-length-range from="0" to="1000"/><form-field name="x-emc-meta" optional="true"><eq>name=value</eq></form-field><form-field name="x-emc-listable-meta" optional="true"><starts-with>listable=</starts-with></form-field><object-id>abcdef0123456789</object-id><useracl>USER_A=FULL_CONTROL</useracl><groupacl>other=READ</groupacl></access-token>';
+        var parsedToken = AccessToken.fromNode( AtmosUtil.getChildByTagName( AtmosUtil.parseXml( xml1 ), 'access-token' ) );
         test.deepEqual( parsedToken, token, "token XML parsing is valid" );
+
+        // test minimal
+        policy = new AccessTokenPolicy();
+        sxml = AtmosUtil.serializeXml( policy.toDocument() ).trim();
+        test.ok( sxml == '<policy></policy>' || sxml == '<policy/>', 'minimal XML serialization is valid' );
 
         test.done();
     }

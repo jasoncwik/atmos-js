@@ -21,15 +21,15 @@
 /**
  * Class to abstract an HTTP request (could use XHR or a form POST)
  * @constructor
- * @param {String} uri the URI of the request
- * @param {String} method the HTTP method to use for the request (GET, POST, PUT, DELETE, HEAD)
+ * @param {string} uri the URI of the request
+ * @param {string} method the HTTP method to use for the request (GET, POST, PUT, DELETE, HEAD)
  * @param {Object=} headers HTTP headers of the request
- * @param {String|File=} data (only for object creates/updates) data to send (can be a string or File object)
- * @param {String=} mimeType (only for object creates/updates) the mimeType of the data to be sent
+ * @param {string|File=} data (only for object creates/updates) data to send (can be a string or File object)
+ * @param {string=} mimeType (only for object creates/updates) the mimeType of the data to be sent
  * @param {AtmosRange=} range (optional) the range of bytes of an object to read or update
- * @param {Function=} progress (optional) provides progress updates for uploads (progress bar)
- * @param {Function=} processResult (optional) provides for custom result processing (result and XHR objects are passed as arguments)
- * @param {Function=} complete (optional) called upon completion of the request (called after success or error)
+ * @param {function=} progress (optional) provides progress updates for uploads (progress bar)
+ * @param {function=} processResult (optional) provides for custom result processing (result and XHR objects are passed as arguments)
+ * @param {function=} complete (optional) called upon completion of the request (called after success or error)
  * @param {Element=} form a form element to use instead of XHR for a POST or PUT request
  */
 HttpRequest = function( uri, method, headers, data, mimeType, range, progress, processResult, complete, form ) {
@@ -47,8 +47,8 @@ HttpRequest = function( uri, method, headers, data, mimeType, range, progress, p
 
 /**
  * The AtmosRange object is used to specify a range of object data to store or retrieve.
- * @param {Number} offset the byte offset within an object's data from which to start the range.
- * @param {Number} size the number of bytes to include in the range.
+ * @param {number} offset the byte offset within an object's data from which to start the range.
+ * @param {number} size the number of bytes to include in the range.
  */
 AtmosRange = function( offset, size ) {
     this.offset = offset;

@@ -19,10 +19,10 @@
 
  */
 /**
- * @param {String} path the full path of the object
- * @param {String} name the name of the object (excluding path info)
- * @param {String} type the type of object ("directory" or "regular")
- * @param {String} objectId the object's identifier
+ * @param {string} path the full path of the object
+ * @param {string} name the name of the object (excluding path info)
+ * @param {string} type the type of object ("directory" or "regular")
+ * @param {string} objectId the object's identifier
  * @param {Object} userMeta an object containing the user metadata properties
  * @param {Object} listableUserMeta an object containing the listable user metadata properties
  * @param {Object} systemMeta an object containing the system metadata properties

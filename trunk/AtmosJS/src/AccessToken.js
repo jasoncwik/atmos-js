@@ -18,12 +18,13 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
  */
+if ( typeof(require) == 'function' && typeof(AtmosUtil) == 'undefined' ) AtmosUtil = require( './AtmosUtil' ).AtmosUtil;
 /**
  * Represents an anonymous access token
- * @param {String} tokenId the identifier of the token
+ * @param {string} tokenId the identifier of the token
  * @param {AccessTokenPolicy} tokenPolicy the policy of the token
- * @param {String=} objectPath the path of the object targeted by the token (if using namespace)
- * @param {String=} objectId the OID of the object targeted by the token
+ * @param {string=} objectPath the path of the object targeted by the token (if using namespace)
+ * @param {string=} objectId the OID of the object targeted by the token
  * @param {Acl=} acl the ACL assigned to an uploaded object via this access token
  * @constructor
  */
@@ -44,16 +45,16 @@ AccessToken.fromNode = function( tokenNode ) {
     var token = new AccessToken();
 
     var node, useracl, groupacl;
-    if ( node = getChildByTagName( tokenNode, 'access-token-id' ) )
-        token.tokenId = getTextContent( node );
-    if ( node = getChildByTagName( tokenNode, 'path' ) )
-        token.objectPath = getTextContent( node );
-    if ( node = getChildByTagName( tokenNode, 'object-id' ) )
-        token.objectId = getTextContent( node );
-    if ( node = getChildByTagName( tokenNode, 'useracl' ) )
-        useracl = AccessToken._parseAclEntries( getTextContent( node ) );
-    if ( node = getChildByTagName( tokenNode, 'groupacl' ) )
-        groupacl = AccessToken._parseAclEntries( getTextContent( node ) );
+    if ( node = AtmosUtil.getChildByTagName( tokenNode, 'access-token-id' ) )
+        token.tokenId = AtmosUtil.getTextContent( node );
+    if ( node = AtmosUtil.getChildByTagName( tokenNode, 'path' ) )
+        token.objectPath = AtmosUtil.getTextContent( node );
+    if ( node = AtmosUtil.getChildByTagName( tokenNode, 'object-id' ) )
+        token.objectId = AtmosUtil.getTextContent( node );
+    if ( node = AtmosUtil.getChildByTagName( tokenNode, 'useracl' ) )
+        useracl = AccessToken._parseAclEntries( AtmosUtil.getTextContent( node ) );
+    if ( node = AtmosUtil.getChildByTagName( tokenNode, 'groupacl' ) )
+        groupacl = AccessToken._parseAclEntries( AtmosUtil.getTextContent( node ) );
 
     if ( useracl || groupacl )
         token.acl = new Acl( useracl, groupacl );
@@ -65,7 +66,7 @@ AccessToken.fromNode = function( tokenNode ) {
 
 /**
  * Parses ACL entries from a comma-delimited string
- * @param {String} text a comma-delimited string representing a user or group ACL
+ * @param {string} text a comma-delimited string representing a user or group ACL
  */
 AccessToken._parseAclEntries = function( text ) {
     var aclEntries = [];
@@ -91,14 +92,14 @@ AccessToken._parseAclEntries = function( text ) {
 /**
  * Represents a public access token policy
  * @param {Date=} expiration the time at which this access token expires
- * @param {Number=} maxUploads the maximum number of times this access token can be used to upload an object
- * @param {Number=} maxDownloads the maximum number of times this access token can be used to download an object
- * @param {Array.<String>=} sourceAllowList a list of source IPs (possibly with subnets) that are allowed to use this
+ * @param {number=} maxUploads the maximum number of times this access token can be used to upload an object
+ * @param {number=} maxDownloads the maximum number of times this access token can be used to download an object
+ * @param {Array.<string>=} sourceAllowList a list of source IPs (possibly with subnets) that are allowed to use this
  * access token
- * @param {Array.<String>=} sourceDenyList a list of source IPs (possibly with subnets) that are not allowed to use this
+ * @param {Array.<string>=} sourceDenyList a list of source IPs (possibly with subnets) that are not allowed to use this
  * access token
- * @param {Number=} minSize the minimum size to accept for an uploaded object
- * @param {Number=} maxSize the maximum size to accept for an uploaded object
+ * @param {number=} minSize the minimum size to accept for an uploaded object
+ * @param {number=} maxSize the maximum size to accept for an uploaded object
  * @param {Array.<AccessTokenFormField>=} formFieldList a list of form field criteria that must be met for an upload
  * to be accepted
  * @constructor
@@ -122,31 +123,31 @@ AccessTokenPolicy = function( expiration, maxUploads, maxDownloads, sourceAllowL
 AccessTokenPolicy.fromNode = function( policyNode ) {
     var policy = new AccessTokenPolicy();
     var node, nodes;
-    if ( node = getChildByTagName( policyNode, 'expiration' ) )
-        policy.expiration = AccessTokenPolicy.parseIso8601Date( getTextContent( node ) );
-    if ( node = getChildByTagName( policyNode, 'max-uploads' ) )
-        policy.maxUploads = parseInt( getTextContent( node ) );
-    if ( node = getChildByTagName( policyNode, 'max-downloads' ) )
-        policy.maxDownloads = parseInt( getTextContent( node ) );
-    if ( node = getChildByTagName( policyNode, 'source' ) ) {
-        if ( nodes = getChildrenByTagName( node, 'allow' ) ) {
+    if ( node = AtmosUtil.getChildByTagName( policyNode, 'expiration' ) )
+        policy.expiration = AtmosUtil.parseIso8601Date( AtmosUtil.getTextContent( node ) );
+    if ( node = AtmosUtil.getChildByTagName( policyNode, 'max-uploads' ) )
+        policy.maxUploads = parseInt( AtmosUtil.getTextContent( node ) );
+    if ( node = AtmosUtil.getChildByTagName( policyNode, 'max-downloads' ) )
+        policy.maxDownloads = parseInt( AtmosUtil.getTextContent( node ) );
+    if ( node = AtmosUtil.getChildByTagName( policyNode, 'source' ) ) {
+        if ( nodes = AtmosUtil.getChildrenByTagName( node, 'allow' ) ) {
             policy.sourceAllowList = [];
             nodes.forEach( function( allowNode ) {
-                policy.sourceAllowList.push( getTextContent( allowNode ) );
+                policy.sourceAllowList.push( AtmosUtil.getTextContent( allowNode ) );
             } );
         }
-        if ( nodes = getChildrenByTagName( node, 'deny' ) ) {
+        if ( nodes = AtmosUtil.getChildrenByTagName( node, 'disallow' ) ) {
             policy.sourceDenyList = [];
             nodes.forEach( function( denyNode ) {
-                policy.sourceDenyList.push( getTextContent( denyNode ) );
+                policy.sourceDenyList.push( AtmosUtil.getTextContent( denyNode ) );
             } );
         }
     }
-    if ( node = getChildByTagName( policyNode, 'content-length-range' ) ) {
+    if ( node = AtmosUtil.getChildByTagName( policyNode, 'content-length-range' ) ) {
         policy.minSize = parseInt( node.getAttribute( 'from' ) );
         policy.maxSize = parseInt( node.getAttribute( 'to' ) );
     }
-    if ( nodes = getChildrenByTagName( policyNode, 'form-field' ) ) {
+    if ( nodes = AtmosUtil.getChildrenByTagName( policyNode, 'form-field' ) ) {
         policy.formFieldList = [];
         nodes.forEach( function( fieldNode ) {
             policy.formFieldList.push( AccessTokenFormField.fromElement( fieldNode ) );
@@ -156,59 +157,34 @@ AccessTokenPolicy.fromNode = function( policyNode ) {
 };
 
 /**
- * Parses an ISO-8601 date (with or without a timezone offset, i.e. '-0600').
- * @param text
- * @return {Date}
- */
-AccessTokenPolicy.parseIso8601Date = function( text ) {
-    var iso8601RE = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]{3})?(?:([+-][0-9]{2})([0-9]{2})|Z)$/;
-    var match = iso8601RE.exec( text ), date;
-    if ( match ) {
-        var year = parseInt( match[1] ), month = parseInt( match[2] ) - 1, day = parseInt( match[3] );
-        var hour = parseInt( match[4] ), min = parseInt( match[5] ), sec = parseInt( match[6] );
-        var hourOffset = 0, minuteOffset = 0;
-        if ( match[7] ) {
-            hourOffset = -parseInt( match[7] );
-            minuteOffset = parseInt( match[8] );
-        }
-        date = new Date();
-        date.setUTCFullYear( year, month, day );
-        date.setUTCHours( hour + hourOffset, min + minuteOffset, sec, 0 );
-    } else {
-        date = new Date( text );
-        date.setMilliseconds( 0 );
-    }
-    return date;
-};
-
-/**
  * Generates the XML representation of this token policy
  * @return {Document}
  */
 AccessTokenPolicy.prototype.toDocument = function() {
-    var doc = createDocument();
-    var policyNode = createElement( doc, 'policy' );
+    var doc = AtmosUtil.createDocument();
+    var policyNode = AtmosUtil.createElement( doc, 'policy' );
     doc.appendChild( policyNode );
 
     // expiration
-    if ( this.expiration ) policyNode.appendChild( createElement( doc, 'expiration', this.expiration.toISOString() ) );
+    if ( this.expiration ) policyNode.appendChild( AtmosUtil.createElement( doc, 'expiration', this.expiration.toISOString() ) );
 
     // max uploads/downloads
-    if ( this.maxUploads ) policyNode.appendChild( createElement( doc, 'max-uploads', this.maxUploads ) );
-    if ( this.maxDownloads ) policyNode.appendChild( createElement( doc, 'max-downloads', this.maxDownloads ) );
+    if ( this.maxUploads ) policyNode.appendChild( AtmosUtil.createElement( doc, 'max-uploads', this.maxUploads ) );
+    if ( this.maxDownloads ) policyNode.appendChild( AtmosUtil.createElement( doc, 'max-downloads', this.maxDownloads ) );
 
     // source
-    if ( this.sourceAllowList || this.sourceDenyList ) {
-        var source = createElement( doc, 'source' );
+    if ( (this.sourceAllowList && this.sourceAllowList.length)
+        || (this.sourceDenyList && this.sourceDenyList.length) ) {
+        var source = AtmosUtil.createElement( doc, 'source' );
         policyNode.appendChild( source );
         if ( this.sourceAllowList ) {
             this.sourceAllowList.forEach( function( allowItem ) {
-                source.appendChild( createElement( doc, 'allow', allowItem ) );
+                source.appendChild( AtmosUtil.createElement( doc, 'allow', allowItem ) );
             } );
         }
         if ( this.sourceDenyList ) {
             this.sourceDenyList.forEach( function( denyItem ) {
-                source.appendChild( createElement( doc, 'deny', denyItem ) );
+                source.appendChild( AtmosUtil.createElement( doc, 'disallow', denyItem ) );
             } );
         }
     }
@@ -218,7 +194,7 @@ AccessTokenPolicy.prototype.toDocument = function() {
         var attributes = {};
         if ( typeof(this.minSize) == 'number' ) attributes.from = this.minSize;
         if ( typeof(this.maxSize) == 'number' ) attributes.to = this.maxSize;
-        policyNode.appendChild( createElement( doc, 'content-length-range', null, attributes ) );
+        policyNode.appendChild( AtmosUtil.createElement( doc, 'content-length-range', null, attributes ) );
     }
 
     // form fields
@@ -232,13 +208,13 @@ AccessTokenPolicy.prototype.toDocument = function() {
 
 /**
  * Represents a form field criteria for an anonymous upload
- * @param {String} name the name of the form field
+ * @param {string} name the name of the form field
  * @param {boolean=} optional whether the field is optional
- * @param {String=} eq the field must match this value to be accepted
- * @param {String=} startsWith the field must start with this value to be accepted
- * @param {String=} endsWith the field must end with this value to be accepted
- * @param {String=} contains the field must contain this value to be accepted
- * @param {String=} matches the field must match this regular expression to be accepted
+ * @param {string=} eq the field must match this value to be accepted
+ * @param {string=} startsWith the field must start with this value to be accepted
+ * @param {string=} endsWith the field must end with this value to be accepted
+ * @param {string=} contains the field must contain this value to be accepted
+ * @param {string=} matches the field must match this regular expression to be accepted
  * @constructor
  */
 AccessTokenFormField = function( name, optional, eq, startsWith, endsWith, contains, matches ) {
@@ -259,16 +235,16 @@ AccessTokenFormField = function( name, optional, eq, startsWith, endsWith, conta
 AccessTokenFormField.fromElement = function( element ) {
     var field = new AccessTokenFormField( element.getAttribute( 'name' ), element.getAttribute( 'optional' ) ? true : false );
     var child;
-    if ( child = getChildByTagName( element, 'eq' ) )
-        field.eq = getTextContent( child );
-    if ( child = getChildByTagName( element, 'starts-with' ) )
-        field.startsWith = getTextContent( child );
-    if ( child = getChildByTagName( element, 'ends-with' ) )
-        field.endsWith = getTextContent( child );
-    if ( child = getChildByTagName( element, 'contains' ) )
-        field.contains = getTextContent( child );
-    if ( child = getChildByTagName( element, 'matches' ) )
-        field.matches = getTextContent( child );
+    if ( child = AtmosUtil.getChildByTagName( element, 'eq' ) )
+        field.eq = AtmosUtil.getTextContent( child );
+    if ( child = AtmosUtil.getChildByTagName( element, 'starts-with' ) )
+        field.startsWith = AtmosUtil.getTextContent( child );
+    if ( child = AtmosUtil.getChildByTagName( element, 'ends-with' ) )
+        field.endsWith = AtmosUtil.getTextContent( child );
+    if ( child = AtmosUtil.getChildByTagName( element, 'contains' ) )
+        field.contains = AtmosUtil.getTextContent( child );
+    if ( child = AtmosUtil.getChildByTagName( element, 'matches' ) )
+        field.matches = AtmosUtil.getTextContent( child );
 
     return field;
 };
@@ -279,18 +255,18 @@ AccessTokenFormField.fromElement = function( element ) {
  * @return {Element}
  */
 AccessTokenFormField.prototype.toElement = function( doc ) {
-    var field = createElement( doc, 'form-field', null, {name: this.name} );
+    var field = AtmosUtil.createElement( doc, 'form-field', null, {name: this.name} );
     if ( this.optional ) field.setAttribute( 'optional', 'true' );
     if ( this.eq )
-        field.appendChild( createElement( doc, 'eq', this.eq ) );
+        field.appendChild( AtmosUtil.createElement( doc, 'eq', this.eq ) );
     else if ( this.startsWith )
-        field.appendChild( createElement( doc, 'starts-with', this.startsWith ) );
+        field.appendChild( AtmosUtil.createElement( doc, 'starts-with', this.startsWith ) );
     else if ( this.endsWith )
-        field.appendChild( createElement( doc, 'ends-with', this.endsWith ) );
+        field.appendChild( AtmosUtil.createElement( doc, 'ends-with', this.endsWith ) );
     else if ( this.contains )
-        field.appendChild( createElement( doc, 'contains', this.contains ) );
+        field.appendChild( AtmosUtil.createElement( doc, 'contains', this.contains ) );
     else if ( this.matches )
-        field.appendChild( createElement( doc, 'matches', this.matches ) );
+        field.appendChild( AtmosUtil.createElement( doc, 'matches', this.matches ) );
 
     return field;
 };
