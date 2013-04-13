@@ -35,8 +35,8 @@ Acl = function( userEntries, groupEntries ) {
  * Defines an entry on an ACL (grantee -> Permission).  Use of this class is optional, you
  * can simply define with JSON, e.g.
  * [ {key:AclEntry.GROUPS.OTHER,value:AclEntry.ACL_PERMISSIONS.READ} ]
- * @param {String} key name of the user or group
- * @param {String} value permission granted to the user or group
+ * @param {string} key name of the user or group
+ * @param {string} value permission granted to the user or group
  * @constructor
  */
 AclEntry = function( key, value ) {

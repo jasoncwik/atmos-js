@@ -22,6 +22,7 @@ var isNodejs = (typeof(require) == 'function' );
 if ( isNodejs ) {
     crypto = require( 'crypto' );
     XMLHttpRequest = require( 'xmlhttprequest' ).XMLHttpRequest;
+    if ( typeof(AtmosUtil) == 'undefined' ) AtmosUtil = require( './AtmosUtil' ).AtmosUtil;
 }
 
 /**
@@ -39,15 +40,19 @@ AtmosRest = function( atmosConfig ) {
 
 // release version
 /** @define {string} */
-var AtmosRestVersion = '0.1';
-AtmosRest.version = AtmosRestVersion;
+var ATMOS_REST_VERSION = '0.1';
+AtmosRest.version = ATMOS_REST_VERSION;
+
+/** @define {boolean} */
+var ATMOS_REST_COMPILED = false;
+AtmosRest.compiled = ATMOS_REST_COMPILED;
 
 // counters
 AtmosRest.iframeCount = 0;
 
 /**
- * Context the URI context for the REST service.  Defaults to "/rest"
- * @type {String}
+ * The URI context for the REST service.  Defaults to "/rest"
+ * @type {string}
  */
 AtmosRest.prototype.context = "/rest";
 
@@ -56,9 +61,9 @@ AtmosRest.prototype.context = "/rest";
 ////////////////////
 
 /**
- * Returns the information about the Atmos REST web service (right now, just the version number)
- * @param {Function} callback the completion callback (both error and success). The version number is contained in
- *        result.value
+ * Returns the information about the Atmos REST web service
+ * @param {function} callback the completion callback (both error and success). In the callback, result.value will
+ *        reference an AtmosServiceInfo object which contains service information such as features and version
  */
 AtmosRest.prototype.getServiceInformation = function( callback ) {
     var me = this;
@@ -73,7 +78,7 @@ AtmosRest.prototype.getServiceInformation = function( callback ) {
             // looking for /Version/Atmos (<Version><Atmos>X.X.X</Atmos></Version>)
             var doc = me._getXmlDoc( xhr );
             var versionNodes = doc.getElementsByTagName( "Version" );
-            if ( versionNodes.length ) version = getTextContent( getChildByTagName( versionNodes[0], "Atmos" ) );
+            if ( versionNodes.length ) version = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( versionNodes[0], "Atmos" ) );
 
             result.value = new AtmosServiceInfo( version, false, false, false, false, false );
             result.value.loadFeaturesFromHeader( xhr.getResponseHeader( "x-emc-features" ),
@@ -88,14 +93,14 @@ AtmosRest.prototype.getServiceInformation = function( callback ) {
  * @param {Acl} acl an Acl for the new object.  If null, the object will get the default Acl.
  * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
  * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
- * @param {String} form the form element that contains the file(s) to upload. Either form or data must be specified.
+ * @param {string} form the form element that contains the file(s) to upload. Either form or data must be specified.
  *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
- * @param {String|File} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
- * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
+ * @param {string|File} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
+ * @param {string} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
  *                          Leave blank if form is present (mime type will be extracted from multipart data)
- * @param {Function} successCallback the callback for when the function completes.  Should have the signature function(result)
+ * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
  *                   where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.
- * @param {Function=} progressCallback (optional) the callback for progress updates (i.e. status bar)
+ * @param {function=} progressCallback (optional) the callback for progress updates (i.e. status bar)
  */
 AtmosRest.prototype.createObject = function( acl, meta, listableMeta, form, data, mimeType, successCallback, progressCallback ) {
     var headers = {};
@@ -124,18 +129,18 @@ AtmosRest.prototype.createObject = function( acl, meta, listableMeta, form, data
 /**
  * Creates an object in Atmos on the path provided.
  *
- * @param {String} path the namespace path in Atmos (must start with a slash)
+ * @param {string} path the namespace path in Atmos (must start with a slash)
  * @param {Acl} acl an Acl for the new object.  If null, the object will get the default Acl.
  * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
  * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
  * @param {Element} form the form element that contains the file(s) to upload. Either form or data must be specified
  *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
- * @param {String|File} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
- * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
+ * @param {string|File} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
+ * @param {string} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
  *                          Leave blank if form is present (mime type will be extracted from multipart data)
- * @param {Function} successCallback the callback for when the function completes.  Should have the signature function(result)
+ * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
  *                   where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.
- * @param {Function=} progressCallback the (optional) callback for progress updates (i.e. status bar)
+ * @param {function=} progressCallback the (optional) callback for progress updates (i.e. status bar)
  */
 AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta, form, data, mimeType, successCallback, progressCallback ) {
     if ( !AtmosRest.objectPathMatch.test( path ) ) {
@@ -166,9 +171,9 @@ AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta
 
 /**
  * Reads the contents of an object from Atmos
- * @param {String} id the object identifier (either an object path or an object id)
+ * @param {string} id the object identifier (either an object path or an object id)
  * @param {AtmosRange} range the range of the object to read, pass null to read the entire object.
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the object's content will be returned in the data property of the result object.
  */
 AtmosRest.prototype.readObject = function( id, range, callback ) {
@@ -188,19 +193,19 @@ AtmosRest.prototype.readObject = function( id, range, callback ) {
 /**
  * Updates an object in Atmos with the given ID.
  *
- * @param {String} id the object ID or namespace path in Atmos.
+ * @param {string} id the object ID or namespace path in Atmos.
  * @param {Acl} acl an Acl for the object.  May be null for no updates.
  * @param {Object} meta regular Metadata for the object.  May be null for no updates.
  * @param {Object} listableMeta listable Metadata for the object.  May be null for no updates.
- * @param {String} form the form element that contains the file(s) to upload. Either form or data must be specified
+ * @param {string} form the form element that contains the file(s) to upload. Either form or data must be specified
  *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
- * @param {String|File} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
+ * @param {string|File} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
  * @param {AtmosRange} range the range of the object to update, pass null to replace the entire object or if a form is used.
- * @param {String} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
+ * @param {string} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
  *                          Leave blank if form is present (mime type will be extracted from multipart data)
- * @param {Function} successCallback the callback for when the function completes.  Should have the signature function(result)
+ * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
  *                   where result will be an AtmosResult object. The result of this call will only contain status information.
- * @param {Function=} progressCallback the (optional) callback for progress updates (i.e. status bar)
+ * @param {function=} progressCallback the (optional) callback for progress updates (i.e. status bar)
  */
 AtmosRest.prototype.updateObject = function( id, acl, meta, listableMeta, form, data, range, mimeType, successCallback, progressCallback ) {
     var headers = {};
@@ -224,8 +229,8 @@ AtmosRest.prototype.updateObject = function( id, acl, meta, listableMeta, form, 
 
 /**
  * Deletes an object from Atmos.
- * @param {String} id an object identifier (either an object path or object id)
- * @param {Function=} callback the completion callback (both error and success).
+ * @param {string} id an object identifier (either an object path or object id)
+ * @param {function=} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.deleteObject = function( id, callback ) {
     this._ajax( /** @type HttpRequest */ {
@@ -238,8 +243,8 @@ AtmosRest.prototype.deleteObject = function( id, callback ) {
 
 /**
  * Lists the versions of an object.
- * @param {String} id the id of the object (either an object path or object id)
- * @param {Function} callback the completion callback (both error and success). On success, a list of object IDs will
+ * @param {string} id the id of the object (either an object path or object id)
+ * @param {function} callback the completion callback (both error and success). On success, a list of object IDs will
  * be in result.value
  */
 AtmosRest.prototype.listVersions = function( id, callback ) {
@@ -258,8 +263,8 @@ AtmosRest.prototype.listVersions = function( id, callback ) {
 
 /**
  * Creates a new immutable version of an object.
- * @param {String} id the id of the object to version (either an object path or object id)
- * @param {Function=} callback the completion callback (both error and success). On success, the ID of the newly created
+ * @param {string} id the id of the object to version (either an object path or object id)
+ * @param {function=} callback the completion callback (both error and success). On success, the ID of the newly created
  * version will be in result.value
  */
 AtmosRest.prototype.versionObject = function( id, callback ) {
@@ -279,9 +284,9 @@ AtmosRest.prototype.versionObject = function( id, callback ) {
 /**
  * Restores a version of an object to the base version (i.e. "promote" an
  * old version to the current version).
- * @param {String} id Base object ID (target of the restore)
- * @param {String} vId Version object ID to restore
- * @param {Function=} callback the completion callback (both error and success).
+ * @param {string} id Base object ID (target of the restore)
+ * @param {string} vId Version object ID to restore
+ * @param {function=} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.restoreVersion = function( id, vId, callback ) {
     var headers = {};
@@ -299,8 +304,8 @@ AtmosRest.prototype.restoreVersion = function( id, vId, callback ) {
 
 /**
  * Deletes a version of an object from the cloud.
- * @param {String} vId the object ID of the version of the object to delete.
- * @param {Function=} callback the completion callback (both error and success).
+ * @param {string} vId the object ID of the version of the object to delete.
+ * @param {function=} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.deleteVersion = function( vId, callback ) {
     this._ajax( /** @type HttpRequest */ {
@@ -313,14 +318,14 @@ AtmosRest.prototype.deleteVersion = function( vId, callback ) {
 
 /**
  * Renames a file or directory within the namespace.
- * @param {String} oldPath The file or directory to rename
- * @param {String} newPath The new path for the file or directory
- * @param {Boolean} force If true, the desination file or
+ * @param {string} oldPath The file or directory to rename
+ * @param {string} newPath The new path for the file or directory
+ * @param {boolean} force If true, the desination file or
  * directory will be overwritten.  Directories must be empty to be
  * overwritten.  Also note that overwrite operations on files are
  * not synchronous; a delay may be required before the object is
  * available at its destination.
- * @param {Function=} callback the completion callback (both error and success).
+ * @param {function=} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.rename = function( oldPath, newPath, force, callback ) {
     if ( !AtmosRest.objectPathMatch.test( newPath ) ) {
@@ -347,7 +352,7 @@ AtmosRest.prototype.rename = function( oldPath, newPath, force, callback ) {
  *     var url = atmosRest.getShareableUrl( "/my/object", futureDate, disposition ); // URL response will contain a Content-Disposition header
  * </pre>
  * NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
- * @param {String=} fileName
+ * @param {string=} fileName
  */
 AtmosRest.prototype.createAttachmentDisposition = function( fileName ) {
     if ( fileName ) return "attachment; filename*=" + encodeURIComponent( "UTF-8''" + fileName );
@@ -357,11 +362,11 @@ AtmosRest.prototype.createAttachmentDisposition = function( fileName ) {
 /**
  * Creates a shareable URL that anyone (globally) can access.
  *
- * @param {String} id the object ID or path for which to generate the URL
+ * @param {string} id the object ID or path for which to generate the URL
  * @param {Date} expirationDate the expiration date of the URL (as
- * @param {String=} disposition the content-disposition that should be specified in the response header for the shareable
+ * @param {string=} disposition the content-disposition that should be specified in the response header for the shareable
  *        URL. NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
- * @return {String} a URL that can be used to share the object's content
+ * @return {string} a URL that can be used to share the object's content
  */
 AtmosRest.prototype.getShareableUrl = function( id, expirationDate, disposition ) {
     if ( !expirationDate.getTime ) throw "expirationDate must be a Date object";
@@ -393,8 +398,8 @@ AtmosRest.prototype.getShareableUrl = function( id, expirationDate, disposition 
 
 /**
  * Returns an object's ACL
- * @param {String} id the object identifier (either an object path or an object id)
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {string} id the object identifier (either an object path or an object id)
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the object's ACL will be returned in the value property of the result object.
  */
 AtmosRest.prototype.getAcl = function( id, callback ) {
@@ -415,9 +420,9 @@ AtmosRest.prototype.getAcl = function( id, callback ) {
 
 /**
  * Sets (overwrites) the ACL on the object.
- * @param {String} id the object identifier (either an object path or an object id)
+ * @param {string} id the object identifier (either an object path or an object id)
  * @param {Acl} acl the new ACL for the object.
- * @param {Function=} callback the completion callback (both error and success).
+ * @param {function=} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.setAcl = function( id, acl, callback ) {
     var headers = {};
@@ -434,8 +439,8 @@ AtmosRest.prototype.setAcl = function( id, acl, callback ) {
 
 /**
  * Returns the list of user metadata tags assigned to the object.
- * @param {String} id the object identifier (either an Object ID or an Object Path)
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {string} id the object identifier (either an Object ID or an Object Path)
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the object's non-listable tags will be in result.value.tags and the
  * listable tags will be in result.value.listableTags
  */
@@ -460,9 +465,9 @@ AtmosRest.prototype.listUserMetadataTags = function( id, callback ) {
 
 /**
  * Reads the user metadata for an object.
- * @param {String} id the object identifier (either an Object ID or an Object Path)
+ * @param {string} id the object identifier (either an Object ID or an Object Path)
  * @param {Array} filter if not null, an array of strings defining which metadata tags should be returned.
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the object's metadata will be returned in result.value.meta and the
  * listable metadata will be returned in result.value.listableMeta.
  */
@@ -489,9 +494,9 @@ AtmosRest.prototype.getUserMetadata = function( id, filter, callback ) {
 
 /**
  * Reads the system metadata for an object.
- * @param {String} id the object identifier (either an Object ID or an Object Path)
+ * @param {string} id the object identifier (either an Object ID or an Object Path)
  * @param {Array} filter if not null, an array of strings defining which metadata tags should be returned.
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the object's system metadata will be returned in result.value.systemMeta (the mime type will be in
  * result.value.systemMeta.mimeType)
  */
@@ -518,8 +523,8 @@ AtmosRest.prototype.getSystemMetadata = function( id, filter, callback ) {
 
 /**
  * Returns all of an object's user metadata and its ACL in one call.
- * @param {String} id the object identifier (either an Object ID or an Object Path)
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {string} id the object identifier (either an Object ID or an Object Path)
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the object's user metadata will be returned in result.value.meta, listable metadata will be in
  * result.value.listableMeta and its ACL will be in result.value.acl
  * NOTE: System metadata is included with user metadata here even though they exist in different namespaces. If you need
@@ -548,8 +553,8 @@ AtmosRest.prototype.getAllMetadata = function( id, callback ) {
 /**
  * Get information about an object's state including
  * replicas, expiration, and retention.
- * @param {String} id the object identifier (either an Object ID or an Object Path)
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {string} id the object identifier (either an Object ID or an Object Path)
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the object's info will be returned in result.value (as an ObjectInfo object).
  */
 AtmosRest.prototype.getObjectInfo = function( id, callback ) {
@@ -568,10 +573,10 @@ AtmosRest.prototype.getObjectInfo = function( id, callback ) {
 
 /**
  * Sets the user metadata for an object.
- * @param {String} id the object identifier (either an Object ID or an Object Path)
+ * @param {string} id the object identifier (either an Object ID or an Object Path)
  * @param {Object} meta a map of regular Metadata for the object.  May be null or empty for no regular metadata.
  * @param {Object} listableMeta a map of listable Metadata for the object.  May be null or empty for no listable metadata.
- * @param {Function=} callback the completion callback (both error and success).
+ * @param {function=} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.setUserMetadata = function( id, meta, listableMeta, callback ) {
     var headers = {};
@@ -589,9 +594,9 @@ AtmosRest.prototype.setUserMetadata = function( id, meta, listableMeta, callback
 
 /**
  * Deletes metadata tags from an object.
- * @param {String} id the object identifier (either an Object ID or an Object Path)
+ * @param {string} id the object identifier (either an Object ID or an Object Path)
  * @param {Array} tags a list of tags (metadata names) to delete from the object
- * @param {Function=} callback the completion callback (both error and success).
+ * @param {function=} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.deleteUserMetadata = function( id, tags, callback ) {
     var headers = {};
@@ -608,9 +613,9 @@ AtmosRest.prototype.deleteUserMetadata = function( id, tags, callback ) {
 
 /**
  * Returns a list of the tags that are listable the current user's tennant.
- * @param {String} tag optional.  If specified, the list will be limited to the tags
+ * @param {string} tag optional.  If specified, the list will be limited to the tags
  * under the specified tag.  If null, only top level tags will be returned.
- * @param {Function} callback the completion callback (both error and success). The list of tags returned will be in
+ * @param {function} callback the completion callback (both error and success). The list of tags returned will be in
  * result.value
  */
 AtmosRest.prototype.getListableTags = function( tag, callback ) {
@@ -635,9 +640,9 @@ AtmosRest.prototype.getListableTags = function( tag, callback ) {
 
 /**
  * Lists objects from the server using a listable tag.
- * @param {String} tag the listable tag to search
+ * @param {string} tag the listable tag to search
  * @param {ListOptions} options for listing objects.  See the ListOptions class.
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the result's value property will be populated with an Array of ObjectResult objects.  Also
  * be sure to check the token property.  If defined, you did not receive all results
  * and should call this method again using the token inside a ListOptions object to continue
@@ -666,10 +671,10 @@ AtmosRest.prototype.listObjects = function( tag, options, callback ) {
 
 /**
  * Lists objects from the server within a directory (path).
- * @param {String} directory the directory (path) in which to list objects (must exist!)
+ * @param {string} directory the directory (path) in which to list objects (must exist!)
  * @param {ListOptions} options for listing objects.  See the ListOptions class. NOTE: metadata can only be returned in
  * Atmos >1.3
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the result's value property will be populated with an Array of DirectoryItem objects.  Also
  * be sure to check the token property.  If defined, you did not receive all results
  * and should call this method again using the token inside a ListOptions object to continue
@@ -700,11 +705,11 @@ AtmosRest.prototype.listDirectory = function( directory, options, callback ) {
 /**
  * Creates an anonymous access token.
  * @param {AccessTokenPolicy} tokenPolicy the token policy for the new access token
- * @param {String=} id the object identifier (either an object path or an object id) targeted by the access token
+ * @param {string=} id the object identifier (either an object path or an object id) targeted by the access token
  * @param {Acl=} acl the ACL that will be assigned to objects created using this access token
  * @param {Object=} meta a map of regular Metadata for uploads.  May be null or empty for no regular metadata.
  * @param {Object=} listableMeta a map of listable Metadata for uploads.  May be null or empty for no listable metadata.
- * @param {Function=} callback the completion callback (both error and success).  Upon success,
+ * @param {function=} callback the completion callback (both error and success).  Upon success,
  * the result's value property will be populated with the access token's URL
  */
 AtmosRest.prototype.createAccessToken = function( tokenPolicy, id, acl, meta, listableMeta, callback ) {
@@ -724,7 +729,7 @@ AtmosRest.prototype.createAccessToken = function( tokenPolicy, id, acl, meta, li
         uri: this.context + '/accesstokens',
         method: 'POST',
         headers: headers,
-        data: serializeXml( tokenPolicy.toDocument() ),
+        data: AtmosUtil.serializeXml( tokenPolicy.toDocument() ),
         mimeType: 'application/xml',
         processResult: function( result, xhr ) {
             if ( !result.successful ) return;
@@ -736,8 +741,8 @@ AtmosRest.prototype.createAccessToken = function( tokenPolicy, id, acl, meta, li
 
 /**
  * Retrieves details about the specified access token
- * @param {String} tokenUri the URL, URI, path or id of the access token to retrieve
- * @param {Function=} callback the completion callback (both error and success).  Upon success,
+ * @param {string} tokenUri the URL, URI, path or id of the access token to retrieve
+ * @param {function=} callback the completion callback (both error and success).  Upon success,
  * the AccessToken object will be in result.value.
  */
 AtmosRest.prototype.getAccessToken = function( tokenUri, callback ) {
@@ -752,7 +757,7 @@ AtmosRest.prototype.getAccessToken = function( tokenUri, callback ) {
         headers: {},
         processResult: function( result, xhr ) {
             if ( !result.successful ) return;
-            result.value = AccessToken.fromNode( getChildByTagName( me._getXmlDoc( xhr ), 'access-token' ) );
+            result.value = AccessToken.fromNode( AtmosUtil.getChildByTagName( me._getXmlDoc( xhr ), 'access-token' ) );
         },
         complete: callback
     } );
@@ -760,8 +765,8 @@ AtmosRest.prototype.getAccessToken = function( tokenUri, callback ) {
 
 /**
  * Deletes an access token
- * @param {String} tokenUri the URL, URI, path or id of the access token to delete
- * @param {Function=} callback the completion callback (both error and success).
+ * @param {string} tokenUri the URL, URI, path or id of the access token to delete
+ * @param {function=} callback the completion callback (both error and success).
  */
 AtmosRest.prototype.deleteAccessToken = function( tokenUri, callback ) {
     var elements = tokenUri.split( '/' );
@@ -779,7 +784,7 @@ AtmosRest.prototype.deleteAccessToken = function( tokenUri, callback ) {
  * Lists all access tokens created by the user.
  * @param {ListOptions} options for listing objects.  See the ListOptions class. NOTE: metadata can only be returned in
  * Atmos >1.3
- * @param {Function} callback the completion callback (both error and success).  Upon success,
+ * @param {function} callback the completion callback (both error and success).  Upon success,
  * the result's value property will be populated with an Array of AccessToken objects.  Also
  * be sure to check the token property.  If defined, you did not receive all results
  * and should call this method again using the token inside a ListOptions object to continue
@@ -798,9 +803,10 @@ AtmosRest.prototype.listAccessTokens = function( options, callback ) {
         processResult: function( result, xhr ) {
             if ( !result.successful ) return;
             result.token = xhr.getResponseHeader( "x-emc-token" );
-            var listNode = getChildByTagName( getChildByTagName( me._getXmlDoc( xhr ), 'list-access-tokens-result' ), 'access-tokens-list' );
+            var root = AtmosUtil.getChildByTagName( me._getXmlDoc( xhr ), 'list-access-tokens-result' );
+            var listNode = AtmosUtil.getChildByTagName( root, 'access-tokens-list' );
             var tokenList = [];
-            getChildrenByTagName( listNode, 'access-token' ).forEach( function( tokenNode ) {
+            AtmosUtil.getChildrenByTagName( listNode, 'access-token' ).forEach( function( tokenNode ) {
                 tokenList.push( AccessToken.fromNode( tokenNode ) );
             } );
             result.value = tokenList;
@@ -819,8 +825,8 @@ AtmosRest.objectPathMatch = /^\//;
 /**
  * Determines whether id is a path or objectid and constructs the proper
  * resource path.
- * @param {String} id
- * @return {String}
+ * @param {string} id
+ * @return {string}
  */
 AtmosRest.prototype._getPath = function( id ) {
     if ( AtmosRest.objectPathMatch.test( id ) ) {
@@ -1219,7 +1225,7 @@ AtmosRest.prototype._setHeaders = function( xhr, headers ) {
 /**
  * Encodes the individual path components of a URI.
  * @param uri
- * @returns {String} the URI with the path components encoded.
+ * @returns {string} the URI with the path components encoded.
  */
 AtmosRest.prototype._encodeURI = function( uri ) {
     this.debug( "encodeURI: in: " + uri );
@@ -1247,7 +1253,7 @@ AtmosRest.prototype._encodeURI = function( uri ) {
 
 /**
  * @param xhr {XMLHttpRequest}
- * @param success {Boolean}
+ * @param success {boolean}
  * @return {AtmosResult}
  * @private
  */
@@ -1261,8 +1267,8 @@ AtmosRest.prototype._createResult = function( xhr, success ) {
         var doc = this._getXmlDoc( xhr );
         var errorNodes = doc.getElementsByTagName( "Error" );
         if ( errorNodes.length ) {
-            result.errorCode = getTextContent( getChildByTagName( errorNodes[0], "Code" ) );
-            result.errorMessage = getTextContent( getChildByTagName( errorNodes[0], "Message" ) );
+            result.errorCode = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( errorNodes[0], "Code" ) );
+            result.errorMessage = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( errorNodes[0], "Message" ) );
         }
     }
 
@@ -1274,7 +1280,7 @@ AtmosRest.prototype._getXmlDoc = function( xhr ) {
         return xhr.responseXML;
     } else {
         this.debug( "response:\n" + xhr.responseText );
-        return parseXml( xhr.responseText );
+        return AtmosUtil.parseXml( xhr.responseText );
     }
 };
 
@@ -1301,7 +1307,7 @@ AtmosRest.prototype._processCreateObjectResult = function( result, xhr ) {
 
 /**
  * Parses a metadata value string into a property object
- * @param {String} value the metadata value string
+ * @param {string} value the metadata value string
  * @param {boolean} decode whether to URI decode the name/value pairs (if UTF8 header is set)
  * @returns {Object} a property object containing the values
  */
@@ -1349,9 +1355,9 @@ AtmosRest.prototype._processListObjectsResult = function( result, xhr ) {
         var userListableMeta = null;
 
         var node = objlist.item( i );
-        var oidNode = getChildByTagName( node, "ObjectID" );
-        var smNode = getChildByTagName( node, "SystemMetadataList" );
-        var umNode = getChildByTagName( node, "UserMetadataList" );
+        var oidNode = AtmosUtil.getChildByTagName( node, "ObjectID" );
+        var smNode = AtmosUtil.getChildByTagName( node, "SystemMetadataList" );
+        var umNode = AtmosUtil.getChildByTagName( node, "UserMetadataList" );
 
         if ( smNode ) {
             systemMeta = {};
@@ -1363,7 +1369,7 @@ AtmosRest.prototype._processListObjectsResult = function( result, xhr ) {
             this._parseResponseMeta( umNode.childNodes, userMeta, userListableMeta );
         }
 
-        var obj = new ObjectResult( getTextContent( oidNode ), userMeta, userListableMeta, systemMeta );
+        var obj = new ObjectResult( AtmosUtil.getTextContent( oidNode ), userMeta, userListableMeta, systemMeta );
         objects.push( obj );
     }
 
@@ -1372,7 +1378,7 @@ AtmosRest.prototype._processListObjectsResult = function( result, xhr ) {
 
 /**
  * Handles the response from the ListDirectory method
- * @param {String} directoryPath
+ * @param {string} directoryPath
  * @param {AtmosResult} result
  * @param {XMLHttpRequest} xhr the XHR object
  */
@@ -1394,11 +1400,11 @@ AtmosRest.prototype._processListDirectoryResult = function( directoryPath, resul
         var userListableMeta = null;
 
         var node = dirlist.item( i );
-        var oidNode = getChildByTagName( node, "ObjectID" );
-        var pathName = getChildByTagName( node, "Filename" );
-        var type = getChildByTagName( node, "FileType" );
-        var smNode = getChildByTagName( node, "SystemMetadataList" );
-        var umNode = getChildByTagName( node, "UserMetadataList" );
+        var oidNode = AtmosUtil.getChildByTagName( node, "ObjectID" );
+        var pathName = AtmosUtil.getChildByTagName( node, "Filename" );
+        var type = AtmosUtil.getChildByTagName( node, "FileType" );
+        var smNode = AtmosUtil.getChildByTagName( node, "SystemMetadataList" );
+        var umNode = AtmosUtil.getChildByTagName( node, "UserMetadataList" );
 
         if ( smNode ) {
             systemMeta = {};
@@ -1410,7 +1416,9 @@ AtmosRest.prototype._processListDirectoryResult = function( directoryPath, resul
             this._parseResponseMeta( umNode.childNodes, userMeta, userListableMeta );
         }
 
-        var entry = new DirectoryItem( directoryPath + getTextContent( pathName ), getTextContent( pathName ), getTextContent( type ), getTextContent( oidNode ), userMeta, userListableMeta, systemMeta );
+        var entry = new DirectoryItem( directoryPath + AtmosUtil.getTextContent( pathName ),
+            AtmosUtil.getTextContent( pathName ), AtmosUtil.getTextContent( type ),
+            AtmosUtil.getTextContent( oidNode ), userMeta, userListableMeta, systemMeta );
         entries.push( entry );
     }
 
@@ -1426,21 +1434,21 @@ AtmosRest.prototype._processObjectInfoResult = function( result, xhr ) {
     var expirationEnabled = false, expirationEndsAt = null, retentionEnabled = false, retentionEndsAt = null;
 
     var nodes = doc.getElementsByTagName( "objectId" );
-    if ( nodes.length ) objectId = getTextContent( nodes.item( 0 ) );
+    if ( nodes.length ) objectId = AtmosUtil.getTextContent( nodes.item( 0 ) );
 
     nodes = doc.getElementsByTagName( "selection" );
-    if ( nodes.length ) selection = getTextContent( nodes.item( 0 ) );
+    if ( nodes.length ) selection = AtmosUtil.getTextContent( nodes.item( 0 ) );
 
     nodes = doc.getElementsByTagName( "replicas" );
     if ( nodes.length ) {
-        nodes = getChildrenByTagName( nodes.item( 0 ), 'replica' );
+        nodes = AtmosUtil.getChildrenByTagName( nodes.item( 0 ), 'replica' );
         for ( var i = 0; i < nodes.length; i++ ) {
             var node = nodes[i];
-            var id = getTextContent( getChildByTagName( node, 'id' ) );
-            var location = getTextContent( getChildByTagName( node, 'location' ) );
-            var replicaType = getTextContent( getChildByTagName( node, 'type' ) );
-            var current = getTextContent( getChildByTagName( node, 'current' ) );
-            var storageType = getTextContent( getChildByTagName( node, 'storageType' ) );
+            var id = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( node, 'id' ) );
+            var location = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( node, 'location' ) );
+            var replicaType = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( node, 'type' ) );
+            var current = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( node, 'current' ) );
+            var storageType = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( node, 'storageType' ) );
             replicas.push( new ObjectReplica( id, location, replicaType, current, storageType ) );
         }
     }
@@ -1448,15 +1456,15 @@ AtmosRest.prototype._processObjectInfoResult = function( result, xhr ) {
     nodes = doc.getElementsByTagName( "expiration" );
     if ( nodes.length ) {
         node = nodes.item( 0 );
-        expirationEnabled = getTextContent( getChildByTagName( node, 'enabled' ) );
-        expirationEndsAt = getTextContent( getChildByTagName( node, 'endAt' ) );
+        expirationEnabled = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( node, 'enabled' ) );
+        expirationEndsAt = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( node, 'endAt' ) );
     }
 
     nodes = doc.getElementsByTagName( "retention" );
     if ( nodes.length ) {
         node = nodes.item( 0 );
-        retentionEnabled = getTextContent( getChildByTagName( node, 'enabled' ) );
-        retentionEndsAt = getTextContent( getChildByTagName( node, 'endAt' ) );
+        retentionEnabled = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( node, 'enabled' ) );
+        retentionEndsAt = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( node, 'endAt' ) );
     }
 
     result.value = new ObjectInfo( objectId, selection, replicas, expirationEnabled, expirationEndsAt, retentionEnabled, retentionEndsAt );
@@ -1465,23 +1473,28 @@ AtmosRest.prototype._processObjectInfoResult = function( result, xhr ) {
 /**
  * Parses the object versions list from a listVersions request
  * @param xhr {XMLHttpRequest} xhr the XHR object
+ * @return {Array.<ObjectVersion>} the list of object versions represented by the XML
  */
 AtmosRest.prototype._parseObjectVersions = function( xhr ) {
-    var objectIds = [];
+    var versions = [];
 
     var doc = this._getXmlDoc( xhr );
 
-    var versions = doc.getElementsByTagName( "Ver" );
-    for ( var i = 0; i < versions.length; i++ ) {
-        objectIds.push( getTextContent( getChildByTagName( versions.item( i ), "OID" ) ) );
+    var verNodes = doc.getElementsByTagName( "Ver" );
+    for ( var i = 0; i < verNodes.length; i++ ) {
+        versions.push( /** ObjectVersion */ {
+            num: AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( verNodes.item( i ), "VerNum" ) ),
+            oid: AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( verNodes.item( i ), "OID" ) ),
+            dateCreated: AtmosUtil.parseIso8601Date( AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( verNodes.item( i ), "itime" ) ) )
+        } );
     }
 
-    return objectIds;
+    return versions;
 };
 
 /**
  * Parses ACL entries from a response header list from a get ACL request
- * @param {String} header the response header from a get ACL request
+ * @param {string} header the response header from a get ACL request
  */
 AtmosRest.prototype._parseAclEntries = function( header ) {
     var aclEntries = [];
@@ -1516,11 +1529,11 @@ AtmosRest.prototype._parseResponseMeta = function( nodeList, regMeta, listableMe
         if ( !/Metadata/i.test( child.nodeName ) ) {
             continue;
         }
-        var metaName = getTextContent( getChildByTagName( child, "Name" ) );
-        var metaValue = getTextContent( getChildByTagName( child, "Value" ) );
-        var listableNode = getChildByTagName( child, "Listable" );
+        var metaName = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( child, "Name" ) );
+        var metaValue = AtmosUtil.getTextContent( AtmosUtil.getChildByTagName( child, "Value" ) );
+        var listableNode = AtmosUtil.getChildByTagName( child, "Listable" );
         if ( listableNode ) {
-            if ( getTextContent( listableNode ) == "true" ) {
+            if ( AtmosUtil.getTextContent( listableNode ) == "true" ) {
                 listableMeta[metaName] = metaValue;
                 continue;
             }
@@ -1531,10 +1544,10 @@ AtmosRest.prototype._parseResponseMeta = function( nodeList, regMeta, listableMe
 
 /**
  * Signs the REST request
- * @param {String} method the HTTP method (GET, PUT, DELETE, POST, HEAD)
+ * @param {string} method the HTTP method (GET, PUT, DELETE, POST, HEAD)
  * @param {Object} headers the object containing the HTTP headers as properties
  *        !!IMPORTANT!! this method assumes Content-Type and Range are already set!
- * @param {String} uri the path to the request
+ * @param {string} uri the path to the request
  */
 AtmosRest.prototype._signRequest = function( method, headers, uri ) {
     this.debug( this.atmosConfig.uid );
@@ -1555,10 +1568,10 @@ AtmosRest.prototype._signRequest = function( method, headers, uri ) {
 
 /**
  * Generates the string to sign
- * @param {String} method the HTTP method
- * @param {String} path the request uri
+ * @param {string} method the HTTP method
+ * @param {string} path the request uri
  * @param {Object} headers the object containing the HTTP headers as properties
- * @returns {String} the string to sign
+ * @returns {string} the string to sign
  */
 AtmosRest.prototype._buildHashString = function( method, path, headers ) {
     var content_type = headers["Content-Type"];
@@ -1615,8 +1628,8 @@ AtmosRest.prototype._buildHashString = function( method, path, headers ) {
 
 /**
  * Normalizes the whitespace in an object (condenses multiple spaces into one space)
- * @param {String} str the string to process
- * @returns {String} the output string
+ * @param {string} str the string to process
+ * @returns {string} the output string
  */
 AtmosRest.prototype._normalizeWS = function( str ) {
     if ( str == null ) return null;
@@ -1626,9 +1639,9 @@ AtmosRest.prototype._normalizeWS = function( str ) {
 
 /**
  * Signs a string using HMAC-SHA1
- * @param {String} string the string content to sign
- * @param {String} secret the secret key, base-64 encoded.
- * @returns {String} the signature, base-64 encoded.
+ * @param {string} string the string content to sign
+ * @param {string} secret the secret key, base-64 encoded.
+ * @returns {string} the signature, base-64 encoded.
  */
 AtmosRest.prototype._doSignature = function( string, secret ) {
     this.debug( "Secret: " + secret );
@@ -1647,9 +1660,9 @@ AtmosRest.prototype._doSignature = function( string, secret ) {
 /**
  * resolves a path and querystring to a fully qualified URL if a protocol and host can be inferred. looks in atmosConfig
  * first and then window.location for a protocol, host and port to use.
- * @param {String} path the absolute path of the URL
- * @param {String=} query the querystring (without the question mark) of the URL
- * @return {String} a fully qualified URL including protocol (scheme), host and port.
+ * @param {string} path the absolute path of the URL
+ * @param {string=} query the querystring (without the question mark) of the URL
+ * @return {string} a fully qualified URL including protocol (scheme), host and port.
  */
 AtmosRest.prototype._resolveUrl = function( path, query ) {
     var url = "";
@@ -1672,7 +1685,7 @@ AtmosRest.prototype._resolveUrl = function( path, query ) {
 
 /**
  * Outputs to the Console object (if it exists) as debug text
- * @param {String} message the string to write to the console.
+ * @param {string} message the string to write to the console.
  */
 AtmosRest.prototype.debug = function( message ) {
     if ( !this.atmosConfig.enableDebug ) return;
@@ -1687,7 +1700,7 @@ AtmosRest.prototype.debug = function( message ) {
 
 /**
  * Outputs to the Console object (if it exists) as info text
- * @param {String} message the string to write to the console.
+ * @param {string} message the string to write to the console.
  */
 AtmosRest.prototype.info = function( message ) {
     if ( typeof(console) !== 'undefined' && typeof(console.info) !== 'undefined' ) {
@@ -1697,7 +1710,7 @@ AtmosRest.prototype.info = function( message ) {
 
 /**
  * Outputs to the Console object (if it exists) as warning text
- * @param {String} message the string to write to the console.
+ * @param {string} message the string to write to the console.
  */
 AtmosRest.prototype.warn = function( message ) {
     if ( typeof(console) !== 'undefined' && typeof(console.warn) !== 'undefined' ) {
@@ -1707,7 +1720,7 @@ AtmosRest.prototype.warn = function( message ) {
 
 /**
  * Outputs to the Console object (if it exists) as error text
- * @param {String} message the string to write to the console.
+ * @param {string} message the string to write to the console.
  */
 AtmosRest.prototype.error = function( message ) {
     if ( typeof(console) !== 'undefined' && typeof(console.error) !== 'undefined' ) {

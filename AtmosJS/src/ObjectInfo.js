@@ -20,8 +20,8 @@
  */
 /**
  * @constructor
- * @param {String} objectId the Object ID of the object
- * @param {String} selection the replica selection for read access. Values can be geographic or random
+ * @param {string} objectId the Object ID of the object
+ * @param {string} selection the replica selection for read access. Values can be geographic or random
  * @param {Array.<ObjectReplica>} replicas array of ObjectReplica objects
  * @param {boolean} expirationEnabled whether expiration is enabled for the object
  * @param {Date} expirationEndsAt when this object's expiration period ends
@@ -40,11 +40,11 @@ ObjectInfo = function( objectId, selection, replicas, expirationEnabled, expirat
 
 /**
  * @constructor
- * @param {Number} id the replica ID
- * @param {String} location the replica location
- * @param {String} replicaType the replica type. Values can be sync or async
+ * @param {number} id the replica ID
+ * @param {string} location the replica location
+ * @param {string} replicaType the replica type. Values can be sync or async
  * @param {boolean} current true if the replica is current, or false if the replica is not current
- * @param {String} storageType the replica's storage type. Values can be stripe, normal, cloud, compression, ErasureCode, and dedup
+ * @param {string} storageType the replica's storage type. Values can be stripe, normal, cloud, compression, ErasureCode, and dedup
  */
 ObjectReplica = function( id, location, replicaType, current, storageType ) {
     this.id = id;

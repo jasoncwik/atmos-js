@@ -20,7 +20,7 @@
  */
 /**
  * @constructor
- * @param {String} version the version of Atmos
+ * @param {string} version the version of Atmos
  * @param {boolean} object whether this Atmos instance supports the object REST API
  * @param {boolean} namespace whether this Atmos instance supports the namespace REST API
  * @param {boolean} utf8 whether this Atmos instance supports non-latin UTF8 content in headers
@@ -41,8 +41,8 @@ AtmosServiceInfo = function( version, object, namespace, utf8, browsercompat, ke
 
 /**
  * parses the feature properties of this object from header values to localize code
- * @param {String} featuresHeader the value of the x-emc-features header to be parsed into an AtmosServiceInfo object
- * @param {String} utf8Header the value of the x-emc-support-utf8 header (legacy)
+ * @param {string} featuresHeader the value of the x-emc-features header to be parsed into an AtmosServiceInfo object
+ * @param {string} utf8Header the value of the x-emc-support-utf8 header (legacy)
  */
 AtmosServiceInfo.prototype.loadFeaturesFromHeader = function( featuresHeader, utf8Header ) {
     if ( featuresHeader ) {

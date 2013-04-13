@@ -22,25 +22,27 @@
 isNodeJs = false;
 if ( typeof(exports) != 'undefined' ) {
     // We're running inside node.js
-    require( '../src/deps.js' );
-    AccessToken = require( '../src/AccessToken.js' ).AccessToken;
-    AccessTokenPolicy = require( '../src/AccessToken.js' ).AccessTokenPolicy;
-    AccessTokenFormField = require( '../src/AccessToken.js' ).AccessTokenFormField;
-    Acl = require( '../src/Acl.js' ).Acl;
-    AclEntry = require( '../src/Acl.js' ).AclEntry;
-    AtmosConfig = require( '../src/AtmosConfig.js' ).AtmosConfig;
-    AtmosResult = require( '../src/AtmosResult.js' ).AtmosResult;
-    AtmosServiceInfo = require( '../src/AtmosServiceInfo.js' ).AtmosServiceInfo;
-    DirectoryItem = require( '../src/DirectoryItem.js' ).DirectoryItem;
-    HttpRequest = require( '../src/HttpRequest.js' ).HttpRequest;
-    AtmosRange = require( '../src/HttpRequest.js' ).AtmosRange;
-    ListOptions = require( '../src/ListOptions.js' ).ListOptions;
-    ObjectInfo = require( '../src/ObjectInfo.js' ).ObjectInfo;
-    ObjectReplica = require( '../src/ObjectInfo.js' ).ObjectReplica;
-    ObjectResult = require( '../src/ObjectResult.js' ).ObjectResult;
-    AtmosRest = require( '../src/AtmosRest.js' ).AtmosRest;
-    require( './atmos-config.js' );
-    require( './test-deps.js' );
+    require( '../src/deps' );
+    AccessToken = require( '../src/AccessToken' ).AccessToken;
+    AccessTokenPolicy = require( '../src/AccessToken' ).AccessTokenPolicy;
+    AccessTokenFormField = require( '../src/AccessToken' ).AccessTokenFormField;
+    Acl = require( '../src/Acl' ).Acl;
+    AclEntry = require( '../src/Acl' ).AclEntry;
+    AtmosConfig = require( '../src/AtmosConfig' ).AtmosConfig;
+    AtmosResult = require( '../src/AtmosResult' ).AtmosResult;
+    AtmosServiceInfo = require( '../src/AtmosServiceInfo' ).AtmosServiceInfo;
+    AtmosUtil = require( '../src/AtmosUtil' ).AtmosUtil;
+    DirectoryItem = require( '../src/DirectoryItem' ).DirectoryItem;
+    HttpRequest = require( '../src/HttpRequest' ).HttpRequest;
+    AtmosRange = require( '../src/HttpRequest' ).AtmosRange;
+    ListOptions = require( '../src/ListOptions' ).ListOptions;
+    ObjectInfo = require( '../src/ObjectInfo' ).ObjectInfo;
+    ObjectReplica = require( '../src/ObjectInfo' ).ObjectReplica;
+    ObjectResult = require( '../src/ObjectResult' ).ObjectResult;
+    ObjectVersion = require( '../src/ObjectVersion' ).ObjectVersion;
+    AtmosRest = require( '../src/AtmosRest' ).AtmosRest;
+    require( './atmos-config' );
+    require( './test-deps' );
     atmos = new AtmosRest( atmosConfig );
     isNodeJs = true;
 }
@@ -1034,7 +1036,7 @@ atmosApi = {
     'testListVersions': function( test ) {
         atmos.debug( "atmosApi.testListVersions" );
 
-        test.expect( 9 );
+        test.expect( 13 );
 
         atmos.createObject( null, null, null, null, "Hello World!", "text/plain", function( result ) {
             test.ok( result.successful, "Request successful" );
@@ -1055,6 +1057,10 @@ atmosApi = {
                     test.ok( result3.successful, "Request successful" );
                     test.equal( result3.httpCode, 200, "HttpCode correct" );
                     test.equal( result3.value.length, 1 );
+                    test.ok( result3.value[0].num != null, "num present" );
+                    test.ok( result3.value[0].oid != null, "oid present" );
+                    test.ok( result3.value[0].dateCreated != null, "dateCreated present" );
+                    test.equal( typeof( result3.value[0].dateCreated.getUTCDate ), "function", "dateCreated is a date" );
                     test.done();
                 } );
             } );

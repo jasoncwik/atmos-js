@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="atmos-js" default="compile">
     <property name="src" location="src"/>
-    <property name="version" value="2.1.0"/>
+    <property name="version" value="2.1.1"/>
 
     <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
 
@@ -31,8 +31,8 @@
     <target name="compile">
 
         <jscomp compilationLevel="simple" debug="false" output="atmos-min-${version}.js">
-            <define name="AtmosRestVersion" value="${version}"/>
-            <define name="COMPILED" value="true"/>
+            <define name="ATMOS_REST_VERSION" value="${version}"/>
+            <define name="ATMOS_REST_COMPILED" value="true"/>
 
             <sources dir="lib-min">
                 <file name="crypto-sha1-hmac-pbkdf2-ofb-aes.js"/>

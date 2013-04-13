@@ -19,23 +19,21 @@
 
  */
 /**
- * @param {string} objectId the object's identifier
- * @param {Object} userMeta an object containing the user metadata properties
- * @param {Object} listableUserMeta an object containing the listable user metadata properties
- * @param {Object} systemMeta an object containing the system metadata properties
+ * Represents object version/snapshot information as returned from the list-versions call.
+ * @param num the version/snapshot number (incremented automatically starting at 0)
+ * @param oid the object-id of the version/snapshot (can be used to read it)
+ * @param dateCreated date the version/snapshot was created
  * @constructor
  */
-ObjectResult = function( objectId, userMeta, listableUserMeta, systemMeta ) {
-    this.id = objectId;
-    this.objectId = objectId;
-    this.userMeta = userMeta;
-    this.listableUserMeta = listableUserMeta;
-    this.systemMeta = systemMeta;
+ObjectVersion = function( num, oid, dateCreated ) {
+    this.num = num;
+    this.oid = oid;
+    this.dateCreated = dateCreated;
 };
 
 ////////////////////////
 // Exports for NodeJS //
 ////////////////////////
 if ( typeof(exports) != 'undefined' ) {
-    exports.ObjectResult = ObjectResult;
+    exports.ObjectVersion = ObjectVersion;
 }

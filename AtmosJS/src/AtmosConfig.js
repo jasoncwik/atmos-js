@@ -20,15 +20,15 @@
  */
 /**
  * Defines configuration parameters for an AtmosRest client.
- * @param {String} uid (required) the Atmos UID for the connection
- * @param {String} secret (required) the Atmos shared secret key for the connection
+ * @param {string} uid (required) the Atmos UID for the connection
+ * @param {string} secret (required) the Atmos shared secret key for the connection
  * @param {boolean=} enableUtf8 (optional) set to true to enable UTF8 non-latin character support in metadata values.
  *                              NOTE: this feature must be supported by your Atmos version (check AtmosServiceInfo.utf8).
  * @param {boolean=} enableDebug (optional) set to true to enable log output for debugging (default is false).
- * @param {String=} protocol (optional) for node.js or if CORS is enabled on the endpoint.
+ * @param {string=} protocol (optional) for node.js or if CORS is enabled on the endpoint.
  *                           the protocol to use when connecting to the endpoint (HTTP or HTTPS)
- * @param {String=} host (optional) for node.js or if CORS is enabled on the endpoint. the endpoint host.
- * @param {Number=} port (optional) for node.js or if CORS is enabled on the endpoint. the endpoint port.
+ * @param {string=} host (optional) for node.js or if CORS is enabled on the endpoint. the endpoint host.
+ * @param {number=} port (optional) for node.js or if CORS is enabled on the endpoint. the endpoint port.
  * @constructor
  */
 AtmosConfig = function(uid, secret, enableUtf8, enableDebug, protocol, host, port) {
