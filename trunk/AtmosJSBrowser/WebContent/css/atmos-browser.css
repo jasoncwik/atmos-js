@@ -79,6 +79,12 @@ input.longField {
     z-index: 10000;
     padding: 8px;
     text-align: center;
+    font: 13px Arial, sans-serif;
+}
+
+#atmosAboutPage .atmosAboutTitle {
+    font-size: 14px;
+    font-weight: bold;
 }
 
 #atmosAboutPage .featureList {
@@ -89,7 +95,7 @@ input.longField {
     background-color: #fff;
     padding: 4px;
     text-align: center;
-    font-size: 10pt;
+    font-size: 12px;
 }
 
 #atmosAboutPage li {
