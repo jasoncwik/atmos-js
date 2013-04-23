@@ -140,13 +140,23 @@ Redistribution and use in source and binary forms, with or without modification,
         $( '#atmosNamespaceLink' ).show();
         removeFilterClick();
     }
+
+    function showAboutPage() {
+        // populate features in about page
+        var $about = $( '#atmosAboutPage' );
+        for ( var feature in browser.atmosInfo ) {
+            if ( !browser.atmosInfo[feature] ) continue;
+            $about.find( '.feature-' + feature ).removeClass( 'disabledFeature' );
+        }
+        $about.show()
+    }
 </script>
 
 <script id="template.atmos.main" type="text/html">
     <div unselectable="on" class="atmosBrowser">
         <div class="atmosTitleBar">
             <span class="atmosTitle">File Manager</span>
-            <span class="atmosXButton" onclick="$( '#atmosAboutPage' ).show()">?</span>
+            <span class="atmosXButton" onclick="showAboutPage()">?</span>
             <span class="atmosXButton configGear" onclick="browser.showConfig()">&#x2699;</span>
         </div>
         <div class="atmosToolBar">
@@ -422,14 +432,15 @@ Redistribution and use in source and binary forms, with or without modification,
                     <th class="cell atmosAclWRITE atmosAclWRITENameHeader">Write</th>
                     <th class="cell atmosAclREAD atmosAclREADNameHeader">Read</th>
                     <th class="cell atmosAclNONE atmosAclNONENameHeader">None</th>
-
-                    <td class="atmosButtonCell cell"></td>
                 </tr>
             </table>
             <form>
                 <table class="table atmosAclTable atmosUserAclTable">
                 </table>
             </form>
+        </div>
+        <div class="atmosTableCaption">
+            To remove a user, select "None" for their permission level
         </div>
         <div class="atmosTableWrapper">
             <div class="atmosTableTitle">Group ACLs</div>
@@ -440,8 +451,6 @@ Redistribution and use in source and binary forms, with or without modification,
                     <th class="cell atmosAclWRITE atmosAclWRITENameHeader">Write</th>
                     <th class="cell atmosAclREAD atmosAclREADNameHeader">Read</th>
                     <th class="cell atmosAclNONE atmosAclNONENameHeader">None</th>
-
-                    <td class="atmosButtonCell cell"></td>
                 </tr>
             </table>
             <form>
@@ -459,8 +468,6 @@ Redistribution and use in source and binary forms, with or without modification,
                         </td>
                         <td class="cell atmosAclNONE">
                             <input type="radio" name="group" value="NONE" class="atmosAclValue"/>
-                        </td>
-                        <td class="atmosButtonCell cell">
                         </td>
                     </tr>
                 </table>
@@ -482,9 +489,6 @@ Redistribution and use in source and binary forms, with or without modification,
         </td>
         <td class="cell atmosAclNONE">
             <input type="radio" name="%{name}" value="NONE" class="atmosAclValue"/>
-        </td>
-        <td class="atmosButtonCell cell">
-            <div class="atmosButton atmosDeleteButton" title="Delete this entry">Delete</div>
         </td>
     </tr>
 </script>
@@ -559,8 +563,9 @@ Redistribution and use in source and binary forms, with or without modification,
             <span class="atmosButton atmosUpButton" title="Up">Up</span>
             <span class="atmosButton atmosCreateButton" title="Create">Create</span>
         </div>
-        <ul class="atmosDirectoryList">
-        </ul>
+        <div class="atmosDirectoryListContainer">
+            <ul class="atmosDirectoryList"></ul>
+        </div>
         <div class="atmosSelectedDisplay"></div>
         <div class="atmosButtonBar">
             <span class="atmosButton atmosSelectButton" title="Select">Select</span>
@@ -612,6 +617,17 @@ Redistribution and use in source and binary forms, with or without modification,
     Atmos HTML5 Browser<br/>
     <br/>
     <span class="atmosAboutVersion"></span><br/>
+    <br/>
+    Available Features:
+    <br/>
+    <ul class="featureList">
+        <li class="feature-object disabledFeature">Object API</li>
+        <li class="feature-namespace disabledFeature">Namespace API</li>
+        <li class="feature-keyvalue disabledFeature">Key-Pool API</li>
+        <li class="feature-utf8 disabledFeature">UTF-8 Extended Character Support</li>
+        <li class="feature-browsercompat disabledFeature">Browser Compatibility</li>
+        <li class="feature-versioning disabledFeature">Object Snapshots</li>
+    </ul>
     <br/>
     <a href="http://code.google.com/p/atmos-js/wiki/HTML5App" target="_blank">Website</a>
     &nbsp;&nbsp;&nbsp;&nbsp;

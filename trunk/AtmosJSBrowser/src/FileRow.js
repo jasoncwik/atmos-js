@@ -32,9 +32,15 @@ FileRow = function( entry, browser ) {
             if ( event.which == 3 && !fileRow.isSelected() ) {
                 browser.unselectAll();
                 fileRow.select();
+                browser.lastClickedRow = fileRow;
             } else if ( event.which == 1 ) {
-                if ( !event.ctrlKey && !event.metaKey ) browser.unselectAll();
-                fileRow.toggleSelected();
+                if ( event.shiftKey && browser.lastClickedRow && fileRow !== browser.lastClickedRow ) {
+                    fileRow.shiftClick();
+                } else {
+                    if ( !event.ctrlKey && !event.metaKey ) browser.unselectAll();
+                    fileRow.toggleSelected();
+                    browser.lastClickedRow = fileRow;
+                }
             }
         }
     } );
@@ -132,6 +138,16 @@ FileRow.prototype.isSelected = function() {
 };
 FileRow.prototype.toggleSelected = function() {
     this.$root.toggleClass( 'selected' );
+};
+FileRow.prototype.shiftClick = function() {
+    var $from = this.$root, $to = this.browser.lastClickedRow.$root, inSelection = false;
+    this.$root.parent().children().each( function() {
+        if ( this === $from[0] || this === $to[0] ) {
+            inSelection = !inSelection;
+            jQuery( this ).addClass( 'selected' )
+        } else if ( inSelection ) jQuery( this ).addClass( 'selected' );
+        else jQuery( this ).removeClass( 'selected' );
+    } );
 };
 FileRow.prototype.remove = function() {
     this.$root.remove();
