@@ -119,9 +119,6 @@ Redistribution and use in source and binary forms, with or without modification,
         $( window ).resize( function() {
             sizeToolBar();
         } );
-
-        // populate release version in about page
-        $( '.atmosAboutVersion' ).text( 'version ' + AtmosBrowser.version );
     } );
 
     function sizeToolBar() {
@@ -142,8 +139,15 @@ Redistribution and use in source and binary forms, with or without modification,
     }
 
     function showAboutPage() {
-        // populate features in about page
         var $about = $( '#atmosAboutPage' );
+
+        // populate browser release version
+        $about.find( '.atmosAboutVersion' ).text( AtmosBrowser.version );
+
+        // populate Atmos service version
+        $about.find( '.atmos-version' ).text( browser.atmosInfo.version );
+
+        // populate Atmos service features
         for ( var feature in browser.atmosInfo ) {
             if ( !browser.atmosInfo[feature] ) continue;
             $about.find( '.feature-' + feature ).removeClass( 'disabledFeature' );
@@ -614,11 +618,9 @@ Redistribution and use in source and binary forms, with or without modification,
 </div>
 
 <div id="atmosAboutPage" onclick="$(this).hide()">
-    Atmos HTML5 Browser<br/>
+    <span class="atmosAboutTitle">Atmos HTML5 Browser v<span class="atmosAboutVersion"></span></span><br/>
     <br/>
-    <span class="atmosAboutVersion"></span><br/>
-    <br/>
-    Available Features:
+    Connected to Atmos v<span class="atmos-version"></span> with the following features:
     <br/>
     <ul class="featureList">
         <li class="feature-object disabledFeature">Object API</li>
