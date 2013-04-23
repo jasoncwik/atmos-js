@@ -25,6 +25,13 @@ Please report any issues on http://code.google.com/p/atmos-js/issues/list
 
 Release Notes:
 
+2.0.1
+
+Directory selection page (in Move dialog) now scrolls.
+About page now shows available features (from service info).
+File list now supports shift-click!
+Fixed bug in ACL removal.
+
 2.0.0
 
 Added "Snapshots" feature utilizing Atmos object versioning.

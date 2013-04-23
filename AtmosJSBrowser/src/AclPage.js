@@ -56,9 +56,6 @@ AclPage = function( entry, acl, util, templateEngine ) {
 AclPage.prototype.addAclEntry = function( $table, name, access ) {
     if ( !access ) access = 'NONE';
     var $row = jQuery( this.templates.get( 'aclRow' ).render( {name: name} ) );
-    $row.find( '.atmosDeleteButton' )[0].onclick = function() {
-        $row.remove();
-    };
     $row.find( 'input[value="' + access + '"]' ).prop( 'checked', true );
     $table.append( $row );
 };
