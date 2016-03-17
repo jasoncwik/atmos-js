@@ -1,0 +1,53 @@
+# Introduction #
+
+The HTML5 browser is a DHTML application that uses the Atmos JavaScript API to communicate with an Atmos instance and displays a file-browser-style interface to the user for interaction.  One might compare it to [AtmosFox](https://addons.mozilla.org/en-US/firefox/addon/atmosfox/) or AtmosChrome (currently in beta) except that this app is pure HTML5, works in multiple browsers and does not require any client plug-ins.
+
+
+# Installation #
+
+In the future, this app may be included as a feature of Atmos, but for now, you must install it on the Atmos instance to which it will connect (or it must be hosted on the same domain due to AJAX restrictions).  To install on your Atmos system:
+
+  * Unzip the latest atmos-js-browser-x.x.x.zip archive (found on the [Downloads](http://code.google.com/p/atmos-js/downloads/list) page).
+
+  * Ensure you have Java installed and on your path (type "java -version" in a shell or command window to verify)
+
+  * In a shell or command window go to the folder where you unzipped the files.  Use the upload script to upload/install the browser on Atmos (you will need your credentials).
+> On Windows:
+```
+  upload.bat main.html /remote/path/to/install
+```
+> On OSX:
+```
+  upload.sh main.html /remote/path/to/install
+```
+> The script will prompt you for Atmos connection details (including your credentials).  When it completes, it will print out a long URL.  **This is the public URL for the HTML5 app**.
+
+  * Copy the URL and paste it into a web browser.  You should be prompted for credentials.  Once you enter them, you should see the root directory of the Atmos namespace.
+
+
+# Browser Compatibility #
+
+Here is a browser compatibility matrix.
+
+| Atmos Version | Internet Explorer 8+ | Chrome 14+ | Safari 5.1+ | Firefox 3.6+ |
+|:--------------|:---------------------|:-----------|:------------|:-------------|
+| v1.4.0 - 2.0.2 | No                   | Yes`*`     | Yes`*`      | Yes`*`       |
+| v2.0.3+       | Yes                  | Yes        | Yes         | Yes          |
+
+`*`This version of Atmos does not support direct-to-folder downloads through a web browser (the Content-Disposition header).  Although you cannot use the "Download" link/button, you can "Open" files and use the browser's Save-As feature as a work-around.
+
+At this time there is no plan to support IE6.
+
+
+# Credentials #
+
+This application uses the [HTML5 local storage API](http://dev.w3.org/html5/webstorage/#the-localstorage-attribute) to store your credentials on your local machine.  The secret key is AES encrypted first.  Once credentials are entered, the app will use them and bypass the credentials screen.  You can change your credentials at any time using the link in the top-right.
+
+
+# Usage Notes #
+
+  * When in Object API mode, you can type an objectId into the location bar to search for it
+  * In all browsers except Internet Explorer, you can drag files into the file list to upload them.  You should see a green box around the file list while dragging if this feature is available.
+  * In Chrome, you can drag files one-at-a-time out of the file list and onto a local target (i.e. the desktop or an open folder) to download them.
+  * Some operations can be performed on multiple items at once. You can select multiple items by holding down the Shift key to select a range or the Ctrl key (Command key on a Mac) to cherry-pick items.
+  * You cannot upload or download folders at this time.
