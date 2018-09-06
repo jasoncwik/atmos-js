@@ -205,7 +205,7 @@ AtmosBrowserUtil.prototype.parentDirectory = function( path ) {
 };
 AtmosBrowserUtil.prototype.list = function( path, includeMetadata, callback ) {
     var util = this;
-    var options = new ListOptions( 0, null, true, null, null );
+    var options = new ListOptions( 0, null, includeMetadata, null, null );
     this.showStatus( 'Listing directory...' );
     if ( this.useNamespace ) {
         var list_call = function( util, options, entries ) {

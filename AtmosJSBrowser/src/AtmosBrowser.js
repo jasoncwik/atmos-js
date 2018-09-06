@@ -169,10 +169,7 @@ AtmosBrowser.prototype._init = function() {
     // selecting files triggers an upload
     if ( this.$uploadField.length > 0 ) AtmosBrowserUtil.bind( this.$uploadField[0], 'change', function( event ) {
         if ( event.target.files ) browser.uploadFiles( event.target.files );
-        else {
-            if ( browser.atmosInfo.browsercompat ) browser.uploadFile( null, true );
-            else browser.util.error( browser.templates.get( 'atmosError.noBrowserCompat' ).render( {info: AtmosBrowserUtil.dumpObject( browser.atmosInfo )} ) );
-        }
+        else browser.uploadFile( null, true );
     } );
 
     // drag-n-drop upload
@@ -286,10 +283,6 @@ AtmosBrowser.prototype.openSelectedItems = function() {
     }
 };
 AtmosBrowser.prototype.downloadSelectedItems = function() {
-    if ( !this.atmosInfo.browsercompat ) {
-        this.util.error( this.templates.get( 'atmosError.noBrowserCompat' ).render( {info: AtmosBrowserUtil.dumpObject( this.atmosInfo )} ) );
-        return;
-    }
     var selectedRows = this.getSelectedRows();
     if ( selectedRows.length == 0 ) this.util.error( this.templates.get( 'nothingSelectedError' ).render() );
     if ( !this._checkNoDirectories( selectedRows ) ) return;
