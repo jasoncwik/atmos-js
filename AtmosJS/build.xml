@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="atmos-js" default="compile">
     <property name="src" location="src"/>
-    <property name="version" value="2.1.1"/>
+    <property name="version" value="2.1.2"/>
 
     <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
 
+<!-- TODO: need to find a replacement for this
     <path id="jsdoc_classpath">
         <fileset dir="${jsdoc_home}">
             <include name="*.jar"/>
@@ -24,6 +25,7 @@
             <fileset dir="${src}" includes="*.js"/>
         </jsdoctoolkit>
     </target>
+-->
 
     <taskdef name="jscomp" classname="com.google.javascript.jscomp.ant.CompileTask"
              classpath="compiler.jar"/>

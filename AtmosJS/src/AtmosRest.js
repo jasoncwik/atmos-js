@@ -35,6 +35,9 @@ if ( isNodejs ) {
 AtmosRest = function( atmosConfig ) {
     this.atmosConfig = atmosConfig;
 
+    // defaults (param could be in-line object, so can't rely on AtmosConfig constructor)
+    if (typeof(atmosConfig.enableUtf8) == 'undefined') atmosConfig.enableUtf8 = true;
+
     this.info( "AtmosRest loaded" );
 };
 
@@ -90,99 +93,67 @@ AtmosRest.prototype.getServiceInformation = function( callback ) {
 
 /**
  * Creates an object in Atmos
- * @param {Acl} acl an Acl for the new object.  If null, the object will get the default Acl.
- * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
- * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
- * @param {string} form the form element that contains the file(s) to upload. Either form or data must be specified.
+ * @param {Object} params Parameters for the function.
+ * @param {string} [params.path] the namespace path in Atmos.  Must start with a slash.  Must end with a slash if creating a directory.
+ * @param {Acl} [params.acl] an Acl for the new object.  If null, the object will get the default Acl.
+ * @param {Object} [params.meta] regular Metadata for the new object.  May be null for no regular metadata.
+ * @param {Object} [params.listableMeta] listable Metadata for the new object.  May be null for no listable metadata.
+ * @param {string} [params.form] the form element that contains the file(s) to upload.
  *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
- * @param {string|File} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
- * @param {string} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
- *                          Leave blank if form is present (mime type will be extracted from multipart data)
- * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
+ * @param {string|Blob|File} [params.data] the data for the new object.  If null, an empty object will be created.  Use null for directories.
+ * @param {Checksum} [params.checksum] placeholder for checksum.  Provide an instance if you wish to use a checksum.
+ *                   Be sure to use the same instance for updates (only appends are supported for checksummed objects).
+ * @param {string} [params.mimeType] the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
+ *                 Leave blank if form is present (mime type will be extracted from multipart data)
+ * @param {function} params.successCallback the callback for when the function completes.  Should have the signature function(result)
  *                   where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.
- * @param {function=} progressCallback (optional) the callback for progress updates (i.e. status bar)
+ * @param {function} [params.progressCallback] the callback for progress updates (i.e. status bar)
  */
-AtmosRest.prototype.createObject = function( acl, meta, listableMeta, form, data, mimeType, successCallback, progressCallback ) {
-    var headers = {};
-    var me = this;
-
-    this._addAclHeaders( acl, headers );
-    this._addMetadataHeaders( meta, headers, false );
-    this._addMetadataHeaders( listableMeta, headers, true );
-
-    this._ajax( /** @type HttpRequest */ {
-        uri: this.context + '/objects',
-        method: 'POST',
-        headers: headers,
-        data: data,
-        mimeType: mimeType,
-        progress: progressCallback,
-        processResult: function( result, xhr ) {
-            if ( !result.successful ) return;
-            me._processCreateObjectResult( result, xhr );
-        },
-        complete: successCallback,
-        form: form
-    } );
-};
-
-/**
- * Creates an object in Atmos on the path provided.
- *
- * @param {string} path the namespace path in Atmos (must start with a slash)
- * @param {Acl} acl an Acl for the new object.  If null, the object will get the default Acl.
- * @param {Object} meta regular Metadata for the new object.  May be null for no regular metadata.
- * @param {Object} listableMeta listable Metadata for the new object.  May be null for no listable metadata.
- * @param {Element} form the form element that contains the file(s) to upload. Either form or data must be specified
- *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
- * @param {string|File} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
- * @param {string} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
- *                          Leave blank if form is present (mime type will be extracted from multipart data)
- * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
- *                   where result will be an AtmosResult object.  The created Object ID will be in the value field of the result object.
- * @param {function=} progressCallback the (optional) callback for progress updates (i.e. status bar)
- */
-AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta, form, data, mimeType, successCallback, progressCallback ) {
-    if ( !AtmosRest.objectPathMatch.test( path ) ) {
-        throw "The path '" + path + "' is not valid";
+AtmosRest.prototype.createObject = function( params ) {
+    if ( params.path && !AtmosRest.objectPathMatch.test( params.path ) ) {
+        throw "The path '" + params.path + "' is not valid";
     }
     var headers = {};
     var me = this;
 
-    this._addAclHeaders( acl, headers );
-    this._addMetadataHeaders( meta, headers, false );
-    this._addMetadataHeaders( listableMeta, headers, true );
+    this._addAclHeaders( params.acl, headers );
+    this._addMetadataHeaders( params.meta, headers, false );
+    this._addMetadataHeaders( params.listableMeta, headers, true );
+    this._addChecksumHeader( params.data, headers );
 
     this._ajax( /** @type HttpRequest */ {
-        uri: this._getPath( path ),
+        uri: params.path ? this._getPath( params.path ) : this.context + '/objects',
         method: 'POST',
         headers: headers,
-        data: data,
-        mimeType: mimeType,
-        progress: progressCallback,
+        data: params.data,
+        mimeType: params.mimeType,
+        progress: params.progressCallback,
         processResult: function( result, xhr ) {
             if ( !result.successful ) return;
             me._processCreateObjectResult( result, xhr );
         },
-        complete: successCallback,
-        form: form
+        complete: params.successCallback,
+        form: params.form
     } );
 };
 
 /**
  * Reads the contents of an object from Atmos
  * @param {string} id the object identifier (either an object path or an object id)
- * @param {AtmosRange} range the range of the object to read, pass null to read the entire object.
+ * @param {AtmosRange} [range] the range of the object to read, pass null to read the entire object.
  * @param {function} callback the completion callback (both error and success).  Upon success,
  * the object's content will be returned in the data property of the result object.
  */
 AtmosRest.prototype.readObject = function( id, range, callback ) {
+    var me = this;
+
     this._ajax( /** @type HttpRequest */ {
         uri: this._getPath( id ),
         method: 'GET',
         headers: {},
         range: range,
         processResult: function( result, xhr ) {
+            if ( !range ) me._verifyChecksum(result, xhr);
             if ( !result.successful ) return;
             result.data = xhr.responseText;
         },
@@ -194,18 +165,18 @@ AtmosRest.prototype.readObject = function( id, range, callback ) {
  * Updates an object in Atmos with the given ID.
  *
  * @param {string} id the object ID or namespace path in Atmos.
- * @param {Acl} acl an Acl for the object.  May be null for no updates.
- * @param {Object} meta regular Metadata for the object.  May be null for no updates.
- * @param {Object} listableMeta listable Metadata for the object.  May be null for no updates.
- * @param {string} form the form element that contains the file(s) to upload. Either form or data must be specified
+ * @param {Acl} [acl] an Acl for the object.  May be null for no updates.
+ * @param {Object} [meta] regular Metadata for the object.  May be null for no updates.
+ * @param {Object} [listableMeta] listable Metadata for the object.  May be null for no updates.
+ * @param {string} [form] the form element that contains the file(s) to upload.
  *                 NOTE: multipart forms must be supported by your Atmos version (check AtmosServiceInfo.browsercompat).
- * @param {string|File} data the data for the new object (can be a String, Blob or File). Either form or data must be specified
- * @param {AtmosRange} range the range of the object to update, pass null to replace the entire object or if a form is used.
- * @param {string} mimeType the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
+ * @param {string|Blob|File} [data] the data for the new object.  Pass null to form and data to truncate the object.
+ * @param {AtmosRange} [range] the range of the object to update, pass null to replace the entire object or if a form is used.
+ * @param {string} [mimeType] the mimeType for the new object.  If null, the object will be assigned application/octet-stream.
  *                          Leave blank if form is present (mime type will be extracted from multipart data)
  * @param {function} successCallback the callback for when the function completes.  Should have the signature function(result)
  *                   where result will be an AtmosResult object. The result of this call will only contain status information.
- * @param {function=} progressCallback the (optional) callback for progress updates (i.e. status bar)
+ * @param {function} [progressCallback] the callback for progress updates (i.e. status bar)
  */
 AtmosRest.prototype.updateObject = function( id, acl, meta, listableMeta, form, data, range, mimeType, successCallback, progressCallback ) {
     var headers = {};
@@ -213,6 +184,7 @@ AtmosRest.prototype.updateObject = function( id, acl, meta, listableMeta, form, 
     this._addAclHeaders( acl, headers );
     this._addMetadataHeaders( meta, headers, false );
     this._addMetadataHeaders( listableMeta, headers, true );
+    this._addChecksumHeader( data, headers );
 
     this._ajax( /** @type HttpRequest */ {
         uri: this._getPath( id ),
@@ -1677,6 +1649,26 @@ AtmosRest.prototype._resolveUrl = function( path, query ) {
     url += path;
     if ( query ) url += "?" + query;
     return url;
+};
+
+AtmosRest.prototype._addChecksumHeader = function( data, headers ) {
+    headers["x-emc-wschecksum"] = 'SHA1/' + data.length + '/'
+        + Crypto.util.bytesToHex( Crypto.SHA1( data, { asBytes: true } ) );
+};
+
+AtmosRest.prototype._verifyChecksum = function( result, xhr ) {
+    if ( !result.success ) return;
+    var checksumStr = xhr.getResponseHeader( 'x-emc-wschecksum' );
+    if ( checksumStr ) {
+        var checksumParts = checksumStr.split( '/' );
+        if ( checksumParts[0] == 'SHA1' ) {
+            var checksum = Crypto.util.bytesToHex( Crypto.SHA1( xhr.responseText, { asBytes: true } ) );
+            if ( checksum != checksumParts[2] ) {
+                result.success = false;
+                result.errorMessage = 'checksum failed';
+            }
+        }
+    }
 };
 
 //

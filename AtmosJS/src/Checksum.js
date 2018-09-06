@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2011, EMC Corporation
+ Copyright (c) 2011-2013, EMC Corporation
 
  All rights reserved.
 
@@ -18,20 +18,18 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
  */
+/**
+ * Constructs a new Checksum object.  Used to hold checksum data about an Atmos object.  Pass a new instance to
+ * createObject and use this same instance for updateObject.  Note that if a checksum is provided on creation, the
+ * running checksum is required for all updates.  When using a checksum, you can only append to an object or delete it.
+ * @constructor
+ */
+Checksum = function() {
 
-var atmosConfig = /** @type AtmosConfig */ {
-    uid: "{subtenant-id}/{uid}",
-    secret: "***********",
-    enableUtf8: true,
-    enableDebug: false
 };
-
-
-if ( typeof(global) != 'undefined' ) {
-    // We're running inside node.js
-    atmosConfig.protocol = 'https:';
-    atmosConfig.host = 'atmos.ecstestdrive.com';
-//    atmosConfig.port = 9022;
-
-    global.atmosConfig = atmosConfig;
+////////////////////////
+// Exports for NodeJS //
+////////////////////////
+if ( typeof(exports) != 'undefined' ) {
+    exports.Checksum = Checksum;
 }

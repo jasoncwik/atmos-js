@@ -1,4 +1,4 @@
-AtmosJS = require( '../../atmos-min-2.1.1.js' );
+AtmosJS = require( '../../atmos-min-2.1.2.js' );
 AtmosRest = AtmosJS.AtmosRest;
 ListOptions = AtmosJS.ListOptions;
 AtmosRange = AtmosJS.AtmosRange;

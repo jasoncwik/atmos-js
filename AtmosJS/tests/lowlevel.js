@@ -202,6 +202,34 @@ atmosLowLevel = {
         test.ok( sxml == '<policy></policy>' || sxml == '<policy/>', 'minimal XML serialization is valid' );
 
         test.done();
+    },
+
+    'Checksum test': function( test ) {
+        var validHeaders = {
+            'x-emc-wschecksum': 'SHA1/12/2ef7bde608ce5404e97d5f042f95f89f1c232871'
+        };
+        var badAlgHeaders = {
+            'x-emc-wschecksum': 'MD5/12/2ef7bde608ce5404e97d5f042f95f89f1c232872'
+        };
+        var badSumHeaders = {
+            'x-emc-wschecksum': 'SHA1/12/2ef7bde608ce5404e97d5f042f95f89f1c232872'
+        };
+        var xhr = function(headers) {
+            this.responseText = 'Hello World!';
+            this.getResponseHeader = function(key) {
+                return headers[key];
+            };
+        };
+        var result = {success: true};
+        atmos._verifyChecksum(result, new xhr(validHeaders));
+        test.ok( result.success && Object.keys(result).length == 1 , "valid checksum" );
+        result = {success: true};
+        atmos._verifyChecksum(result, new xhr(badAlgHeaders));
+        test.ok( result.success && Object.keys(result).length == 1 , "wrong algorithm" );
+        result = {success: true};
+        atmos._verifyChecksum(result, new xhr(badSumHeaders));
+        test.ok( !result.success && result.errorMessage == 'checksum failed' && Object.keys(result).length == 2 , "bad checksum" );
+        test.done();
     }
 };
 
