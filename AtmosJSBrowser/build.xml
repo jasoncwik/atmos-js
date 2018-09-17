@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="atmos-js-browser" default="dist">
     <property name="src" location="src"/>
-    <property name="version" value="2.0.1"/>
+    <property name="version" value="2.1.0"/>
 
-    <property name="jsdoc_home" value="${user.home}/local/jsdoc-toolkit"/>
+    <property name="jsdoc_home" value="${user.home}/Projects/jsdoc-toolkit"/>
 
+<!-- TODO: need to find a replacement for this
     <path id="jsdoc_classpath">
         <fileset dir="${jsdoc_home}">
             <include name="*.jar"/>
@@ -24,11 +25,19 @@
             <fileset dir="${src}" includes="*.js"/>
         </jsdoctoolkit>
     </target>
+-->
+
+    <target name="atmos-js">
+        <ant dir="../AtmosJS" antfile="build.xml" target="compile" inheritall="false"/>
+        <copy todir="WebContent/js">
+            <fileset dir="../AtmosJS" includes="atmos-min-*.js"/>
+        </copy>
+    </target>
 
     <taskdef name="jscomp" classname="com.google.javascript.jscomp.ant.CompileTask"
              classpath="compiler.jar"/>
 
-    <target name="compile">
+    <target name="compile" depends="atmos-js">
 
         <jscomp compilationLevel="simple" debug="false" output="WebContent/js/atmos-browser-min-${version}.js">
             <define name="ATMOS_BROWSER_VERSION" value="${version}"/>

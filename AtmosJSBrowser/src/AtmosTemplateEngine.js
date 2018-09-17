@@ -163,6 +163,5 @@ AtmosTemplateEngine.MESSAGE_TEMPLATES = {
     'atmosError.1051': 'Checksum verification may only be used with append update requests',
     'atmosError.1052': 'The specified checksum algorithm is not implemented.',
     'atmosError.1053': 'Checksum cannot be computed for an object on update for which one wasn\'t computed at create time.',
-    'atmosError.1054': 'The checksum input parameter was missing from the request.',
-    'atmosError.noBrowserCompat': 'This feature is not supported on your current browser by this version of Atmos (%{info}).'
+    'atmosError.1054': 'The checksum input parameter was missing from the request.'
 };
