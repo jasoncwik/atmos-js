@@ -29,12 +29,12 @@ if [ -z "$PORT" ]; then
   fi
 fi
 
-if [ -z "xUID" ]; then
+if [ -z "$xUID" ]; then
   echo "Atmos UID: \c"
   read xUID
 fi
 
-if [ -z "SECRET" ]; then
+if [ -z "$SECRET" ]; then
   echo "Atmos secret: \c"
   read SECRET
 fi
