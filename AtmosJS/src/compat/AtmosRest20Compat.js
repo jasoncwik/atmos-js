@@ -6,15 +6,8 @@ AtmosRest.prototype.getServiceInformation = function( state, callback ) {
     } );
 };
 AtmosRest.prototype.createObject_incompat = AtmosRest.prototype.createObject;
-AtmosRest.prototype.createObject = function( acl, meta, listableMeta, form, data, mimeType, state, successCallback, progressCallback ) {
+AtmosRest.prototype.createObject = function( path, acl, meta, listableMeta, form, data, mimeType, state, successCallback, progressCallback ) {
     this.createObject_incompat( acl, meta, listableMeta, form, data, mimeType, function( result ) {
-        result.state = state;
-        successCallback( result );
-    }, progressCallback );
-};
-AtmosRest.prototype.createObjectOnPath_incompat = AtmosRest.prototype.createObjectOnPath;
-AtmosRest.prototype.createObjectOnPath = function( path, acl, meta, listableMeta, form, data, mimeType, state, successCallback, progressCallback ) {
-    this.createObjectOnPath_incompat( path, acl, meta, listableMeta, form, data, mimeType, function( result ) {
         result.state = state;
         successCallback( result );
     }, progressCallback );

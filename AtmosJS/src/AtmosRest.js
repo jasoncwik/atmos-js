@@ -111,8 +111,10 @@ AtmosRest.prototype.getServiceInformation = function( callback ) {
  */
 AtmosRest.prototype.createObject = function( params ) {
     if ( params.path && !AtmosRest.objectPathMatch.test( params.path ) ) {
-        throw "The path '" + params.path + "' is not valid";
+        console.log(params.path);
+        throw "The path '" + params.path + "' is not valid (this is the statement)";
     }
+
     var headers = {};
     var me = this;
 
@@ -1652,8 +1654,12 @@ AtmosRest.prototype._resolveUrl = function( path, query ) {
 };
 
 AtmosRest.prototype._addChecksumHeader = function( data, headers ) {
-    headers["x-emc-wschecksum"] = 'SHA1/' + data.length + '/'
-        + Crypto.util.bytesToHex( Crypto.SHA1( data, { asBytes: true } ) );
+    var checksum = Crypto.util.bytesToHex( Crypto.SHA1( data, { asBytes: true } ) );
+    // var checksum = "A914CD90ED44C0660FCE5523BE00D74EC61A97E7";
+    headers["x-emc-wschecksum"] = 'SHA1/' + data.size + '/'
+        + checksum;
+    console.log(data);
+    console.log(checksum);
 };
 
 AtmosRest.prototype._verifyChecksum = function( result, xhr ) {
@@ -1661,9 +1667,9 @@ AtmosRest.prototype._verifyChecksum = function( result, xhr ) {
     var checksumStr = xhr.getResponseHeader( 'x-emc-wschecksum' );
     if ( checksumStr ) {
         var checksumParts = checksumStr.split( '/' );
-        if ( checksumParts[0] == 'SHA1' ) {
+        if ( checksumParts[0] === 'SHA1' ) {
             var checksum = Crypto.util.bytesToHex( Crypto.SHA1( xhr.responseText, { asBytes: true } ) );
-            if ( checksum != checksumParts[2] ) {
+            if ( checksum !== checksumParts[2] ) {
                 result.success = false;
                 result.errorMessage = 'checksum failed';
             }

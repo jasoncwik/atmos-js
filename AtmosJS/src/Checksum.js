@@ -30,6 +30,6 @@ Checksum = function() {
 ////////////////////////
 // Exports for NodeJS //
 ////////////////////////
-if ( typeof(exports) != 'undefined' ) {
+if ( typeof(exports) !== 'undefined' ) {
     exports.Checksum = Checksum;
 }

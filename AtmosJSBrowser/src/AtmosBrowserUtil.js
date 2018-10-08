@@ -107,7 +107,7 @@ AtmosBrowserUtil.prototype.createDirectory = function( parentDirectory, callback
             return;
         }
         util.showStatus( 'Creating directory...' );
-        util.atmos.createObjectOnPath( path, null, null, null, null, null, null, function( result ) {
+        util.atmos.createObject( {path: path, successCallback: function( result ) {
             util.hideStatus( 'Creating directory...' );
             if ( result.successful ) {
                 callback( name );
@@ -115,7 +115,7 @@ AtmosBrowserUtil.prototype.createDirectory = function( parentDirectory, callback
                 util.atmosError( result );
                 callback( null );
             }
-        } );
+        }} );
     } );
 };
 AtmosBrowserUtil.prototype.showStatus = function( message ) {
@@ -237,7 +237,7 @@ AtmosBrowserUtil.prototype.list = function( path, includeMetadata, callback ) {
                         entries.push( {id: path + result.value[i], name: result.value[i], type: FileRow.ENTRY_TYPE.TAG} );
                     }
                 }
-                if ( path != '/' ) {
+                if ( path !== '/' ) {
                     var list_call = function( util, options, entries ) {
                         util.atmos.listObjects( util.noSlashes( path ), options, function( result2 ) {
                             util.hideStatus( 'Listing directory...' );
@@ -370,7 +370,7 @@ AtmosBrowserUtil.prototype.getObjectInfo = function( id, callback ) {
         }
     } );
 };
-AtmosBrowserUtil.prototype.createObject = function( path, form, data, mimeType, completeCallback, progressCallback, currentLocation ) {
+AtmosBrowserUtil.prototype.createObject = function( params, completeCallback) {
     var util = this;
     this.showStatus( 'Creating object...' );
     var callback = function( result ) {
@@ -382,12 +382,9 @@ AtmosBrowserUtil.prototype.createObject = function( path, form, data, mimeType, 
             completeCallback( false );
         }
     };
-    if ( path ) this.atmos.createObjectOnPath( path, null, null, null, form, data, mimeType, callback, progressCallback );
-    else {
-        var listableMeta = {}; // add new object to current tag path if using object API
-        if ( currentLocation != '/' ) listableMeta[this.noSlashes( currentLocation )] = '';
-        this.atmos.createObject( null, null, this.useNamespace ? null : listableMeta, form, data, mimeType, callback, progressCallback );
-    }
+    var listableMeta = {}; // add new object to current tag path if using object API
+    if ( params.currentLocation !== '/' ) listableMeta[this.noSlashes( params.currentLocation )] = '';
+    this.atmos.createObject( params );
 };
 AtmosBrowserUtil.prototype.overwriteObject = function( id, form, data, mimeType, completeCallback, progressCallback ) {
     var util = this;

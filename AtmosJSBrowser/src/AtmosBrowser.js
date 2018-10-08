@@ -397,7 +397,7 @@ AtmosBrowser.prototype.uploadFile = function( file, useForm ) {
         if ( overwriting ) {
             browser.util.overwriteObject( id, form, file, (file ? file.type : null), completeF, progressF );
         } else {
-            browser.util.createObject( id, form, file, (file ? file.type : null), completeF, progressF, browser.currentLocation );
+            browser.util.createObject( {path: id, form: form, data: file, mimeType: (file ? file.type : null), successCallback: completeF, progressCallback: progressF} );
         }
     };
 
