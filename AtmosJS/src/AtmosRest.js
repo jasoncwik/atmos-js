@@ -1654,12 +1654,14 @@ AtmosRest.prototype._resolveUrl = function( path, query ) {
 };
 
 AtmosRest.prototype._addChecksumHeader = function( data, headers ) {
-    var checksum = Crypto.util.bytesToHex( Crypto.SHA1( data, { asBytes: true } ) );
-    // var checksum = "A914CD90ED44C0660FCE5523BE00D74EC61A97E7";
-    headers["x-emc-wschecksum"] = 'SHA1/' + data.size + '/'
-        + checksum;
-    console.log(data);
-    console.log(checksum);
+    var reader = new FileReader();
+
+    reader.onload = function(event) {
+        var contents = event.target.result;
+        var checksum = Crypto.util.bytesToHex( Crypto.SHA1( contents, { asBytes: true } ) );
+        headers["x-emc-wschecksum"] = 'SHA1/' + data.size + '/'
+            + checksum;
+    };
 };
 
 AtmosRest.prototype._verifyChecksum = function( result, xhr ) {
